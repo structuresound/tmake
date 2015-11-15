@@ -1,0 +1,49 @@
+{
+  "name": "bbt",
+  "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
+  "version": "0.1.0",
+  "homepage": "https://github.com/structuresound/bbt",
+  "author": {
+    "name": "structuresound",
+    "email": "leif@structuresound.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structuresound/bbt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/structuresound/bbt/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/structuresound/bbt/blob/master/LICENSE-MIT"
+    }
+  ],
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "scripts": {
+    "test": "grunt nodeunit"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "~0.6.4",
+    "grunt-contrib-nodeunit": "~0.2.0",
+    "grunt-contrib-watch": "~0.5.3",
+    "grunt": "~0.4.5"
+  },
+  "Keywords": [],
+  "preferGlobal": "true",
+  "bin": {
+    "bbt": "bin/bbt"
+  },
+  "dependencies": {
+    "async": "^1.5.0",
+    "bluebird": "^3.0.5",
+    "coffee-script": "^1.10.0",
+    "nodegit": "^0.5.0",
+    "request-promise": "^1.0.2",
+    "underscore": "^1.8.3",
+    "walk": "^2.3.9"
+  }
+}
