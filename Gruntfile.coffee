@@ -4,18 +4,18 @@ module.exports = (grunt) ->
       compile:
         expand: true,
         flatten: true,
-        cwd: "#{__dirname}/lib/",
+        cwd: "#{__dirname}/src/",
         src: ['*.coffee'],
-        dest: 'build/',
+        dest: 'lib/',
         ext: '.js'
     nodeunit: files: [ 'test/**/*_test.js' ]
     jshint:
       options: jshintrc: '.jshintrc'
-      lib: src: [ 'build/**/*.js' ]
+      lib: src: [ 'lib/**/*.js' ]
       test: src: [ 'test/**/*.js' ]
     watch:
       coffee:
-        files: 'lib/*.coffee'
+        files: 'src/*.coffee'
         tasks: [ 'coffee', 'jshint' ]
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'

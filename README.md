@@ -1,23 +1,52 @@
 # bbt [![Build Status](https://secure.travis-ci.org/leif/bbt.png?branch=master)](http://travis-ci.org/leif/bbt)
 
-build-less build tool pulls a git repo, transforms it, and places it in your project somewhere
+buildless build tool pulls a git repo, optionally transforms it, and places it in your project somewhere
 
 ## Getting Started
-Install the module with: `npm install bbt`
+Install the module with: `npm install -g bbt`
 
-```javascript
-var bbt = require('bbt');
-bbt.awesome(); // "awesome"
+```bash
+mkdir bbt-project && cd bbt-project
+bbt init
+```
+running bbt init will place the following example config in your folder
+```coffee
+name: "project"
+version: "0.1.0"
+provider: "myuser"
+deps: [
+  name: "hello"
+  version: "0.1.0"
+  provider: "leif"
+,
+  name: "hello"
+  version: "0.1.0"
+  provider: "git"
+  git:
+    url: "https://github.com/structuresound/hello-bbt.git"
+    config:
+      user: ""
+      password: ""
+      rsa: ""
+  transform:
+    config:
+      repl: (file, cb) ->
+        console.log file.path
+        cb null, file
+    pipeline: ->
+      @src ['./**/*.cpp', '!./exclude.cpp']
+      .pipe @map @repl
+      .pipe @dest './src'
+]
+```
+running example will clone hello-bbt repo and copy all .cpp files except for exclude.cpp into ./src
+```bash
+bbt
+cat src/hello.cpp
 ```
 
-## Documentation
-_(Coming soon)_
-
-## Examples
-_(Coming soon)_
-
 ## Contributing
-In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality. Lint and test your code using [Grunt](http://gruntjs.com/).
+This tool is currently experimental, and possibly not useful, examine at your own risk.
 
 ## Release History
 _(Nothing yet)_

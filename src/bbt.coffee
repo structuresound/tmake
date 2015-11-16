@@ -9,39 +9,13 @@ require('./string')
 defaultConfig = 'bbt.coffee'
 
 module.exports =
-  run: (argv) ->
+  run: (argv, libdir) ->
     configPath = process.cwd() + '/' + (argv.config || defaultConfig)
 
     switch argv._[0] || 'update'
       when 'init'
         unless fs.existsSync(configPath)
-          fs.writeFileSync defaultConfig, """
-          name: "project"
-          version: "0.1.0"
-          provider: "myuser"
-          deps: [
-            name: "hello"
-            version: "0.1.0"
-            provider: "leif"
-          ,
-            name: "hello"
-            version: "0.1.0"
-            provider: "git"
-            git:
-              url: "https://github.com/structuresound/hello-bbt.git"
-              config:
-                user: ""
-                password: ""
-                rsa: ""
-            transform:
-              config:
-                walk: require('walk')
-              pipeline: ->
-                src ['./**/*.coffee', '!./bbt.coffee']
-                .pipe map(log)
-                .pipe dest('./output')
-          ]
-          """
+          fs.writeFileSync defaultConfig, fs.readFileSync(libdir + '/' + defaultConfig, 'utf8')
       when 'update'
         if fs.existsSync(configPath)
           fs.readFileAsync(configPath, 'utf8').then (data) ->
