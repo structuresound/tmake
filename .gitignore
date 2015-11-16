@@ -1,4 +1,4 @@
 .bbt
+bbt.coffee
 build
-bin
 node_modules

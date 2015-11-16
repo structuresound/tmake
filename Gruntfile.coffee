@@ -11,19 +11,19 @@ module.exports = (grunt) ->
     nodeunit: files: [ 'test/**/*_test.js' ]
     jshint:
       options: jshintrc: '.jshintrc'
-      lib: src: [ 'js/**/*.js' ]
+      lib: src: [ 'build/**/*.js' ]
       test: src: [ 'test/**/*.js' ]
     watch:
       coffee:
         files: 'lib/*.coffee'
-        tasks: [ 'coffee', 'nodeunit' ]
+        tasks: [ 'coffee', 'jshint' ]
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-contrib-nodeunit'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
 
-  grunt.registerTask 'default', ['coffee', 'nodeunit']
+  grunt.registerTask 'default', ['coffee', 'jshint']
 
 # module.exports = (grunt) ->
 #   grunt.initConfig
@@ -52,18 +52,18 @@ module.exports = (grunt) ->
 #           [
 #             'coffee'
 #           ]
-#       libjs:
-#         files: '<%= jshint.lib.src %>'
-#         tasks: [
-#           'jshint:lib'
-#           'nodeunit'
-#         ]
-#       test:
-#         files: '<%= jshint.test.src %>'
-#         tasks: [
-#           'jshint:test'
-#           'nodeunit'
-#         ]
+      # libjs:
+      #   files: '<%= jshint.lib.src %>'
+      #   tasks: [
+      #     'jshint:lib'
+      #     'nodeunit'
+      #   ]
+      # test:
+      #   files: '<%= jshint.test.src %>'
+      #   tasks: [
+      #     'jshint:test'
+      #     'nodeunit'
+      #   ]
 #   # These plugins provide necessary tasks.
 
 #   grunt.loadNpmTasks 'grunt-contrib-watch'

@@ -35,15 +35,23 @@
   "Keywords": [],
   "preferGlobal": "true",
   "bin": {
-    "bbt": "bin/bbt"
+    "bbt": "bin/bbt.js"
   },
   "dependencies": {
+    "archy": "^1.0.0",
     "async": "^1.5.0",
     "bluebird": "^3.0.5",
     "coffee-script": "^1.10.0",
+    "glob": "^6.0.1",
+    "interpret": "^0.6.6",
+    "liftoff": "^2.2.0",
+    "map-stream": "0.0.6",
+    "minimist": "^1.2.0",
     "nodegit": "^0.5.0",
     "request-promise": "^1.0.2",
+    "shelljs": "^0.5.3",
     "underscore": "^1.8.3",
+    "vinyl-fs": "^2.2.1",
     "walk": "^2.3.9"
   }
 }

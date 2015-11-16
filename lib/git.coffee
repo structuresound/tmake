@@ -1,6 +1,6 @@
 git = require('nodegit')
-fs = require('fs')
 Promise = require("bluebird")
+fs = require('./fs')
 
 module.exports = (config) ->
   gitDir = ->
@@ -27,21 +27,10 @@ module.exports = (config) ->
       json[config.name] = config.version
       versions.write(json)
 
-  deleteFolderRecursive = (path) ->
-    files = []
-    if fs.existsSync(path)
-      files = fs.readdirSync(path)
-      files.forEach (file, index) ->
-        curPath = path + '/' + file
-        if fs.lstatSync(curPath).isDirectory()
-          deleteFolderRecursive curPath
-        else
-          fs.unlinkSync curPath
-      fs.rmdirSync path
-
   validate: ->
     if fs.existsSync(gitDir())
       if versions.read()[config.name] == config.version
+        console.log 'using ', config.name, '@', config.version
         return Promise.resolve()
       else
         @remove()
@@ -51,7 +40,7 @@ module.exports = (config) ->
       clone()
 
   remove: ->
-    new Promise (resolve, reject) ->
+    new Promise (resolve) ->
       if fs.existsSync gitDir()
-        deleteFolderRecursive gitDir()
+        fs.deleteFolderRecursive gitDir()
       resolve()
