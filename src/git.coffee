@@ -1,5 +1,6 @@
-git = require('nodegit')
+#git = require('nodegit')
 Promise = require("bluebird")
+git = require 'gift'
 fs = require('./fs')
 
 module.exports = (config) ->
@@ -7,7 +8,7 @@ module.exports = (config) ->
     config.srcDir + '/' + config.name
 
   metaPath = ->
-    config.srcDir + '/' + '.versions'
+    config.srcDir + '/' + 'versions'
 
   versions =
     read: ->
@@ -21,11 +22,12 @@ module.exports = (config) ->
 
   clone = ->
     console.log 'cloning', config.url, 'into', gitDir()
-    git.Clone(config.url, gitDir())
-    .then ->
-      json = versions.read()
-      json[config.name] = config.version
-      versions.write(json)
+    new Promise (resolve) ->
+      git.clone config.url, gitDir(), ->
+        json = versions.read()
+        json[config.name] = config.version
+        versions.write(json)
+        resolve()
 
   validate: ->
     if fs.existsSync(gitDir())
