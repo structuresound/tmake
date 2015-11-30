@@ -16,14 +16,15 @@ module.exports = (argv, libdir) ->
 
   srcDir = argv.srcDir || (_cwd + '/.bbt/src')
   tempDir = argv.tempDir || (_cwd + '/.bbt/transform')
-  buildDir = argv.buildDir || (_cwd + '/.bbt/lib')
+  includeDir = argv.includeDir || (_cwd + '/.bbt/include')
+  libDir = argv.buildDir || (_cwd + '/.bbt/lib')
   installDir = argv.installDir || (_cwd + '/')
 
   config = (->
     if fs.existsSync(bbtConfigPath)
       data = fs.readFileSync(bbtConfigPath, 'utf8')
-      match = data.match /\require '(.)/
-      console.log 'match', match
+      # match = data.match /\require '(.)/
+      # console.log 'match', match
       return coffee.eval(data)
     else
       unless argv._[0] == 'init'
@@ -47,11 +48,10 @@ module.exports = (argv, libdir) ->
     t.name ?= dep.name
     t.srcDir ?= srcDir + '/' + dep.name
     t.dstDir ?= tempDir + '/' + dep.name
-    tx = require('./transform')(t)
-    tx.execute()
+    require('./transform')(t)
+    .execute()
 
   build = (dep) ->
-    return unless dep.build
     t = {}
     _.extend(t, dep.build)
     t.name ?= dep.name
@@ -59,9 +59,22 @@ module.exports = (argv, libdir) ->
       t.srcDir ?= tempDir + '/' + dep.name
     else
       t.srcDir ?= srcDir + '/' + dep.name
-    t.dstDir ?= buildDir + '/' + dep.name
-    build = require('./build')(t, argv)
-    build.execute()
+    require('./build')(t, argv)
+    .execute()
+
+  install = (dep) ->
+    t = {}
+    _.extend(t, dep.install)
+    t.name ?= dep.name
+    if dep.transform
+      t.srcDir ?= tempDir + '/' + dep.name
+    else
+      t.srcDir ?= srcDir + '/' + dep.name
+    t.buildDir ?= t.srcDir + '/' + 'build'
+    t.dstDir ?= libDir
+    console.log 'install from', t.srcDir, 'to', t.dstDir
+    require('./install')(t, argv)
+    .execute()
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
@@ -114,4 +127,4 @@ module.exports = (argv, libdir) ->
         execute [deps,fetch,transform,build]
       when 'all'
         init libdir
-        execute [deps,fetch,transform,build]
+        execute [deps,fetch,transform,build,install]

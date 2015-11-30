@@ -8,8 +8,11 @@ module.exports = (task) ->
     src: (glob, opt) ->
       options = opt or {}
       options.cwd = task.srcDir
-      #console.log 'src:', glob, options
-      fs.src glob, options
+      patterns = _.map glob, (string) ->
+        if string.startsWith '/'
+          return string.slice(1)
+        string
+      fs.src patterns, options
     dest: fs.dest
     map: require 'map-stream'
 
@@ -18,7 +21,7 @@ module.exports = (task) ->
 
   execute = ->
     pipeline = task.pipeline || ->
-      @src task.glob || ['**/*']
+      @src task.glob || ['**/*', '!.git', '!.gitignore']
       .pipe @dest task.dstDir
     new Promise (resolve, reject) ->
       pipeline.bind(context)()

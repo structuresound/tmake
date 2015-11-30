@@ -6,12 +6,20 @@ deps: [
   version: "0.1.0"
   provider: "leif"
 ,
-  name: "helloGit"
+  name: "helloGyp"
   version: "0.1.0"
   git:
     url: "https://github.com/structuresound/hello-bbt.git"
   transform: true
-  build: "gyp"
+  build: with: "gyp"
+  install: false
+,
+  name: "helloCmake"
+  version: "0.1.0"
+  git:
+    url: "https://github.com/structuresound/hello-bbt.git"
+  transform: true
+  build: with: "cmake"
   install: false
 ,
   name: "helloCustom"
@@ -25,17 +33,15 @@ deps: [
       rsa: ""
   transform:
     config: ->
-      ext_replace: require 'gulp-ext-replace'
       customFunction: (file, cb) ->
         console.log file.path
         cb null, file
     pipeline: ->
-      @src ['/**/*.cpp', '!exclude.cpp']
-      .pipe @ext_replace '.cc'
+      @src ['**/*.cpp', '!exclude.cpp']
       .pipe @dest '.bbt/transform/helloCustom'
   build:
-    sources: ['**/*.cc']
-    type: "gyp"
+    with: "gyp"
+    sources: ['**/*.cpp']
     config: ->
       flags: stdlib: 'c++11'
   install:
