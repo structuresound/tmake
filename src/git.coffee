@@ -3,12 +3,17 @@ Promise = require("bluebird")
 git = require 'gift'
 fs = require('./fs')
 
-module.exports = (config) ->
-  gitDir = ->
-    config.srcDir + '/' + config.name
+module.exports = (dep) ->
+  if typeof dep.git == 'string'
+    config = url: "https://github.com/#{dep.git}.git"
+  else
+    config = dep.git || {}
+  config.name ?= dep.name
+  config.srcDir ?= dep.cloneDir
+  config.version ?= dep.version
 
   metaPath = ->
-    config.srcDir + '/' + 'versions'
+    dep.cacheDir + '/' + 'versions'
 
   versions =
     read: ->
@@ -21,18 +26,18 @@ module.exports = (config) ->
       fs.writeFileSync metaPath(), JSON.stringify(json)
 
   clone = ->
-    console.log 'cloning', config.url, 'into', gitDir()
+    console.log 'cloning', config.url, 'into', dep.cloneDir
     new Promise (resolve) ->
-      git.clone config.url, gitDir(), ->
+      git.clone config.url, dep.cloneDir, ->
         json = versions.read()
         json[config.name] = config.version
         versions.write(json)
         resolve()
 
   validate: ->
-    if fs.existsSync(gitDir())
+    if fs.existsSync(dep.cloneDir)
       if versions.read()[config.name] == config.version
-        console.log 'using ', config.name, '@', config.version
+        console.log 'using ', config.name, '@', config.version || '*'
         return Promise.resolve()
       else
         @remove()
@@ -43,6 +48,6 @@ module.exports = (config) ->
 
   remove: ->
     new Promise (resolve) ->
-      if fs.existsSync gitDir()
-        fs.deleteFolderRecursive gitDir()
+      if fs.existsSync dep.cloneDir
+        fs.deleteFolderRecursive dep.cloneDir
       resolve()

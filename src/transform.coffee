@@ -3,7 +3,12 @@ fs = require('vinyl-fs')
 Promise = require("bluebird")
 #pipe = require('gulp-pipe')
 
-module.exports = (task) ->
+module.exports = (dep) ->
+  task = dep.transform || {}
+  task.name ?= dep.name
+  task.srcDir ?= dep.srcDir
+  task.dstDir ?= dep.tempDir
+
   context =
     src: (glob, opt) ->
       options = opt or {}

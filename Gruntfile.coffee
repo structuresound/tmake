@@ -23,7 +23,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-nodeunit'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
 
-  grunt.registerTask 'default', ['coffee', 'jshint']
+  grunt.registerTask 'default', ['coffee', 'jshint', 'watch']
 
 # module.exports = (grunt) ->
 #   grunt.initConfig

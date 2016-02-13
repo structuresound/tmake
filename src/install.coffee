@@ -1,17 +1,24 @@
 _ = require('underscore')
 fs = require('vinyl-fs')
 Promise = require("bluebird")
+path = require('path')
 
-module.exports = (task) ->
+module.exports = (dep, argv) ->
+  task = dep.install || {}
+  task.srcDir ?= dep.buildDir
+  task.objDir ?= dep.objDir
+  task.libDir ?= dep.libDir
+  task.includeDir ?= dep.includeDir
+
   context =
     src: (glob, opt) ->
-      options = opt or {}
-      options.cwd ?= task.buildDir
+      opt ?= {}
+      opt.cwd ?= task.srcDir
       patterns = _.map glob, (string) ->
         if string.startsWith '/'
           return string.slice(1)
         string
-      fs.src patterns, options
+      fs.src patterns, opt
     dest: fs.dest
     map: require 'map-stream'
 
@@ -26,20 +33,33 @@ module.exports = (task) ->
       .on 'error', reject
 
   execute = ->
-    pipeline = task.pipeline || ->
-      glob = ['**/*.a']
-      if task.type == 'dynamic' then glob = ['**/*.dylib', '**/*.so', '**/*.dll']
-      @src glob
-      .pipe @dest task.dstDir
-    publicHeaders =  ->
-      @src task.glob || ['**/*.h', '**.hpp']
-      .pipe @dest task.dstDir + '/include'
-    libHeader = ->
-      @src(task.glob || ['**/' + task.name + '.h'], cwd: task.srcDir)
-      .pipe @dest task.dstDir + '/include'
+    installLibs = task.pipeline || ->
+      patterns = ['**/*.a']
+      if task.type == 'dynamic' then patterns = ['**/*.dylib', '**/*.so', '**/*.dll']
+      @src(patterns, cwd: task.srcDir)
+      .pipe @map (file, emit) ->
+        unless argv.quiet then console.log 'install static lib', path.relative file.cwd, file.path
+        file.base = path.dirname file.path
+        emit(null, file)
+      .pipe @dest task.libDir
+    installHeaders = ->
+      patterns = ["**/*.h", "**/*.hpp"]
+      @src patterns, cwd: task.srcDir
+      .pipe @map (file, emit) ->
+        unless argv.quiet then console.log 'install header', path.relative file.cwd, file.path
+        emit(null, file)
+      .pipe @dest task.includeDir
 
-    streamPromise pipeline
-    .then -> streamPromise publicHeaders
-    .then -> streamPromise libHeader
+    console.log '[ install libs ]'
+    if argv.verbose then console.log '[ install ] from', task.srcDir, 'to', task.libDir
+
+    streamPromise installLibs
+    .then ->
+      console.log '[ install headers ]'
+      if argv.verbose then console.log '[ install ] from', task.srcDir, 'to', task.includeDir
+      streamPromise installHeaders
+    .then ->
+      console.log "finished headers"
+      Promise.resolve "finished headers"
 
   execute: execute
