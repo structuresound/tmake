@@ -3,7 +3,7 @@ Promise = require("bluebird")
 git = require 'gift'
 fs = require('./fs')
 
-module.exports = (dep) ->
+module.exports = (dep, db) ->
   if typeof dep.git == 'string'
     config = url: "https://github.com/#{dep.git}.git"
   else
@@ -15,39 +15,37 @@ module.exports = (dep) ->
   metaPath = ->
     dep.cacheDir + '/' + 'versions'
 
-  versions =
-    read: ->
-      if fs.existsSync metaPath()
-        registryData = fs.readFileSync metaPath()
-        JSON.parse(registryData) or {}
-      else
-        {}
-    write: (json) ->
-      fs.writeFileSync metaPath(), JSON.stringify(json)
+  remove = ->
+    new Promise (resolve) ->
+      if fs.existsSync dep.cloneDir
+        fs.nuke dep.cloneDir
+      resolve()
 
   clone = ->
     console.log 'cloning', config.url, 'into', dep.cloneDir
-    new Promise (resolve) ->
+    new Promise (resolve, reject) ->
       git.clone config.url, dep.cloneDir, ->
-        json = versions.read()
-        json[config.name] = config.version
-        versions.write(json)
-        resolve()
+        db.deps.updateAsync
+          name: dep.name
+        ,
+          $set:
+            version: (config.version || "master")
+            name: dep.name
+        ,
+          upsert: true
+        .then resolve
+        .catch reject
 
   validate: ->
-    if fs.existsSync(dep.cloneDir)
-      if versions.read()[config.name] == config.version
-        console.log 'using ', config.name, '@', config.version || '*'
-        return Promise.resolve()
+    db.deps.findOneAsync {name:config.name}
+    .then (module) ->
+      if fs.existsSync(dep.cloneDir)
+        if module?.version == (config.version || "master")
+          console.log 'using ', config.name, '@', config.version || '*'
+          return Promise.resolve()
+        else
+          remove()
+          .then ->
+            clone()
       else
-        @remove()
-        .then ->
-          clone()
-    else
-      clone()
-
-  remove: ->
-    new Promise (resolve) ->
-      if fs.existsSync dep.cloneDir
-        fs.deleteFolderRecursive dep.cloneDir
-      resolve()
+        clone()

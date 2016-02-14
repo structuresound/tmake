@@ -3,12 +3,12 @@ fs = require('vinyl-fs')
 Promise = require("bluebird")
 path = require('path')
 
-module.exports = (dep, argv) ->
-  task = dep.install || {}
-  task.srcDir ?= dep.buildDir
-  task.objDir ?= dep.objDir
-  task.libDir ?= dep.libDir
-  task.includeDir ?= dep.includeDir
+module.exports = (module, argv, db) ->
+  task = module.install || {}
+  task.srcDir ?= module.buildDir
+  task.objDir ?= module.objDir
+  task.libDir ?= module.libDir
+  task.includeDir ?= module.includeDir
 
   context =
     src: (glob, opt) ->
@@ -40,14 +40,18 @@ module.exports = (dep, argv) ->
       .pipe @map (file, emit) ->
         unless argv.quiet then console.log 'install static lib', path.relative file.cwd, file.path
         file.base = path.dirname file.path
-        emit(null, file)
+        db.deps.updateAsync name: module.name,
+          $addToSet: libs: module.libDir + '/' + path.relative file.base, file.path
+        .then -> emit(null, file)
       .pipe @dest task.libDir
     installHeaders = ->
       patterns = ["**/*.h", "**/*.hpp"]
       @src patterns, cwd: task.srcDir
       .pipe @map (file, emit) ->
         unless argv.quiet then console.log 'install header', path.relative file.cwd, file.path
-        emit(null, file)
+        db.deps.updateAsync name: module.name,
+          $addToSet: headers: module.includeDir + '/' + path.relative file.base, file.path
+        .then -> emit(null, file)
       .pipe @dest task.includeDir
 
     console.log '[ install libs ]'

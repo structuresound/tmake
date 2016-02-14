@@ -12,6 +12,8 @@ defaultConfig = 'bbt.coffee'
 
 _cwd = process.cwd()
 
+db = require('./db')(_cwd)
+
 # pass in the cli options that you read from the cli
 # or whatever top-level configs you want npm to use for now.
 # npmconf.load {}, (er, conf) ->
@@ -33,6 +35,8 @@ module.exports = (argv, bbtDir) ->
     else unless argv._[0] == 'init' then console.log "if this is a new project run 'bbt init' or 'bbt help'"
     )()
 
+  config.srcDir ?= _cwd
+
   init = ->
     unless fs.existsSync(bbtConfigPath)
       fs.writeFileSync defaultConfig, fs.readFileSync(bbtDir + '/' + defaultConfig, 'utf8')
@@ -50,7 +54,7 @@ module.exports = (argv, bbtDir) ->
 
   clone = (dep) ->
     return unless dep.git
-    require('./git')(dep)
+    require('./git')(dep, db)
     .validate()
 
   BuildPhases =
@@ -74,7 +78,6 @@ module.exports = (argv, bbtDir) ->
             console.log "fetching", dep.provider, ':', dep.name, dep.version
       else
         if dep.git then clone(dep)
-        else console.log "skipping", dep.name, "bad format", JSON.stringify(dep)
 
     transform: (dep) ->
       return unless dep.transform
@@ -87,7 +90,7 @@ module.exports = (argv, bbtDir) ->
       .execute()
 
     install: (dep) ->
-      require('./install')(dep, argv)
+      require('./install')(dep, argv, db)
       .execute()
 
   execute = (steps) ->
@@ -103,16 +106,16 @@ module.exports = (argv, bbtDir) ->
       else
         lastPathComponent = bpk.git?.url?.slice(bpk.git?.url.lastIndexOf('/') + 1)
         bpk.name = lastPathComponent.slice 0, lastPathComponent.lastIndexOf '.'
-    bpk.rootDir = "#{_cwd}/.bbt"
-    bpk.cacheDir = argv.cachedDir || "#{bpk.rootDir}/src"
-    bpk.cloneDir = argv.cloneDir || "#{bpk.rootDir}/src/#{bpk.name}"
-    bpk.srcDir = argv.srcDir || getRelativeDir bpk, bpk.transform
-    bpk.tempDir = argv.tempDir || "#{bpk.rootDir}/transform/#{bpk.name}"
-    bpk.buildDir = argv.buildDir || getBuildDir bpk, bpk.build
-    bpk.objDir = argv.objDir || "#{bpk.buildDir}/build"
-    bpk.libDir = argv.buildDir || "#{bpk.rootDir}/lib"
-    bpk.includeDir = argv.includeDir || "#{bpk.rootDir}/include"
-    bpk.installDir = argv.installDir || (_cwd + '/')
+    bpk.rootDir ?= "#{_cwd}/.bbt"
+    bpk.cacheDir ?= argv.cachedDir || "#{bpk.rootDir}/src"
+    bpk.cloneDir ?= argv.cloneDir || "#{bpk.rootDir}/src/#{bpk.name}"
+    bpk.srcDir ?= argv.srcDir || getRelativeDir bpk, bpk.transform
+    bpk.tempDir ?= argv.tempDir || "#{bpk.rootDir}/transform/#{bpk.name}"
+    bpk.buildDir ?= argv.buildDir || getBuildDir bpk, bpk.build
+    bpk.objDir ?= argv.objDir || "#{bpk.buildDir}/build"
+    bpk.libDir ?= argv.buildDir || "#{bpk.rootDir}/lib"
+    bpk.includeDir ?= argv.includeDir || "#{bpk.rootDir}/include"
+    bpk.installDir ?= argv.installDir || (_cwd + '/')
     stack.push bpk
     (->
       if bpk.deps then Promise.each bpk.deps, (dep) ->
@@ -121,13 +124,23 @@ module.exports = (argv, bbtDir) ->
       else Promise.resolve null
     )()
     .then ->
-      unless bpk.built
+      db.deps.updateAsync
+        name: bpk.name
+      ,
+        $set: bpk
+      ,
+        upsert: true
+    .then ->
+      db.deps.findOneAsync
+        name: bpk.name
+    .then (module) ->
+      unless module?.built
         Promise.each steps, (step) ->
           console.log _.map(stack, (module) -> module.name), step
           process.chdir _cwd
           BuildPhases[step](bpk)
         .then ->
-          bpk.built = true
+          db.deps.update {name: bpk.name}, $set: built: true
           stack.pop()
           Promise.resolve "[ bbt built . . . #{bpk.name}]"
       else
@@ -139,10 +152,29 @@ module.exports = (argv, bbtDir) ->
       when 'init'
         init()
       when 'clean'
-        fs.deleteFolderRecursive _cwd + '/.bbt'
-        fs.deleteFolderRecursive _cwd + '/bbt'
-        fs.deleteFolderRecursive _cwd + '/build'
-        console.log 'so fresh'
+        depToClean = argv._[1] || config.name
+        if depToClean == 'all'
+          fs.nuke _cwd + '/.bbt'
+          fs.nuke _cwd + '/bbt'
+          fs.nuke _cwd + '/build'
+          console.log 'so fresh'
+        else
+          db.deps.findOneAsync name: depToClean
+          .then (dep) ->
+            if dep
+              console.log 'clean module', dep.name
+              fs.nuke dep.cloneDir
+              fs.nuke dep.tempDir
+              _.each dep.libs, (libFile) ->
+                if fs.existsSync(libFile) then fs.unlinkSync libFile
+              _.each dep.headers, (headerFile) ->
+                if fs.existsSync(headerFile) then fs.unlinkSync headerFile
+              fs.prune dep.libDir
+              db.deps.update {name: dep.name},
+                $unset:
+                  libs: true
+                  headers: true
+                $set: built: false
       when 'fetch'
         execute ["npmDeps","fetch"]
       when 'update'
@@ -152,7 +184,10 @@ module.exports = (argv, bbtDir) ->
       when 'all'
         init()
         execute ["npmDeps","fetch","transform","build","install"]
-      when 'help'
+      when 'db'
+        db.deps.findAsync({})
+        .then (deps) -> console.log deps
+      else
         console.log """
                     init
                     clean

@@ -1,10 +1,7 @@
 gyp = require('node-gyp')()
 _ = require 'underscore'
 Promise = require 'bluebird'
-vinyl = require 'vinyl-fs'
 fs = require './fs'
-map = require 'map-stream'
-path = require('path')
 numCPUs = require('os').cpus().length
 
 # It is necessary to execute rebuild manually as calling node-gyp’s rebuild
@@ -17,19 +14,19 @@ manualRebuild = ->
         return reject(error) if error
         gyp.commands.build [], resolve
 
-module.exports = (dep, argv) ->
+module.exports = (module, argv) ->
   if argv.verbose then console.log('[   build   ]')
 
-  if typeof dep.build == 'string'
-    task = with: dep.build
+  if typeof module.build == 'string'
+    task = with: module.build
   else
-    task = dep.build || {}
+    task = module.build || {}
 
-  task.bbtDir ?= dep.bbtDir
-  task.name ?= dep.name
-  task.target ?= 'staticLibrary'
-  task.srcDir ?= dep.buildDir
-  task.libDir ?= dep.libDir
+  task.bbtDir ?= module.bbtDir
+  task.name ?= module.name
+  task.target ?= module.target || 'static'
+  task.srcDir ?= module.buildDir
+  task.libDir ?= module.libDir
   buildDir = task.srcDir
   if argv.verbose then console.log 'buildDir', buildDir
   config = task.options || {}
@@ -53,23 +50,19 @@ module.exports = (dep, argv) ->
         if string.startsWith '/'
           return string.slice(1)
         string
-      vinyl.src patterns, options
-    map: map
+      fs.vinyl.src patterns, options
+    map: fs.map
     fs: fs
     gyp: gyp
     sources: []
     headers: []
+    includeDirectories: []
     nodeGyp: ->
       defaultArgv = ['node', buildDir, '--loglevel=silent']
       gyp_argv = defaultArgv.slice()
       applyArgv gyp_argv
       if argv.verbose then console.log 'gyp argv:', JSON.stringify(gyp_argv, 0, 2)
       gyp.parseArgv gyp_argv
-
-      # typeString = '[c  ]'
-      # if (file.path.endsWith('.cpp') || file.path.endsWith('.cc')) then typeString = '[c++]'
-      # if argv.verbose then console.log typeString, file.path, gyp_argv
-      # else console.log typeString, file.path
       process.chdir buildDir
       manualRebuild()
 
@@ -97,22 +90,6 @@ module.exports = (dep, argv) ->
     if argv.verbose then console.log 'node-gyp:', bindingPath, JSON.stringify(binding, 0, 2)
     fs.writeFileAsync bindingPath, JSON.stringify(binding, 0, 2)
 
-
-  gather = (srcPattern, destList) ->
-    new Promise (resolve, reject) ->
-      context.src srcPattern
-      .pipe context.map (file, cb) ->
-        destList.push path.relative buildDir, file.path
-        cb null, file
-      .on 'error', reject
-      .on 'finish', resolve
-      .on 'end', resolve
-
-  includeDirectories = (headers) ->
-    _.uniq _.reduce(headers, (memo, header) ->
-      memo.concat path.dirname(path.relative buildDir, header)
-    , [])
-
   execute: ->
     if task.pipeline
       new Promise (resolve, reject) ->
@@ -120,31 +97,36 @@ module.exports = (dep, argv) ->
         .on 'error', reject
         .on 'finish', resolve
     else
-      headers = task.headers || ['**/*.h','**/*.hpp', '!test/**', '!tests/**']
-      sources = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']
+      console.log 'build base dir ', buildDir
+      headersPattern = task.headers || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
+      sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!build/**', '!test/**', '!tests/**']
+      libsPattern = ['**/*.a']
+      if task.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
       gypPresent = fs.existsSync(buildDir + '/binding.gyp')
-      cmakePresent = fs.existsSync(buildDir + '/CMakeLists.txt')
+      cmakePresent = fs.existsSync buildDir + '/CMakeLists.txt'
       makefilePresent = fs.existsSync(buildDir + '/Makefile')
       if task.with == "gyp" || task.gyp || (!task.with && gypPresent)
-        dep.objDir = "#{buildDir}/build"
+        module.objDir = "#{buildDir}/build"
         if gypPresent
           return context.nodeGyp()
-        gather headers, context.headers
-        .then -> gather sources, context.sources
+        fs.gather headersPattern, context.headers, buildDir
+        .then -> fs.gather sourcesPattern, context.sources, buildDir
         .then -> generateGypBindings.apply context
         .then -> context.nodeGyp()
       else if task.with == "cmake" || task.cmake || (!task.with && cmakePresent)
-        dep.objDir = "#{buildDir}/build"
-        cmake = require('./cmake')(dep, task, context, argv)
+        module.objDir = "#{buildDir}/build"
+        cmake = require('./cmake')(module, task, context, argv)
         if cmakePresent
           cmake.cmake()
         else
-          gather headers, context.headers
-          .then -> gather sources, context.sources
+          fs.gatherDirectories headersPattern, context.includeDirectories, buildDir, module.includeDir
+          .then -> fs.gather headersPattern, context.headers, buildDir
+          .then -> fs.gather sourcesPattern, context.sources, buildDir
+          .then -> fs.gather libsPattern, context.libraries, buildDir, module.libDir
           .then -> cmake.generateLists()
           .then -> cmake.cmake()
       else if task.with == "make" || task.make || (!task.with && makefilePresent)
-        dep.objDir = "#{buildDir}/obj"
+        module.objDir = "#{buildDir}/obj"
         sh = require('./sh')(task, context)
         if makefilePresent
           sh.exec "make -j#{numCPUs}"

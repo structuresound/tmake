@@ -9,7 +9,7 @@ module.exports = (module, task, context, argv) ->
   options =
     directory: task.srcDir
 
-  fs.deleteFolderRecursive task.srcDir + '/build'
+  #fs.nuke task.srcDir + '/build'
 
   BuildSystem = require('cmake-js').BuildSystem
   buildSystem = new BuildSystem options
@@ -24,10 +24,10 @@ module.exports = (module, task, context, argv) ->
       command += " -- -j#{numCPUs}"
     else if command.indexOf('--install') != -1 then config = task.cmake?.install
     else config = task.cmake?.configure
-    defaults =
-      EXECUTABLE_OUTPUT_PATH: "~/bin/"
-      LIBRARY_OUTPUT_PATH: "~/lib/"
-    _.extend config, defaults
+    # defaults =
+    #   EXECUTABLE_OUTPUT_PATH: "~/bin/"
+    #   LIBRARY_OUTPUT_PATH: "~/lib/"
+    # _.extend config, defaults
     _.each config, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
@@ -62,26 +62,45 @@ module.exports = (module, task, context, argv) ->
       include_directories(${Boost_INCLUDE_DIRS})
       """
 
-  node = ->
-    if task.target == 'nodeAddon'
-      """\n
-      # Essential include files to build a node addon,
-      # you should add this line in every CMake.js based project.
-      include_directories(${CMAKE_JS_INC})
-      """
+  includeDirectories = ->
+    dirs = ""
+    _.each context.includeDirectories, (dir) -> dirs += " #{dir}"
+    switch task.target
+      when 'static', 'dynamic', 'bin'
+        """\n
+        include_directories(#{dirs})
+        """
+      when 'node'
+        """\n
+        # Essential include files to build a node addon,
+        # you should add this line in every CMake.js based project.
+        include_directories(${CMAKE_JS_INC})
+        include_directories(#{dirs})
+        """
+
+  sources = ->
+    switch task.target
+      when 'static', 'dynamic', 'bin', 'node'
+        """\n
+        set(SOURCE_FILES #{context.sources})
+        """
 
   target = ->
-    if task.target == 'staticLibrary'
-      """\n
-      include_directories(#{context.includeDirectories})
-      set(SOURCE_FILES #{context.sources})
-      add_library(#{task.name} STATIC ${SOURCE_FILES})
-      """
+    switch task.target
+      when 'static'
+        """\n
+        add_library(#{task.name} STATIC ${SOURCE_FILES})
+        """
+      when 'bin'
+        """\n
+        add_library(#{task.name} STATIC ${SOURCE_FILES})
+        """
 
   link = ->
     libs = ""
-    if task.boost then libs += "${Boost_LIBRARIES};"
-    if task.target == 'nodeAddon' then libs += "${CMAKE_JS_LIB};"
+    if task.boost then libs += " ${Boost_LIBRARIES}"
+    if task.target == 'node' then libs += " ${CMAKE_JS_LIB}"
+    _.each context.libraries, (lib) -> libs += " #{lib}"
     if libs.length
       """
       target_link_libraries(${PROJECT_NAME} #{libs})
@@ -90,12 +109,14 @@ module.exports = (module, task, context, argv) ->
   buildCmake = (funcs) ->
     cmake = ""
     Promise.each funcs, (value) ->
-      if value then cmake += value
+      if value() then cmake += value()
+    .then -> Promise.resolve cmake
 
   generateLists: ->
-    CMakeLists = buildCmake [header, boost, node, target, link]
-    bindingPath = task.srcDir + '/CMakeLists.txt'
-    fs.writeFileAsync bindingPath, CMakeLists
+    buildCmake [header, boost, includeDirectories, sources, target, link]
+    .then (CMakeLists) ->
+      bindingPath = task.srcDir + '/CMakeLists.txt'
+      fs.writeFileAsync bindingPath, CMakeLists
 
   cmake: ->
     command = _.first(argv._) || "build"
