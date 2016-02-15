@@ -1,7 +1,7 @@
 {
   "name": "bbt",
   "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "homepage": "https://github.com/structuresound/bbt",
   "author": {
     "name": "structuresound",

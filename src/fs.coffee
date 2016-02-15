@@ -34,6 +34,8 @@ module.exports = (->
 
   fs.vinyl = require 'vinyl-fs'
   fs.map = require 'map-stream'
+  fs.src = fs.vinyl.src
+  fs.dest = fs.vinyl.dest
   fs.glob = (srcPattern, relative, cwd) ->
     list = []
     new Promise (resolve, reject) ->

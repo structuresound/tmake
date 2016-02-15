@@ -3,6 +3,7 @@ coffee = require('coffee-script')
 _ = require('underscore')
 Promise = require("bluebird")
 request = require('request-promise')
+path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
@@ -32,15 +33,36 @@ module.exports = (argv, binDir, npmDir) ->
       ### jshint -W061 ###
       coffee.eval(data)
       ### jshint +W061 ###
-    else unless argv._[0] == 'init' then console.log "if this is a new project run 'bbt init' or 'bbt help'"
+    else unless argv._[0] == 'init' then
     )()
 
-  config.srcDir ?= _cwd
-  config.buildDir ?= _cwd
+  hello = -> console.log "if this is a new project run 'bbt init' or type 'bbt help' for more options"
+  manual = ->
+    console.log """
+
+                usage: bbt command [option]
+
+                [commands]
+
+                init             create an empty bbt.coffee file
+                example [name]   copy an example to the current directory
+
+                all (default)    fetch, update, build, install
+                fetch            git / get dependencies
+                update           transform dependencies
+                build            build with various build systems
+                install          place libraries into main libs folder
+                clean            clean project, 'clean all' to kill deps
+
+                db [name]        list the internal state of bbt
+
+                """
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
       fs.writeFileSync defaultConfig, fs.readFileSync(binDir + '/' + defaultConfig, 'utf8')
+    else
+      console.log "this folder already has a bbt.coffee file present"
 
   getRelativeDir = (dep, task) ->
     base = "#{dep.rootDir}/src/#{dep.name}"
@@ -95,7 +117,9 @@ module.exports = (argv, binDir, npmDir) ->
       .execute()
 
   execute = (steps) ->
-    return unless config
+    return hello() unless config
+    config.srcDir ?= _cwd
+    config.buildDir ?= _cwd
     processModule config, steps, []
     .then (msg) ->
       console.log msg
@@ -190,22 +214,18 @@ module.exports = (argv, binDir, npmDir) ->
         execute ["npmDeps","fetch"]
       when 'update'
         execute ["npmDeps","fetch","transform"]
+      when 'example'
+        example = argv._[1] || "served"
+        fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
+        .pipe fs.dest _cwd
       when 'build'
         execute ["npmDeps","fetch","transform","build"]
       when 'all'
-        init()
         execute ["npmDeps","fetch","transform","build","install"]
       when 'db'
         selector = {}
         if argv._[1] then selector = name: argv._[1]
         db.deps.findAsync selector
         .then (deps) -> console.log deps
-      else
-        console.log """
-                    init
-                    clean
-                    fetch
-                    update
-                    build
-                    all
-                    """
+      when 'help', 'man', 'manual' then manual()
+      else hello()

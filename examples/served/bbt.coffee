@@ -1,8 +1,9 @@
-name: "test_server"
+name: "example_served"
 build:
   with: "cmake"
   target: "bin"
   boost: libs: ["asio", "system"]
+git: "datasift/served"
 deps: [
   git: "datasift/served"
   build:
