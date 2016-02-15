@@ -17,7 +17,7 @@ module.exports = (dep) ->
         if string.startsWith '/'
           return string.slice(1)
         string
-      fs.src patterns, options
+      fs.vinyl.src patterns, options
     dest: fs.dest
     map: require 'map-stream'
 

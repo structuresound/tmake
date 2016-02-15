@@ -2,7 +2,7 @@ _ = require 'underscore'
 exec = require('child-process-promise').exec
 spawn = require('child-process-promise').spawn
 splitargs = require('splitargs')
-# Bluebird = require("bluebird")
+Promise = require 'bluebird'
 
 module.exports = (task, argv) ->
   if argv.verbose then console.log('[   build   ]')
@@ -21,14 +21,13 @@ module.exports = (task, argv) ->
     dest
 
   exec: (command) ->
-    process.chdir task.srcDir
     if argv.verbose then console.log "exec #{command} process"
     exec(command, stdio: 'inherit')
     .progress (childProcess) ->
       unless argv.quiet
         childProcess?.stdout?.on 'data', (data) -> console.log "[ #{command} ]", data.toString()
-        childProcess?.stderr?.on 'data', (data) -> console.log "[ error ][ #{command} ]", data.toString()
-    .fail (err) -> console.error "[ #{command} ] ERROR: ", err
+        childProcess?.stderr?.on 'data', (data) -> Promise.reject "ERROR: in [ #{command} ]" + data.toString()
+    .fail (err) -> Promise.reject "ERROR: in [ #{command} ]" + err
 
   run: (command) ->
     args = splitargs(command)
@@ -38,5 +37,5 @@ module.exports = (task, argv) ->
     .progress (childProcess) ->
       unless argv.quiet
         childProcess?.stdout?.on 'data', (data) -> console.log "[ #{command} ]", data.toString()
-        childProcess?.stderr?.on 'data', (data) -> console.log "[error][ #{command} ]", data.toString()
-    .fail (err) -> console.error "[ #{command} ] ERROR: ", err
+        childProcess?.stderr?.on 'data', (data) -> Promise.reject "ERROR: in [ #{command} ]" + data.toString()
+    .fail (err) -> Promise.reject "ERROR: in [ #{command} ]" + err

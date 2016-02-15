@@ -7,11 +7,11 @@ fs = require('./fs')
 require('./string')
 npm = require("npm")
 npmconf = require('npmconf')
+yesno = require('yesno')
+ask = (q) -> new Promise (resolve) -> yesno.ask(q, false, (ok) -> resolve(ok))
 
 defaultConfig = 'bbt.coffee'
-
 _cwd = process.cwd()
-
 db = require('./db')(_cwd)
 
 # pass in the cli options that you read from the cli
@@ -23,7 +23,7 @@ db = require('./db')(_cwd)
 #     if er then console.log er
 #     else console.log 'saved'
 
-module.exports = (argv, bbtDir) ->
+module.exports = (argv, binDir, npmDir) ->
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
 
   config = (->
@@ -36,10 +36,11 @@ module.exports = (argv, bbtDir) ->
     )()
 
   config.srcDir ?= _cwd
+  config.buildDir ?= _cwd
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
-      fs.writeFileSync defaultConfig, fs.readFileSync(bbtDir + '/' + defaultConfig, 'utf8')
+      fs.writeFileSync defaultConfig, fs.readFileSync(binDir + '/' + defaultConfig, 'utf8')
 
   getRelativeDir = (dep, task) ->
     base = "#{dep.rootDir}/src/#{dep.name}"
@@ -85,8 +86,8 @@ module.exports = (argv, bbtDir) ->
       .execute()
 
     build: (dep) ->
-      dep.bbtDir = bbtDir
-      require('./build')(dep, argv)
+      dep.npmDir = npmDir
+      require('./build')(dep, argv, db)
       .execute()
 
     install: (dep) ->
@@ -169,12 +170,21 @@ module.exports = (argv, bbtDir) ->
                 if fs.existsSync(libFile) then fs.unlinkSync libFile
               _.each dep.headers, (headerFile) ->
                 if fs.existsSync(headerFile) then fs.unlinkSync headerFile
-              fs.prune dep.libDir
-              db.deps.update {name: dep.name},
+              fs.prune dep.includeDir
+              modifier =
                 $unset:
                   libs: true
                   headers: true
                 $set: built: false
+              if dep.cMakeFile && fs.existsSync(dep.cMakeFile)
+                ask "remove auto generated CMakeLists file?"
+                .then (approved) ->
+                  if approved
+                    modifier.$unset.cMakeFile = true
+                    fs.unlinkSync dep.cMakeFile
+                  db.deps.update {name: dep.name}, modifier
+              else
+                db.deps.update {name: dep.name}, modifier
       when 'fetch'
         execute ["npmDeps","fetch"]
       when 'update'
@@ -185,7 +195,9 @@ module.exports = (argv, bbtDir) ->
         init()
         execute ["npmDeps","fetch","transform","build","install"]
       when 'db'
-        db.deps.findAsync({})
+        selector = {}
+        if argv._[1] then selector = name: argv._[1]
+        db.deps.findAsync selector
         .then (deps) -> console.log deps
       else
         console.log """
