@@ -1,50 +1,23 @@
-name: "project"
-version: "0.1.0"
-provider: "myuser"
+name: "test_server"
+build:
+  with: "cmake"
+  target: "bin"
+  boost: libs: ["asio", "system"]
 deps: [
-  name: "hello"
-  version: "0.1.0"
-  provider: "leif"
-,
-  name: "helloGyp"
-  version: "0.1.0"
-  git:
-    url: "https://github.com/structuresound/hello-bbt.git"
-  transform: true
-  build: with: "gyp"
-  install: false
-,
-  name: "helloCmake"
-  version: "0.1.0"
-  git:
-    url: "https://github.com/structuresound/hello-bbt.git"
-  transform: true
-  build: with: "cmake"
-  install: false
-,
-  name: "helloCustom"
-  version: "0.1.0"
-  provider: "git"
-  git:
-    url: "https://github.com/structuresound/hello-bbt.git"
-    config: ->
-      user: ""
-      password: ""
-      rsa: ""
-  transform:
-    config: ->
-      customFunction: (file, cb) ->
-        console.log file.path
-        cb null, file
-    pipeline: ->
-      @src ['**/*.cpp', '!exclude.cpp']
-      .pipe @dest '.bbt/transform/helloCustom'
+  git: "datasift/served"
   build:
-    with: "gyp"
-    sources: ['**/*.cpp']
-    config: ->
-      flags: stdlib: 'c++11'
+    cmake:
+      configure:
+        RE2_LIBRARY: "~/lib/libre2.a"
+        RE2_INCLUDE_DIR: "~/include"
+        SERVED_BUILD_STATIC: "ON"
+        SERVED_BUILD_TESTS: "OFF"
+        SERVED_BUILD_SHARED: "OFF"
   install:
-    glob: ['**/*.a']
-    dest: 'exmaple_lib'
+    headersPath: 'src'
+    libPath: 'lib'
+  deps: [
+    git: "google/re2"
+    build: "make"
+  ]
 ]

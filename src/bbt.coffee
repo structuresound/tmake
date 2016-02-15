@@ -182,9 +182,10 @@ module.exports = (argv, binDir, npmDir) ->
                   if approved
                     modifier.$unset.cMakeFile = true
                     fs.unlinkSync dep.cMakeFile
-                  db.deps.update {name: dep.name}, modifier
+                  db.deps.updateAsync {name: dep.name}, modifier
+                  .then -> process.exit()
               else
-                db.deps.update {name: dep.name}, modifier
+                db.deps.updateAsync {name: dep.name}, modifier
       when 'fetch'
         execute ["npmDeps","fetch"]
       when 'update'
