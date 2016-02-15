@@ -1,7 +1,7 @@
 {
   "name": "bbt",
   "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "homepage": "https://github.com/structuresound/bbt",
   "author": {
     "name": "structuresound",
@@ -55,6 +55,7 @@
     "minimist": "^1.2.0",
     "nedb-promise": "^1.0.1",
     "node-gyp": "^3.1.0",
+    "npm": "^3.7.2",
     "npmconf": "^2.1.2",
     "request-promise": "^1.0.2",
     "shelljs": "^0.5.3",
