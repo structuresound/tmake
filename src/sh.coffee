@@ -25,9 +25,9 @@ module.exports = (task, argv) ->
     exec(command, stdio: 'inherit')
     .progress (childProcess) ->
       unless argv.quiet
-        childProcess?.stdout?.on 'data', (data) -> console.log "[ #{command} ]", data.toString()
-        childProcess?.stderr?.on 'data', (data) -> Promise.reject "ERROR: in [ #{command} ]" + data.toString()
-    .fail (err) -> Promise.reject "ERROR: in [ #{command} ]" + err
+        childProcess?.stdout?.on 'data', (data) -> console.log data.toString()
+        childProcess?.stderr?.on 'error', (data) -> Promise.reject data.toString()
+    .fail (err) -> Promise.reject err
 
   run: (command) ->
     args = splitargs(command)
@@ -36,6 +36,6 @@ module.exports = (task, argv) ->
     spawn(name, args, stdio: 'inherit')
     .progress (childProcess) ->
       unless argv.quiet
-        childProcess?.stdout?.on 'data', (data) -> console.log "[ #{command} ]", data.toString()
-        childProcess?.stderr?.on 'data', (data) -> Promise.reject "ERROR: in [ #{command} ]" + data.toString()
-    .fail (err) -> Promise.reject "ERROR: in [ #{command} ]" + err
+        childProcess?.stdout?.on 'data', (data) -> console.log data.toString()
+        childProcess?.stderr?.on 'error', (data) -> Promise.reject data.toString()
+    .fail (err) -> Promise.reject err

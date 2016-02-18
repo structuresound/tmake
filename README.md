@@ -6,22 +6,29 @@ buildless build tool can:
 * build dependencies with cmake, gyp, or make
 * auto-generate a cmakefile for your main file
 
-it relies on
+## REQUIREMENTS
 
-* nodejs
+* nodejs - https://nodejs.org/en/
   * it is built in node
-* some of the main npm dependencies
-  * cmake-js for cmake
-  * boost-lib for providing boost dependencies
+  * https://www.google.com/search?client=safari&rls=en&q=install+nodejs&ie=UTF-8&oe=UTF-8
+* cmake - https://cmake.org
+  * if you're going to build anything with cmake
+  * https://www.google.com/search?client=safari&rls=en&q=install+cmake&ie=UTF-8&oe=UTF-8
+* some build tools i.e.
+  * xcode on mac
+  * build-essentials on linux
+  * visual studio something on mac
 
-it doesnt
+## roadmap / next
 
-* store anything anywhere other than the hidden .bbt
+this is a new project, it's barely functional. these things need to be done
 
-roadmap / next
+* get depconf server running
+* put some libs on it
 
-* get a 'core set of libraries and examples'
-* build things inside of docker for more versions support cross-compile-ability
+maybe
+
+* docker build / cross-compile ability
 
 ## To Install
 ```bash
@@ -31,6 +38,7 @@ npm install -g bbt
 ```bash
 mkdir bbt-example && cd bbt-example
 bbt example served
+bbt
 ./build/example_served &
 curl http://127.0.0.1:8080/hello
 ```
@@ -87,6 +95,15 @@ int main(int argc, char const* argv[]) {
 }
 ```
 
+## Reasons this might be a good idea?
+
+* because the node-js ecosystem is inspiring and there should be something like it for c++
+* because existing tools that make it convenient to build c++ apps usually giant frameworks that are mutually incompatible, and / or poorly user extensible
+* because json is a nice way to config your deps
+* because deps should be continuously tested
+* because any cloud vm should be able to run your builds too
+* because gulp makes it easy to transform existing repos
+
 ## Contributing
 This tool is currently experimental, and possibly not useful, examine at your own risk.
 
@@ -94,5 +111,5 @@ This tool is currently experimental, and possibly not useful, examine at your ow
 _(Nothing yet)_
 
 ## License
-Copyright (c) 2015 structuresound  
+Copyright (c) 2016 1e1f
 Licensed under the MIT license.

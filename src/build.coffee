@@ -14,7 +14,7 @@ manualRebuild = ->
         return reject(error) if error
         gyp.commands.build [], resolve
 
-module.exports = (dep, argv, db) ->
+module.exports = (dep, argv, db, npmDir) ->
   if argv.verbose then console.log('[   build   ]')
 
   if typeof dep.build == 'string'
@@ -45,13 +45,13 @@ module.exports = (dep, argv, db) ->
     if !config.flags?.debug then dest.push '--no-debug'
     dest
 
-  nodeGyp = ->
-    defaultArgv = ['node', buildRoot, '--loglevel=silent']
+  nodeGyp = (step) ->
+    defaultArgv = ['node', step.rootDir, '--loglevel=silent']
     gyp_argv = defaultArgv.slice()
     applyArgv gyp_argv
     if argv.verbose then console.log 'gyp argv:', JSON.stringify(gyp_argv, 0, 2)
     gyp.parseArgv gyp_argv
-    process.chdir buildRoot
+    process.chdir step.rootDir
     manualRebuild()
 
   vinylContext =
@@ -116,7 +116,7 @@ module.exports = (dep, argv, db) ->
   buildContext = ->
     context =
       includeDirs: [dep.includeDir]
-      npmDir: dep.npmDir
+      npmDir: npmDir
     globHeaders()
     .then (headers) ->
       context.headers = headers
@@ -129,49 +129,73 @@ module.exports = (dep, argv, db) ->
       context.libs = libs
       Promise.resolve context
 
-  execute: ->
+  resolveBuildType = (step) ->
+    switch step.with
+      when "bbt" then "bbt"
+      when "gyp" then "gyp"
+      when "cmake" then "cmake"
+      when "make" then "make"
+      else
+        if step.bbt then "bbt"
+        else if step.gyp then "gyp"
+        else if step.cmake then "cmake"
+        else if step.make then "make"
+        else if fs.existsSync step.rootDir + '/bbt.json' then "bbt"
+        else if fs.existsSync step.rootDir + '/binding.gyp' then "gyp"
+        else if fs.existsSync step.rootDir + '/CMakeLists.txt' then "cmake"
+        else if fs.existsSync step.rootDir + '/Makefile' then "make"
+        else Promise.reject "bbt can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
+
+  buildWith =
+    gyp: (step) ->
+      dep.objDir = step.buildDir = "#{buildRoot}/build"
+      if fs.existsSync step.rootDir + '/binding.gyp' then nodeGyp()
+      else
+        buildContext()
+        .then (context) -> generateGypBindings context
+        .then -> nodeGyp step
+    cmake: (step) ->
+      dep.objDir = step.buildDir = "#{buildRoot}/build"
+      cmake = require('./cmake')(dep, step, argv)
+      if fs.existsSync buildRoot + '/CMakeLists.txt' then cmake.cmake()
+      else
+        buildContext()
+        .then (context) ->
+          cmake.generateLists context
+          .then (CMakeLists) ->
+            bindingPath = step.rootDir + '/CMakeLists.txt'
+            fs.writeFileAsync bindingPath, CMakeLists
+            .then ->
+              db.deps.update {name: dep.name}, $set: cMakeFile: bindingPath
+          cmake.cmake()
+    make: (step) ->
+      step.buildDir = buildRoot
+      dep.objDir = "#{buildRoot}/obj"
+      command = step.make?.command || "make"
+      if fs.existsSync step.rootDir + '/Makefile'
+        process.chdir step.buildDir
+        require('./sh')(step, argv).exec "CXXFLAGS=\"#{step.CXXFLAGS}\" #{command} -j#{numCPUs}"
+      else
+        Promise.reject "bbt doesn't support autogen for make yet"
+    bbt: (step) ->
+      buildContext()
+      .then (context) -> require('./bbt_build')(step,argv,db,context).execute()
+
+  buildStep = (step) ->
+    ### GATHER PROJECT FILES ###
+    libsPattern = ['**/*.a']
+    if step.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
+    ### WHICH BUILD SYSTEM ###
+    buildWith[resolveBuildType step] step
+
+  build = ->
     if task.pipeline
       new Promise (resolve, reject) ->
         task.pipeline.bind(vinylContext)()
         .on 'error', reject
         .on 'finish', resolve
-    else
-      ### GATHER PROJECT FILES ###
-      libsPattern = ['**/*.a']
-      if task.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
-      ### WHICH BUILD SYSTEM ###
-      gypPresent = fs.existsSync buildRoot + '/binding.gyp'
-      cmakePresent = fs.existsSync buildRoot + '/CMakeLists.txt'
-      makefilePresent = fs.existsSync buildRoot + '/Makefile'
-      if task.with == "gyp" || task.gyp || (!task.with && gypPresent)
-        dep.objDir = task.buildDir = "#{buildRoot}/build"
-        if gypPresent then nodeGyp()
-        else
-          buildContext()
-          .then (context) -> generateGypBindings context
-          .then -> nodeGyp()
-      else if task.with == "cmake" || task.cmake || (!task.with && cmakePresent)
-        dep.objDir = task.buildDir = "#{buildRoot}/build"
-        cmake = require('./cmake')(dep, task, argv)
-        if cmakePresent then cmake.cmake()
-        else
-          buildContext()
-          .then (context) ->
-            cmake.generateLists context
-            .then (CMakeLists) ->
-              bindingPath = task.rootDir + '/CMakeLists.txt'
-              fs.writeFileAsync bindingPath, CMakeLists
-              .then ->
-                db.deps.update {name: dep.name}, $set: cMakeFile: bindingPath
-            cmake.cmake()
-      else if task.with == "make" || task.make || (!task.with && makefilePresent)
-        task.buildDir = buildRoot
-        dep.objDir = "#{buildRoot}/obj"
-        sh = require('./sh')(task, argv)
-        if makefilePresent
-          process.chdir task.buildDir
-          sh.exec "make -j#{numCPUs}"
-        else
-          Promise.reject "bbt doesn't support autogen for make yet"
-      else
-        Promise.reject "bbt can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
+    else if task.steps
+      Promise.each task.steps, (step) -> buildStep step
+    else buildStep task
+
+  execute: -> build().then -> db.deps.update {name: dep.name}, $set: built: true

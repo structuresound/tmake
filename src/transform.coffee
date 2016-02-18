@@ -3,7 +3,7 @@ fs = require('vinyl-fs')
 Promise = require("bluebird")
 #pipe = require('gulp-pipe')
 
-module.exports = (dep) ->
+module.exports = (dep, argv, db) ->
   task = dep.transform || {}
   task.name ?= dep.name
   task.srcDir ?= dep.srcDir
@@ -17,14 +17,14 @@ module.exports = (dep) ->
         if string.startsWith '/'
           return string.slice(1)
         string
-      fs.vinyl.src patterns, options
+      fs.src patterns, options
     dest: fs.dest
     map: require 'map-stream'
 
   if task.config
     _.extend context, task.config()
 
-  execute = ->
+  transform = ->
     pipeline = task.pipeline || ->
       @src task.glob || ['**/*', '!.git', '!.gitignore']
       .pipe @dest task.dstDir
@@ -34,4 +34,4 @@ module.exports = (dep) ->
       .on 'end', resolve
       .on 'error', reject
 
-  execute: execute
+  execute: -> transform().then -> db.deps.update {name: dep.name}, $set: transformed: true

@@ -7,22 +7,12 @@ path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
-npmconf = require('npmconf')
 yesno = require('yesno')
 ask = (q) -> new Promise (resolve) -> yesno.ask(q, false, (ok) -> resolve(ok))
 
 defaultConfig = 'bbt.coffee'
 _cwd = process.cwd()
 db = require('./db')(_cwd)
-
-# pass in the cli options that you read from the cli
-# or whatever top-level configs you want npm to use for now.
-# npmconf.load {}, (er, conf) ->
-#   conf.set 'CMAKE_SEARCH_PATH', "#{_cwd}/.bbt/lib", 'project'
-#   conf.set 'CMAKE_LIBRARY_PATH', "#{_cwd}/.bbt/lib", 'project'
-#   conf.save 'project', (er) ->
-#     if er then console.log er
-#     else console.log 'saved'
 
 module.exports = (argv, binDir, npmDir) ->
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
@@ -102,75 +92,76 @@ module.exports = (argv, binDir, npmDir) ->
       else
         if dep.git then clone(dep)
 
-    transform: (dep) ->
-      return unless dep.transform
-      require('./transform')(dep)
-      .execute()
+    transform: (dep) -> require('./transform')(dep, argv, db).execute()
+    build: (dep) -> require('./build')(dep, argv, db, npmDir).execute()
+    install: (dep) -> require('./install')(dep, argv, db).execute()
 
-    build: (dep) ->
-      dep.npmDir = npmDir
-      require('./build')(dep, argv, db)
-      .execute()
+  resolveDepName = (dep) ->
+    if dep.name then return dep.name
+    else if dep.git
+      if typeof dep.git == 'string' then dep.git.slice(dep.git.indexOf('/') + 1)
+      else
+        lastPathComponent = dep.git?.url?.slice(dep.git?.url.lastIndexOf('/') + 1)
+        lastPathComponent.slice 0, lastPathComponent.lastIndexOf '.'
 
-    install: (dep) ->
-      require('./install')(dep, argv, db)
-      .execute()
+  findDep = (name, root) ->
+    found = undefined
+    _.each root.deps, (dep) ->
+      unless found
+        if dep.name == name then found = dep
+        else if resolveDepName(dep) == name then found = dep
+        else found = findDep name, dep
+    found
 
   execute = (steps) ->
     return hello() unless config
     config.srcDir ?= _cwd
     config.buildDir ?= _cwd
-    processModule config, steps, []
+    if argv._[1]
+      dep = findDep argv._[1], config
+      if dep then config = dep
+      else throw "no dependency matching " + argv._[1]
+    processDep config, steps, []
     .then (msg) ->
       console.log msg
       console.log '[ done !!! ]'
 
-  processModule = (bpk, steps, stack) ->
-    unless bpk.name
-      if typeof bpk.git == 'string' then bpk.name = bpk.git.slice(bpk.git.indexOf('/') + 1)
-      else
-        lastPathComponent = bpk.git?.url?.slice(bpk.git?.url.lastIndexOf('/') + 1)
-        bpk.name = lastPathComponent.slice 0, lastPathComponent.lastIndexOf '.'
-    bpk.rootDir ?= "#{_cwd}/.bbt"
-    bpk.cacheDir ?= argv.cachedDir || "#{bpk.rootDir}/src"
-    bpk.cloneDir ?= argv.cloneDir || "#{bpk.rootDir}/src/#{bpk.name}"
-    bpk.srcDir ?= argv.srcDir || getRelativeDir bpk, bpk.transform
-    bpk.tempDir ?= argv.tempDir || "#{bpk.rootDir}/transform/#{bpk.name}"
-    bpk.buildDir ?= argv.buildDir || getBuildDir bpk, bpk.build
-    bpk.objDir ?= argv.objDir || "#{bpk.buildDir}/build"
-    bpk.libDir ?= argv.buildDir || "#{bpk.rootDir}/lib"
-    bpk.includeDir ?= argv.includeDir || "#{bpk.rootDir}/include"
-    bpk.installDir ?= argv.installDir || (_cwd + '/')
-    stack.push bpk
+  processDep = (dep, steps, stack) ->
+    dep.name ?= resolveDepName dep
+    dep.rootDir ?= "#{_cwd}/.bbt"
+    dep.cacheDir ?= argv.cachedDir || "#{dep.rootDir}/src"
+    dep.cloneDir ?= argv.cloneDir || "#{dep.rootDir}/src/#{dep.name}"
+    dep.srcDir ?= argv.srcDir || getRelativeDir dep, dep.transform
+    dep.tempDir ?= argv.tempDir || "#{dep.rootDir}/transform/#{dep.name}"
+    dep.buildDir ?= argv.buildDir || getBuildDir dep, dep.build
+    dep.objDir ?= argv.objDir || "#{dep.buildDir}/build"
+    dep.libDir ?= argv.buildDir || "#{dep.rootDir}/lib"
+    dep.includeDir ?= argv.includeDir || "#{dep.rootDir}/include"
+    dep.installDir ?= argv.installDir || (_cwd + '/')
+    stack.push dep
     (->
-      if bpk.deps then Promise.each bpk.deps, (dep) ->
-        processModule dep, steps, stack
+      if dep.deps then Promise.each dep.deps, (dep) ->
+        processDep dep, steps, stack
         .then (msg) -> console.log msg
       else Promise.resolve null
     )()
     .then ->
-      db.deps.updateAsync
-        name: bpk.name
-      ,
-        $set: bpk
-      ,
-        upsert: true
+      db.deps.updateAsync {name: dep.name}, {$set: dep}, {upsert: true}
     .then ->
       db.deps.findOneAsync
-        name: bpk.name
-    .then (module) ->
-      unless module?.built
+        name: dep.name
+    .then (depState) ->
+      if argv._[0] == "rebuild" || !depState?.built
         Promise.each steps, (step) ->
-          console.log _.map(stack, (module) -> module.name), step
+          if argv.verbose then console.log _.map(stack, (d) -> d.name), step
           process.chdir _cwd
-          BuildPhases[step](bpk)
-        .then ->
-          db.deps.update {name: bpk.name}, $set: built: true
+          BuildPhases[step](dep)
+        .then (dep)->
           stack.pop()
-          Promise.resolve "[ bbt built . . . #{bpk.name}]"
+          Promise.resolve "[ bbt built . . . #{dep.name}]"
       else
         stack.pop()
-        Promise.resolve "[ CACHED: #{bpk.name}]"
+        Promise.resolve "[ CACHED: #{dep.name}]"
 
   run: ->
     switch argv._[0] || 'all'
@@ -218,10 +209,12 @@ module.exports = (argv, binDir, npmDir) ->
         example = argv._[1] || "served"
         fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
         .pipe fs.dest _cwd
-      when 'build'
+      when 'build', 'rebuild'
         execute ["npmDeps","fetch","transform","build"]
       when 'all'
         execute ["npmDeps","fetch","transform","build","install"]
+      when 'install'
+        execute ["install"]
       when 'db'
         selector = {}
         if argv._[1] then selector = name: argv._[1]
