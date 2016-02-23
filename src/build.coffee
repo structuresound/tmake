@@ -99,7 +99,7 @@ module.exports = (dep, argv, db, npmDir) ->
 
   globHeaders = ->
     headersPattern = task.headers || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
-    fs.glob headersPattern, buildRoot, task.includeDir
+    fs.glob headersPattern, buildRoot, task.srcDir
 
   globSources = ->
     sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!build/**', '!test/**', '!tests/**']
@@ -125,12 +125,15 @@ module.exports = (dep, argv, db, npmDir) ->
 
   buildContext = ->
     new Promise (resolve) ->
-      context =
-        includeDirs: [dep.includeDir]
-        npmDir: npmDir
+      context = npmDir: npmDir
+      context.includeDirs = _.map (task.includeDirs || [""]), (rel) -> path.join(task.srcDir,rel)
       globHeaders()
       .then (headers) ->
         context.headers = headers
+        # _.each headers, (header) ->
+        #   fullPath = buildRoot + '/' + header
+        #   unless _.contains context.includeDirs, path.dirname fullPath
+        #     context.includeDirs.push path.dirname fullPath
         globSources()
       .then (sources) ->
         context.sources = sources

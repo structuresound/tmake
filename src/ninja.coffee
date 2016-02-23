@@ -37,7 +37,8 @@ module.exports = (step, argv) ->
         sh.chmod "+x", "#{ninjaLocal}"
         Promise.resolve ninjaLocal
 
-  stdOptions =
+  stdOptions = ->
+    O2: true
     fPIC: true
     std: "c++11"
     stdlib: "libc++"
@@ -55,8 +56,7 @@ module.exports = (step, argv) ->
     getNinja()
     .then (ninjaPath) ->
       new Promise (resolve, reject) ->
-        sh.cd dir
-        sh.exec "#{ninjaPath}", (code, stdout, stderr) ->
+        sh.exec "#{ninjaPath} -C #{dir}", (code, stdout, stderr) ->
           if code then resolve code
           else if stdout then console.log stdout
           else if stderr then reject stderr
@@ -68,11 +68,28 @@ module.exports = (step, argv) ->
         when "cpp", "cc", "c" then "cc"
         else "cc"
     ninjaConfig = require('ninja-build-gen')(ninjaVersion, 'build')
-    ninjaConfig.rule('cc').run("gcc#{optionsToFlags context.cxxFlags || stdOptions} -c $in -o $out").description 'CC \'$in\' to \'$out\'.'
+    includeString = " -I" + context.includeDirs.join(" -I")
+
+    cc = context.compiler or "gcc"
+    ninjaConfig
+    .rule('compile')
+    .depfile('$out.d')
+    .run("#{cc} -MMD -MF $out.d#{optionsToFlags context.cxxFlags || stdOptions()} -c $in -o $out #{includeString}")
+    .description "#{cc} $in to $out"
+
+    ninjaConfig
+    .rule('link')
+    .run("#{cc} $in -o $out ")
+    .description 'CC \'$in\' to \'$out\'.'
+
+    linkNames = []
     _.each context.sources, (filePath) ->
       ext = path.extname filePath
       name = path.basename filePath, ext
-      ninjaConfig.edge(name + '.o').from(filePath).using(getRule ext)
+      linkNames.push 'build/' + name + '.o'
+      ninjaConfig.edge('build/' + name + '.o').from(filePath).using("compile")
+    linkInput = linkNames.join(" ")
+    ninjaConfig.edge('lib' + step.name + '.a').from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 
   configure: genBuildScript
