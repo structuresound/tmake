@@ -2,6 +2,7 @@
 Promise = require("bluebird")
 git = require 'gift'
 fs = require('./fs')
+sh = require 'shelljs'
 
 module.exports = (dep, db) ->
   if typeof dep.git == 'string'
@@ -49,3 +50,9 @@ module.exports = (dep, db) ->
             clone()
       else
         clone()
+
+  findGit: findGit
+findGit = ->
+  if not sh.which 'git'
+    sh.echo 'Sorry, this script requires git'
+    sh.exit 1

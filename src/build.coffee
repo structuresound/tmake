@@ -2,10 +2,19 @@ gyp = require('node-gyp')()
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require './fs'
+ps = require('promise-streams')
 numCPUs = require('os').cpus().length
+path = require('path')
 
 # It is necessary to execute rebuild manually as calling node-gyp’s rebuild
 # programmatically fires the callback function too early.
+streamPromise = (stream, context) ->
+  new Promise (resolve, reject) ->
+    stream.bind(context)()
+    .on 'finish', resolve
+    .on 'end', resolve
+    .on 'error', reject
+
 manualRebuild = ->
   new Promise (resolve, reject) ->
     gyp.commands.clean [], (error) ->
@@ -94,53 +103,54 @@ module.exports = (dep, argv, db, npmDir) ->
 
   globSources = ->
     sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!build/**', '!test/**', '!tests/**']
+    if argv.verbose then console.log 'glob src:', task.srcDir, ":/", sourcesPattern
     fs.glob sourcesPattern, buildRoot, task.srcDir
 
   globLibsRecursive = (root, stack) ->
-    console.log "search deps for", root.name
-    db.deps.findAsync
-      name:
-        $in: _.map root.deps, (dep) -> dep.name
-    .then (deps) ->
-      Promise.each deps, (step) ->
-        stack.push deps
-        globLibsRecursive step, stack
+    if root.deps
+      console.log "search deps for", root.deps
+      db.deps.findAsync
+        name:
+          $in: _.map root.deps, (dep) -> dep.name
+      .then (deps) ->
+        Promise.each deps, (step) ->
+          stack.push deps
+          globLibsRecursive step, stack
+    else Promise.resolve stack
 
   globLibs = ->
     stack = []
     globLibsRecursive dep, stack
-    .then () ->
-      #console.log 'deps tree', stack
-      Promise.resolve _.map _.flatten(stack), (step) -> step.libs
+    .then () -> Promise.resolve _.map _.flatten(stack), (step) -> step.libs
 
   buildContext = ->
-    context =
-      includeDirs: [dep.includeDir]
-      npmDir: npmDir
-    globHeaders()
-    .then (headers) ->
-      context.headers = headers
-      globSources()
-    .then (sources) ->
-      context.sources = sources
-      globLibs()
-    .then (libs) ->
-      #console.log 'libs', libs
-      context.libs = libs
-      Promise.resolve context
+    new Promise (resolve) ->
+      context =
+        includeDirs: [dep.includeDir]
+        npmDir: npmDir
+      globHeaders()
+      .then (headers) ->
+        context.headers = headers
+        globSources()
+      .then (sources) ->
+        context.sources = sources
+        globLibs()
+      .then (libs) ->
+        context.libs = libs
+        resolve context
 
   resolveBuildType = (step) ->
     switch step.with
-      when "bbt" then "bbt"
+      when "ninja" then "ninja"
       when "gyp" then "gyp"
       when "cmake" then "cmake"
       when "make" then "make"
       else
-        if step.bbt then "bbt"
+        if step.ninja then "ninja"
         else if step.gyp then "gyp"
         else if step.cmake then "cmake"
         else if step.make then "make"
-        else if fs.existsSync step.rootDir + '/bbt.json' then "bbt"
+        else if fs.existsSync step.rootDir + '/build.ninja' then "ninja"
         else if fs.existsSync step.rootDir + '/binding.gyp' then "gyp"
         else if fs.existsSync step.rootDir + '/CMakeLists.txt' then "cmake"
         else if fs.existsSync step.rootDir + '/Makefile' then "make"
@@ -154,6 +164,7 @@ module.exports = (dep, argv, db, npmDir) ->
         buildContext()
         .then (context) -> generateGypBindings context
         .then -> nodeGyp step
+
     cmake: (step) ->
       dep.objDir = step.buildDir = "#{buildRoot}/build"
       cmake = require('./cmake')(dep, step, argv)
@@ -161,13 +172,14 @@ module.exports = (dep, argv, db, npmDir) ->
       else
         buildContext()
         .then (context) ->
-          cmake.generateLists context
+          cmake.configure context
           .then (CMakeLists) ->
             bindingPath = step.rootDir + '/CMakeLists.txt'
             fs.writeFileAsync bindingPath, CMakeLists
             .then ->
               db.deps.update {name: dep.name}, $set: cMakeFile: bindingPath
           cmake.cmake()
+
     make: (step) ->
       step.buildDir = buildRoot
       dep.objDir = "#{buildRoot}/obj"
@@ -177,9 +189,22 @@ module.exports = (dep, argv, db, npmDir) ->
         require('./sh')(step, argv).exec "CXXFLAGS=\"#{step.CXXFLAGS}\" #{command} -j#{numCPUs}"
       else
         Promise.reject "bbt doesn't support autogen for make yet"
-    bbt: (step) ->
+
+    ninja: (step) ->
+      ninja = require('./ninja')(step,argv)
+      bindingPath = step.rootDir + '/build.ninja'
       buildContext()
-      .then (context) -> require('./bbt_build')(step,argv,db,context).execute()
+      .then (context) ->
+        if step.cxxFlags then context.cxxFlags = step.cxxFlags
+        if argv.verbose then console.log 'write ninja file @', bindingPath
+        file = fs.createWriteStream(bindingPath)
+        ninja.configure context, file
+        file.end()
+        ps.wait file
+      .then ->
+        #if argv.verbose then console.log fs.readFileSync bindingPath, 'utf8'
+        db.deps.update {name: dep.name}, $set: ninjaFile: bindingPath
+        ninja.build(path.dirname bindingPath)
 
   buildStep = (step) ->
     ### GATHER PROJECT FILES ###

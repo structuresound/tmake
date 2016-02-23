@@ -116,7 +116,7 @@ module.exports = (dep, task, argv) ->
       .then (val) -> if val then cmake += val
     .then -> Promise.resolve cmake
 
-  generateLists: (context) ->
+  configure: (context) ->
     _.extend context, task
     console.log 'cmake context', context
     buildCmake [header, boost, includeDirectories, sources, target, link], context

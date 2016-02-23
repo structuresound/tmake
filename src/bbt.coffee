@@ -54,16 +54,9 @@ module.exports = (argv, binDir, npmDir) ->
     else
       console.log "this folder already has a bbt.coffee file present"
 
-  getRelativeDir = (dep, task) ->
-    base = "#{dep.rootDir}/src/#{dep.name}"
-    if task?.relativePath then "#{base}/#{task?.relativePath}" else base
-
-  getBuildDir = (dep, task) ->
-    base = if dep.transform then dep.tempDir else dep.srcDir
-    if task?.relativePath
-      "#{base}/#{dep.build.relativePath}"
-    else
-      base
+  getRelactiveDir = (dep, name) ->
+    if dep.relativePath then "#{dep.rootDir}/#{name}/#{dep.relativePath}"
+    else "#{dep.rootDir}/#{name}"
 
   clone = (dep) ->
     return unless dep.git
@@ -92,7 +85,8 @@ module.exports = (argv, binDir, npmDir) ->
       else
         if dep.git then clone(dep)
 
-    transform: (dep) -> require('./transform')(dep, argv, db).execute()
+    transform: (dep) ->
+      if dep.transform then require('./transform')(dep, argv, db).execute()
     build: (dep) -> require('./build')(dep, argv, db, npmDir).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
 
@@ -115,8 +109,7 @@ module.exports = (argv, binDir, npmDir) ->
 
   execute = (steps) ->
     return hello() unless config
-    config.srcDir ?= _cwd
-    config.buildDir ?= _cwd
+    config.homeDir = _cwd
     if argv._[1]
       dep = findDep argv._[1], config
       if dep then config = dep
@@ -128,16 +121,16 @@ module.exports = (argv, binDir, npmDir) ->
 
   processDep = (dep, steps, stack) ->
     dep.name ?= resolveDepName dep
-    dep.rootDir ?= "#{_cwd}/.bbt"
-    dep.cacheDir ?= argv.cachedDir || "#{dep.rootDir}/src"
-    dep.cloneDir ?= argv.cloneDir || "#{dep.rootDir}/src/#{dep.name}"
-    dep.srcDir ?= argv.srcDir || getRelativeDir dep, dep.transform
-    dep.tempDir ?= argv.tempDir || "#{dep.rootDir}/transform/#{dep.name}"
-    dep.buildDir ?= argv.buildDir || getBuildDir dep, dep.build
+    dep.homeDir ?= "#{_cwd}/.bbt"
+    dep.rootDir ?= "#{dep.homeDir}/#{dep.name}"
+    dep.cloneDir ?= argv.cloneDir || "#{dep.rootDir}/src"
+    if dep.transform then dep.tempDir ?= argv.tempDir || "#{dep.rootDir}/transform"
+    dep.srcDir ?= argv.srcDir || dep.tempDir || "#{dep.rootDir}/src"
+    dep.buildDir ?= argv.buildDir || "#{dep.rootDir}"
     dep.objDir ?= argv.objDir || "#{dep.buildDir}/build"
-    dep.libDir ?= argv.buildDir || "#{dep.rootDir}/lib"
-    dep.includeDir ?= argv.includeDir || "#{dep.rootDir}/include"
-    dep.installDir ?= argv.installDir || (_cwd + '/')
+    dep.libDir ?= argv.buildDir || "#{dep.homeDir}/lib"
+    dep.includeDir ?= argv.includeDir || "#{dep.homeDir}/include"
+    dep.binDir ?= argv.installDir || dep.homeDir
     stack.push dep
     (->
       if dep.deps then Promise.each dep.deps, (dep) ->

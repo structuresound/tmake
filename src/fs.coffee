@@ -2,6 +2,7 @@ Promise = require("bluebird")
 fs = Promise.promisifyAll(require('fs'))
 path = require('path')
 _ = require 'underscore'
+ps = require('promise-streams')
 
 module.exports = (->
   fs.nuke = (path) ->
@@ -38,14 +39,14 @@ module.exports = (->
   fs.dest = fs.vinyl.dest
   fs.glob = (srcPattern, relative, cwd) ->
     list = []
-    new Promise (resolve, reject) ->
-      fs.vinyl.src srcPattern, cwd: cwd
-      .pipe fs.map (file, cb) ->
-        list.push path.relative(relative, file.path)
-        cb null, file
-      .on 'error', reject
-      .on 'finish', resolve list
-      .on 'end', resolve list
+    ps.wait(fs.vinyl.src(srcPattern, cwd: cwd)
+    .pipe fs.map (file, cb) ->
+      list.push path.relative(relative, file.path)
+      cb null, file
+    ).then -> list
+
+  fs.fileStreamPromise = (file) ->
+    ps.wait(file)
 
   fs.globDirs = (srcPattern, relative, cwd) ->
     fs.glob srcPattern, relative, cwd

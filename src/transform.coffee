@@ -4,7 +4,7 @@ Promise = require("bluebird")
 #pipe = require('gulp-pipe')
 
 module.exports = (dep, argv, db) ->
-  task = dep.transform || {}
+  task = dep.transform
   task.name ?= dep.name
   task.srcDir ?= dep.srcDir
   task.dstDir ?= dep.tempDir
