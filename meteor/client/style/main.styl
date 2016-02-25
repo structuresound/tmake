@@ -1,0 +1,27 @@
+@import "../../node_modules/s-grid/s-grid-settings"
+// you can overwrite settings here
+@import "../../node_modules/s-grid/s-grid-functions"
+@import "../../node_modules/s-grid/s-grid-classes"
+
+// custom imports
+@import 'mixins.import.styl'
+@import 'variables.import.styl'
+
+// media queries using rupture mixins:
+    // +above(641px)
+    // +above(1025px)
+    // +above(1441px)
+    // +above(1921px)
+    // rupture docs: https://github.com/jenius/rupture
+// or standard media queries with em or px
+    // @media only screen and (min-width: 40.063em) /* min-width 641px */
+    // @media only screen and (min-width: 64.063em) /* min-width 1025px */
+    // @media only screen and (min-width: 90.063em) /* min-width 1441px */
+    // @media only screen and (min-width: 120.063em) /* min-width 1921px */
+
+// uncomment edit function to see grid borders
+// edit()
+
+// demo Scotty theme
+
+@import "theme.import.styl"
