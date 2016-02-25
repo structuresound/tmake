@@ -29,7 +29,7 @@ module.exports = (step, argv) ->
     if fs.existsSync ninjaLocal || useSystemNinja()
       if argv.verbose then console.log 'found ninja'
       ninjaPath = ninjaLocal || useSystemNinja
-      Promise.resolve(ninjaPath)
+      Promise.resolve ninjaPath
     else
       if argv.verbose then console.log 'fetch ninja binaries . . . '
       ps.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
@@ -37,15 +37,32 @@ module.exports = (step, argv) ->
         sh.chmod "+x", "#{ninjaLocal}"
         Promise.resolve ninjaLocal
 
-  stdOptions = ->
+  stdOptions =
     O2: true
-    fPIC: true
     std: "c++11"
     stdlib: "libc++"
 
-  optionsToFlags = (options) ->
+  jsonToCflags = (pkgOptions) ->
+    options = _.extend stdOptions, pkgOptions
+
+    if options.O3
+      options.O2 = false
+    if options.O3 or options.O2
+      options.O1 = false
+    if options.O3 or options.O2 or options.O1
+      options.Os = false
+    if options.O3 or options.O2 or options.O1 or options.Os
+      options.O0 = false
+
+    jsonToFlags options
+
+  jsonToLDFlags = (pkgOptions) ->
+    options = pkgOptions || {}
+    jsonToFlags options
+
+  jsonToFlags = (json) ->
     flags = ""
-    _.each options, (opt, key) ->
+    _.each json, (opt, key) ->
       if typeof opt == 'string'
         flags += " -#{key}=#{opt}"
       else if opt
@@ -53,12 +70,14 @@ module.exports = (step, argv) ->
     flags
 
   build = (dir) ->
-    getNinja()
-    .then (ninjaPath) ->
+    getNinja().then (ninjaPath) ->
+      command = "#{ninjaPath} -C #{dir}"
       new Promise (resolve, reject) ->
-        sh.exec "#{ninjaPath} -C #{dir}", (code, stdout, stderr) ->
-          if code then resolve code
-          else if stdout then console.log stdout
+        sh.exec command, (code, stdout, stderr) ->
+          if code then reject "ninja exited with code " + code + "\n" + command
+          else if stdout
+            if argv.verbose then console.log 'ninja done'
+            resolve()
           else if stderr then reject stderr
 
   genBuildScript = (context, fileStream) ->
@@ -71,16 +90,20 @@ module.exports = (step, argv) ->
     includeString = " -I" + context.includeDirs.join(" -I")
 
     cc = context.compiler or "gcc"
+
+    compileCommand = "#{cc} -MMD -MF $out.d#{jsonToCflags step.cflags} -c $in -o $out #{includeString}"
+    linkCommand = "ar rv $out $in#{jsonToLDFlags step.ldflags}"
+
     ninjaConfig
-    .rule('compile')
-    .depfile('$out.d')
-    .run("#{cc} -MMD -MF $out.d#{optionsToFlags context.cxxFlags || stdOptions()} -c $in -o $out #{includeString}")
-    .description "#{cc} $in to $out"
+    .rule 'compile'
+    .depfile '$out.d'
+    .run compileCommand
+    .description compileCommand
 
     ninjaConfig
     .rule('link')
-    .run("#{cc} $in -o $out ")
-    .description 'CC \'$in\' to \'$out\'.'
+    .run linkCommand
+    .description linkCommand
 
     linkNames = []
     _.each context.sources, (filePath) ->
@@ -88,8 +111,9 @@ module.exports = (step, argv) ->
       name = path.basename filePath, ext
       linkNames.push 'build/' + name + '.o'
       ninjaConfig.edge('build/' + name + '.o').from(filePath).using("compile")
+
     linkInput = linkNames.join(" ")
-    ninjaConfig.edge('lib' + step.name + '.a').from(linkInput).using("link")
+    ninjaConfig.edge('build/lib' + step.name + '.a').from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 
   configure: genBuildScript

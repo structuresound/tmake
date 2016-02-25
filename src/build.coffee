@@ -31,7 +31,7 @@ module.exports = (dep, argv, db, npmDir) ->
   else
     task = dep.build || {}
 
-  buildRoot = dep.buildDir
+  buildRoot = dep.rootDir
 
   task.rootDir ?= buildRoot
   task.srcDir ?= buildRoot + '/src'
@@ -205,8 +205,8 @@ module.exports = (dep, argv, db, npmDir) ->
         file.end()
         ps.wait file
       .then ->
-        #if argv.verbose then console.log fs.readFileSync bindingPath, 'utf8'
         db.deps.update {name: dep.name}, $set: ninjaFile: bindingPath
+        if argv.verbose then console.log 'build ninja @', bindingPath
         ninja.build(path.dirname bindingPath)
 
   buildStep = (step) ->

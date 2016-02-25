@@ -107,6 +107,38 @@ module.exports = (argv, binDir, npmDir) ->
         else found = findDep name, dep
     found
 
+  getBuildFile = (dep) ->
+    if dep.cMakeFile && fs.existsSync(dep.cMakeFile) then dep.cMakeFile
+    else if dep.ninjaFile && fs.existsSync(dep.ninjaFile) then dep.ninjaFile
+
+  cleanDep = (dep) ->
+    console.log 'clean module', dep.name
+    fs.nuke dep.buildDir
+    _.each dep.libs, (libFile) ->
+      if fs.existsSync(libFile) then fs.unlinkSync libFile
+    _.each dep.headers, (headerFile) ->
+      if fs.existsSync(headerFile) then fs.unlinkSync headerFile
+    fs.prune dep.rootDir
+    modifier =
+      $unset:
+        libs: true
+        headers: true
+      $set: built: false
+    if !argv.force
+      buildFile = getBuildFile dep
+      if buildFile
+        ask "remove auto generated Configuration file"
+        .then (approved) ->
+          if approved
+            modifier.$unset.cMakeFile = true
+            modifier.$unset.ninjaFile = true
+            fs.unlinkSync buildFile
+          db.deps.updateAsync {name: dep.name}, modifier
+          .then -> process.exit()
+      else
+    else
+      db.deps.updateAsync {name: dep.name}, modifier
+
   execute = (steps) ->
     return hello() unless config
     config.homeDir = _cwd
@@ -119,6 +151,8 @@ module.exports = (argv, binDir, npmDir) ->
       console.log msg
       console.log '[ done !!! ]'
 
+  upload = ->
+
   processDep = (dep, steps, stack) ->
     dep.name ?= resolveDepName dep
     dep.homeDir ?= "#{_cwd}/.bbt"
@@ -126,11 +160,10 @@ module.exports = (argv, binDir, npmDir) ->
     dep.cloneDir ?= argv.cloneDir || "#{dep.rootDir}/src"
     if dep.transform then dep.tempDir ?= argv.tempDir || "#{dep.rootDir}/transform"
     dep.srcDir ?= argv.srcDir || dep.tempDir || "#{dep.rootDir}/src"
-    dep.buildDir ?= argv.buildDir || "#{dep.rootDir}"
-    dep.objDir ?= argv.objDir || "#{dep.buildDir}/build"
-    dep.libDir ?= argv.buildDir || "#{dep.homeDir}/lib"
-    dep.includeDir ?= argv.includeDir || "#{dep.homeDir}/include"
-    dep.binDir ?= argv.installDir || dep.homeDir
+    dep.buildDir ?= argv.buildDir || "#{dep.rootDir}/build"
+    dep.libDir ?= argv.libDir || "#{dep.rootDir}/lib"
+    dep.includeDir ?= argv.includeDir || "#{dep.rootDir}/include"
+    dep.installDir ?= argv.installDir || dep.homeDir
     stack.push dep
     (->
       if dep.deps then Promise.each dep.deps, (dep) ->
@@ -144,12 +177,12 @@ module.exports = (argv, binDir, npmDir) ->
       db.deps.findOneAsync
         name: dep.name
     .then (depState) ->
-      if argv._[0] == "rebuild" || !depState?.built
+      if argv._[0] == "rebuild" || argv.force || !depState?.built
         Promise.each steps, (step) ->
           if argv.verbose then console.log _.map(stack, (d) -> d.name), step
           process.chdir _cwd
           BuildPhases[step](dep)
-        .then (dep)->
+        .then ->
           stack.pop()
           Promise.resolve "[ bbt built . . . #{dep.name}]"
       else
@@ -163,37 +196,18 @@ module.exports = (argv, binDir, npmDir) ->
       when 'clean'
         depToClean = argv._[1] || config.name
         if depToClean == 'all'
-          fs.nuke _cwd + '/.bbt'
-          fs.nuke _cwd + '/bbt'
-          fs.nuke _cwd + '/build'
+          db.deps.find name: depToClean
+          .then (deps) ->
+            Promise.each deps, cleanDep
+          .then ->
+            fs.nuke _cwd + '/.bbt'
           console.log 'so fresh'
         else
           db.deps.findOneAsync name: depToClean
           .then (dep) ->
-            if dep
-              console.log 'clean module', dep.name
-              fs.nuke dep.cloneDir
-              fs.nuke dep.tempDir
-              _.each dep.libs, (libFile) ->
-                if fs.existsSync(libFile) then fs.unlinkSync libFile
-              _.each dep.headers, (headerFile) ->
-                if fs.existsSync(headerFile) then fs.unlinkSync headerFile
-              fs.prune dep.includeDir
-              modifier =
-                $unset:
-                  libs: true
-                  headers: true
-                $set: built: false
-              if dep.cMakeFile && fs.existsSync(dep.cMakeFile)
-                ask "remove auto generated CMakeLists file?"
-                .then (approved) ->
-                  if approved
-                    modifier.$unset.cMakeFile = true
-                    fs.unlinkSync dep.cMakeFile
-                  db.deps.updateAsync {name: dep.name}, modifier
-                  .then -> process.exit()
-              else
-                db.deps.updateAsync {name: dep.name}, modifier
+            cleanDep dep
+      when 'push'
+        upload()
       when 'fetch'
         execute ["npmDeps","fetch"]
       when 'update'
