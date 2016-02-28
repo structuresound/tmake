@@ -6,6 +6,8 @@ build:
 git: "datasift/served"
 deps: [
   git: "datasift/served"
+  path:
+    source: "src"
   build:
     cmake:
       configure:
@@ -14,11 +16,25 @@ deps: [
         SERVED_BUILD_STATIC: "ON"
         SERVED_BUILD_TESTS: "OFF"
         SERVED_BUILD_SHARED: "OFF"
+    boost: libs: ["asio", "system"]
   install:
     headersPath: 'src'
     libPath: 'lib'
   deps: [
     git: "google/re2"
-    build: "make"
+    build:
+      with: "ninja"
+      target: "static"
+      sources: ["re2/*.cc"]
+      headers: ["re2/*.h"]
+      cflags:
+        O3: 1
+        std: "c++11"
+        g: 1
+        pthread: 1
+        Wall: 1
+        Wextra: 1
+        "Wno-unused-parameter": 1
+        "Wno-missing-field-initializers": 1
   ]
 ]

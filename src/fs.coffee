@@ -63,14 +63,20 @@ module.exports = (->
         else memo.concat path
       , [])
 
-  fs.existsAsync = (configPath) ->
+  fs.existsAsync = (filePath) ->
     new Promise (resolve) ->
-      fs.exists configPath, (exists) ->
+      fs.exists filePath, (exists) ->
         resolve exists
 
-  fs.readFileAsync = (configPath, format) ->
+  fs.readFileAsync = (filePath, format) ->
     new Promise (resolve, reject) ->
-      fs.readFile configPath, format, (err,data) ->
+      fs.readFile filePath, format, (err,data) ->
+        reject err if err
+        resolve data
+
+  fs.writeFileAsync = (filePath, options) ->
+    new Promise (resolve, reject) ->
+      fs.writeFile filePath, options, (err,data) ->
         reject err if err
         resolve data
 
@@ -80,7 +86,7 @@ module.exports = (->
     .then (array) ->
       #console.log 'found', array
       if array.length then Promise.resolve array[0]
-      else Promise.reject 'no config files found'
+      else Promise.resolve undefined
 
   fs.getConfigAsync = (configPath) ->
     fs.findConfigAsync configPath
@@ -94,8 +100,8 @@ module.exports = (->
       else
         base = path.dirname configPath
         prefix = path.basename configPath, path.extname configPath
-        console.log 'config not found at', configPath
-        console.log 'searching', prefix
+        # console.log 'config not found at', configPath
+        # console.log 'searching', prefix
         fs.findOneAsync ["#{prefix}.*"]
 
   fs.readConfigAsync = (configPath) ->

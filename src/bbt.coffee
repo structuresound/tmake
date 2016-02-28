@@ -38,8 +38,8 @@ check = (val, type) ->
 
 cmdOptionTypes = (cmd) ->
   switch cmd
-    when 'init', 'create', 'add', 'up'
-      name: "nodes"
+    when 'example'
+      name: "examples"
       type: ["Number", "Undefined"]
     when 'ls', 'list'
       name: "collection"
@@ -79,7 +79,7 @@ prompt =
 
 module.exports = (argv, binDir, npmDir) ->
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
-  hello = -> console.log "if this is a new project run 'bbt init' or type 'bbt help' for more options"
+  hello = -> console.log "if this is a new project run 'bbt example' or type 'bbt help' for more options"
   manual = ->
     console.log """
 
@@ -87,7 +87,6 @@ module.exports = (argv, binDir, npmDir) ->
 
                 [commands]
 
-                init             create an empty bbt.coffee file
                 example [name]   copy an example to the current directory
 
                 all (default)    fetch, update, build, install
@@ -106,10 +105,6 @@ module.exports = (argv, binDir, npmDir) ->
       fs.writeFileSync defaultConfig, fs.readFileSync(binDir + '/' + defaultConfig, 'utf8')
     else
       console.log "this folder already has a bbt.coffee file present"
-
-  getRelactiveDir = (dep, name) ->
-    if dep.relativePath then "#{dep.rootDir}/#{name}/#{dep.relativePath}"
-    else "#{dep.rootDir}/#{name}"
 
   clone = (dep) ->
     return unless dep.git
@@ -192,7 +187,6 @@ module.exports = (argv, binDir, npmDir) ->
       db.deps.updateAsync {name: dep.name}, modifier
 
   execute = (config, steps) ->
-    return hello() unless config
     config.homeDir = _cwd
     if argv._[1]
       dep = findDep argv._[1], config
@@ -206,16 +200,33 @@ module.exports = (argv, binDir, npmDir) ->
   upload = ->
 
   processDep = (dep, steps, stack) ->
-    dep.name ?= resolveDepName dep
-    dep.homeDir ?= "#{_cwd}/.bbt"
-    dep.rootDir ?= "#{dep.homeDir}/#{dep.name}"
-    dep.cloneDir ?= argv.cloneDir || "#{dep.rootDir}/src"
-    if dep.transform then dep.tempDir ?= argv.tempDir || "#{dep.rootDir}/transform"
-    dep.srcDir ?= argv.srcDir || dep.tempDir || "#{dep.rootDir}/src"
-    dep.buildDir ?= argv.buildDir || "#{dep.rootDir}/build"
-    dep.libDir ?= argv.libDir || "#{dep.rootDir}/lib"
-    dep.includeDir ?= argv.includeDir || "#{dep.rootDir}/include"
-    dep.installDir ?= argv.installDir || dep.homeDir
+    defaultPathOptions = _.extendOwn
+      source: ""
+      headers: ""
+      tests: "test"
+      clone: "src"
+      build: "build"
+      libs: "lib"
+      install: ""
+      temp: "transform"
+      include: "include"
+    , dep.path || {}
+    pathOptions = _.extendOwn defaultPathOptions, argv
+    dep.name = resolveDepName dep
+    dep.homeDir = "#{_cwd}/.bbt"
+    dep.rootDir = "#{dep.homeDir}/#{dep.name}"
+    dep.cloneDir = path.join dep.rootDir, pathOptions.clone
+    if dep.transform
+      dep.tempDir = path.join dep.rootDir, pathOptions.temp
+      dep.srcDir = path.join dep.tempDir, pathOptions.source
+    else
+      dep.srcDir = path.join dep.cloneDir, pathOptions.source
+    dep.buildDir ?= path.join dep.rootDir, pathOptions.build
+    dep.libDir ?= path.join dep.rootDir, pathOptions.libs
+    dep.includeDir ?= path.join dep.rootDir, pathOptions.include
+    dep.installDir ?= path.join dep.homeDir, pathOptions.install
+
+    console.log dep
     stack.push dep
     (->
       if dep.deps then Promise.each dep.deps, (dep) ->
@@ -244,42 +255,47 @@ module.exports = (argv, binDir, npmDir) ->
   run: ->
     fs.getConfigAsync bbtConfigPath
     .then (config) ->
-      switch argv._[0] || 'all'
-        when 'init'
-          init()
-        when 'clean'
-          depToClean = argv._[1] || config.name
-          if depToClean == 'all'
-            db.deps.find name: depToClean
-            .then (deps) ->
-              Promise.each deps, cleanDep
-            .then ->
-              fs.nuke _cwd + '/.bbt'
-            console.log 'so fresh'
+      if config
+        switch argv._[0] || 'all'
+          when 'clean'
+            depToClean = argv._[1] || config.name
+            if depToClean == 'all'
+              db.deps.find name: depToClean
+              .then (deps) ->
+                Promise.each deps, cleanDep
+              .then ->
+                fs.nuke _cwd + '/.bbt'
+              console.log 'so fresh'
+            else
+              db.deps.findOneAsync name: depToClean
+              .then (dep) ->
+                cleanDep dep
+          when 'push'
+            upload()
+          when 'fetch'
+            execute config, ["npmDeps","fetch"]
+          when 'update'
+            execute config, ["npmDeps","fetch","transform"]
+          when 'build', 'rebuild'
+            execute config, ["npmDeps","fetch","transform","build"]
+          when 'all'
+            execute config, ["npmDeps","fetch","transform","build","install"]
+          when 'install'
+            execute config, ["install"]
+          when 'db'
+            selector = {}
+            if argv._[1] then selector = name: argv._[1]
+            db.deps.findAsync selector
+            .then (deps) -> console.log deps
+          else hello()
+      else
+        switch argv._[0]
+          when 'init'
+            init()
+          when 'example'
+            example = argv._[1] || "served"
+            fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
+            .pipe fs.dest _cwd
+          when 'help', 'man', 'manual' then manual()
           else
-            db.deps.findOneAsync name: depToClean
-            .then (dep) ->
-              cleanDep dep
-        when 'push'
-          upload()
-        when 'fetch'
-          execute config, ["npmDeps","fetch"]
-        when 'update'
-          execute config, ["npmDeps","fetch","transform"]
-        when 'example'
-          example = argv._[1] || "served"
-          fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
-          .pipe fs.dest _cwd
-        when 'build', 'rebuild'
-          execute config, ["npmDeps","fetch","transform","build"]
-        when 'all'
-          execute config, ["npmDeps","fetch","transform","build","install"]
-        when 'install'
-          execute config, ["install"]
-        when 'db'
-          selector = {}
-          if argv._[1] then selector = name: argv._[1]
-          db.deps.findAsync selector
-          .then (deps) -> console.log deps
-        when 'help', 'man', 'manual' then manual()
-        else hello()
+            hello()

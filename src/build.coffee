@@ -34,8 +34,8 @@ module.exports = (dep, argv, db, npmDir) ->
   buildRoot = dep.rootDir
 
   task.rootDir ?= buildRoot
-  task.srcDir ?= buildRoot + '/src'
-  task.includeDir ?= buildRoot + '/include'
+  task.srcDir ?= dep.srcDir
+  task.includeDir ?= dep.includeDir
 
   task.name ?= dep.name
   task.target ?= task.target || 'static'
