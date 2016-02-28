@@ -7,25 +7,78 @@ path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
-yesno = require('yesno')
-ask = (q) -> new Promise (resolve) -> yesno.ask(q, false, (ok) -> resolve(ok))
+util = require('util')
+colors = require ('chalk')
 
-defaultConfig = 'bbt.coffee'
+defaultConfig = 'bbt.cson'
 _cwd = process.cwd()
 db = require('./db')(_cwd)
 
+pgname = "chroma"
+forceYes = false
+
+_check = (val, type) ->
+  switch type
+    when "String" then typeof val == 'string'
+    when "Number" then !isNaN(parseFloat(val)) && isFinite(val)
+    when "Array" then Array.isArray val
+    when "Object" then val != null and typeof val == 'object'
+    when "Boolean" then typeof val == 'boolean'
+    when "Undefined" then true
+
+check = (val, type) ->
+  if _check type, "String"
+    _check val, type
+  else if _check type, "Array"
+    _.reduce type, (memo, sType) ->
+      memo + _check(val, sType)
+    , 0
+  else
+    throw "checking unsupported type"
+
+cmdOptionTypes = (cmd) ->
+  switch cmd
+    when 'init', 'create', 'add', 'up'
+      name: "nodes"
+      type: ["Number", "Undefined"]
+    when 'ls', 'list'
+      name: "collection"
+      type: ["String", "Undefined"]
+    when 'ssh'
+      name: "node"
+      type: ["String", "Undefined"]
+    when 'provision'
+      name: "script"
+      type: "String"
+    when 'test'
+      name: "cluster"
+      type: ["String", "Undefined"]
+    else
+      name: ""
+      type: "Undefined"
+
+prompt =
+  done: -> process.stdin.pause()
+  prompt: -> process.stdout.write prompt.message
+  ask: (q, a) ->
+    new Promise (resolve) ->
+      prompt.message = colors.yellow(q) + ': '
+      prompt.onReceived = (data) ->
+        prompt.done()
+        if a
+          if data == (a + '\n') then return resolve true
+        else if data == 'y\n' or data == 'yes\n' or forceYes then return resolve true
+        resolve false
+      prompt.start()
+  start: ->
+    process.stdin.resume()
+    process.stdin.setEncoding 'utf8'
+    process.stdin.on 'data', (text) -> prompt.onReceived text
+    prompt.prompt()
+  onReceived: (text) -> console.log 'received data:', text, util.inspect(text)
+
 module.exports = (argv, binDir, npmDir) ->
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
-
-  config = (->
-    if fs.existsSync(bbtConfigPath)
-      data = fs.readFileSync(bbtConfigPath, 'utf8')
-      ### jshint -W061 ###
-      coffee.eval(data)
-      ### jshint +W061 ###
-    else unless argv._[0] == 'init' then
-    )()
-
   hello = -> console.log "if this is a new project run 'bbt init' or type 'bbt help' for more options"
   manual = ->
     console.log """
@@ -127,19 +180,18 @@ module.exports = (argv, binDir, npmDir) ->
     if !argv.force
       buildFile = getBuildFile dep
       if buildFile
-        ask "remove auto generated Configuration file"
+        prompt.ask "remove auto generated Configuration file ?"
         .then (approved) ->
           if approved
             modifier.$unset.cMakeFile = true
             modifier.$unset.ninjaFile = true
             fs.unlinkSync buildFile
           db.deps.updateAsync {name: dep.name}, modifier
-          .then -> process.exit()
       else
     else
       db.deps.updateAsync {name: dep.name}, modifier
 
-  execute = (steps) ->
+  execute = (config, steps) ->
     return hello() unless config
     config.homeDir = _cwd
     if argv._[1]
@@ -190,42 +242,44 @@ module.exports = (argv, binDir, npmDir) ->
         Promise.resolve "[ CACHED: #{dep.name}]"
 
   run: ->
-    switch argv._[0] || 'all'
-      when 'init'
-        init()
-      when 'clean'
-        depToClean = argv._[1] || config.name
-        if depToClean == 'all'
-          db.deps.find name: depToClean
-          .then (deps) ->
-            Promise.each deps, cleanDep
-          .then ->
-            fs.nuke _cwd + '/.bbt'
-          console.log 'so fresh'
-        else
-          db.deps.findOneAsync name: depToClean
-          .then (dep) ->
-            cleanDep dep
-      when 'push'
-        upload()
-      when 'fetch'
-        execute ["npmDeps","fetch"]
-      when 'update'
-        execute ["npmDeps","fetch","transform"]
-      when 'example'
-        example = argv._[1] || "served"
-        fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
-        .pipe fs.dest _cwd
-      when 'build', 'rebuild'
-        execute ["npmDeps","fetch","transform","build"]
-      when 'all'
-        execute ["npmDeps","fetch","transform","build","install"]
-      when 'install'
-        execute ["install"]
-      when 'db'
-        selector = {}
-        if argv._[1] then selector = name: argv._[1]
-        db.deps.findAsync selector
-        .then (deps) -> console.log deps
-      when 'help', 'man', 'manual' then manual()
-      else hello()
+    fs.getConfigAsync bbtConfigPath
+    .then (config) ->
+      switch argv._[0] || 'all'
+        when 'init'
+          init()
+        when 'clean'
+          depToClean = argv._[1] || config.name
+          if depToClean == 'all'
+            db.deps.find name: depToClean
+            .then (deps) ->
+              Promise.each deps, cleanDep
+            .then ->
+              fs.nuke _cwd + '/.bbt'
+            console.log 'so fresh'
+          else
+            db.deps.findOneAsync name: depToClean
+            .then (dep) ->
+              cleanDep dep
+        when 'push'
+          upload()
+        when 'fetch'
+          execute config, ["npmDeps","fetch"]
+        when 'update'
+          execute config, ["npmDeps","fetch","transform"]
+        when 'example'
+          example = argv._[1] || "served"
+          fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
+          .pipe fs.dest _cwd
+        when 'build', 'rebuild'
+          execute config, ["npmDeps","fetch","transform","build"]
+        when 'all'
+          execute config, ["npmDeps","fetch","transform","build","install"]
+        when 'install'
+          execute config, ["install"]
+        when 'db'
+          selector = {}
+          if argv._[1] then selector = name: argv._[1]
+          db.deps.findAsync selector
+          .then (deps) -> console.log deps
+        when 'help', 'man', 'manual' then manual()
+        else hello()

@@ -1,7 +1,7 @@
 {
   "name": "bbt",
   "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "homepage": "https://github.com/structuresound/bbt",
   "author": {
     "name": "structuresound",
@@ -47,6 +47,7 @@
     "child-process-promise": "^1.1.0",
     "cmake-js": "^3.0.0",
     "coffee-script": "^1.10.0",
+    "cson": "^3.0.2",
     "gift": "^0.6.1",
     "map-stream": "0.0.6",
     "minimist": "^1.2.0",
