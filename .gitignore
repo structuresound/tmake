@@ -1,4 +1,4 @@
-.bbt
 /lib
+.bbt
 node_modules
 /bbt.coffee

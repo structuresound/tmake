@@ -1,3 +1,4 @@
+require('source-map-support').install();
 gyp = require('node-gyp')()
 _ = require 'underscore'
 Promise = require 'bluebird'
@@ -5,15 +6,6 @@ fs = require './fs'
 ps = require('promise-streams')
 numCPUs = require('os').cpus().length
 path = require('path')
-
-# It is necessary to execute rebuild manually as calling node-gyp’s rebuild
-# programmatically fires the callback function too early.
-streamPromise = (stream, context) ->
-  new Promise (resolve, reject) ->
-    stream.bind(context)()
-    .on 'finish', resolve
-    .on 'end', resolve
-    .on 'error', reject
 
 manualRebuild = ->
   new Promise (resolve, reject) ->
@@ -31,13 +23,7 @@ module.exports = (dep, argv, db, npmDir) ->
   else
     task = dep.build || {}
 
-  buildRoot = dep.rootDir
-
-  task.rootDir ?= buildRoot
-  task.srcDir ?= dep.srcDir
-  task.includeDir ?= dep.includeDir
-
-  task.name ?= dep.name
+  buildRoot = dep.d.root
   task.target ?= task.target || 'static'
 
   if argv.verbose then console.log 'build task:', task
@@ -54,13 +40,13 @@ module.exports = (dep, argv, db, npmDir) ->
     if !config.flags?.debug then dest.push '--no-debug'
     dest
 
-  nodeGyp = (step) ->
-    defaultArgv = ['node', step.rootDir, '--loglevel=silent']
+  nodeGyp = ->
+    defaultArgv = ['node', buildRoot, '--loglevel=silent']
     gyp_argv = defaultArgv.slice()
     applyArgv gyp_argv
     if argv.verbose then console.log 'gyp argv:', JSON.stringify(gyp_argv, 0, 2)
     gyp.parseArgv gyp_argv
-    process.chdir step.rootDir
+    process.chdir buildRoot
     manualRebuild()
 
   vinylContext =
@@ -99,35 +85,42 @@ module.exports = (dep, argv, db, npmDir) ->
 
   globHeaders = ->
     headersPattern = task.headers || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
-    fs.glob headersPattern, buildRoot, task.srcDir
+    fs.glob headersPattern, buildRoot, dep.d.source
 
   globSources = ->
-    sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!build/**', '!test/**', '!tests/**']
-    if argv.verbose then console.log 'glob src:', task.srcDir, ":/", sourcesPattern
-    fs.glob sourcesPattern, buildRoot, task.srcDir
+    sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
+    if argv.verbose then console.log 'glob src:', dep.d.source, ":/", sourcesPattern
+    fs.glob sourcesPattern, buildRoot, dep.d.source
 
-  globLibsRecursive = (root, stack) ->
+  globDeps = (root, stack) ->
     if root.deps
-      console.log "search deps for", root.deps
       db.deps.findAsync
         name:
           $in: _.map root.deps, (dep) -> dep.name
       .then (deps) ->
         Promise.each deps, (step) ->
           stack.push deps
-          globLibsRecursive step, stack
+          globDeps step, stack
     else Promise.resolve stack
+
+  globIncludeDirs = ->
+    stack = [dep]
+    globDeps dep, stack
+    .then () -> Promise.resolve _.map _.flatten(stack), (step) -> step.includeDirs || step.d.source
 
   globLibs = ->
     stack = []
-    globLibsRecursive dep, stack
+    globDeps dep, stack
     .then () -> Promise.resolve _.map _.flatten(stack), (step) -> step.libs
 
   buildContext = ->
     new Promise (resolve) ->
       context = npmDir: npmDir
-      context.includeDirs = _.map (task.includeDirs || [""]), (rel) -> path.join(task.srcDir,rel)
-      globHeaders()
+      globIncludeDirs()
+      .then (includeDirs) ->
+        context.includeDirs = includeDirs #_.map (includeDirs), (rel) -> path.relative(dep.d.source,rel) || './'
+        #console.log context.includeDirs
+        globHeaders()
       .then (headers) ->
         context.headers = headers
         # _.each headers, (header) ->
@@ -153,49 +146,54 @@ module.exports = (dep, argv, db, npmDir) ->
         else if step.gyp then "gyp"
         else if step.cmake then "cmake"
         else if step.make then "make"
-        else if fs.existsSync step.rootDir + '/build.ninja' then "ninja"
-        else if fs.existsSync step.rootDir + '/binding.gyp' then "gyp"
-        else if fs.existsSync step.rootDir + '/CMakeLists.txt' then "cmake"
-        else if fs.existsSync step.rootDir + '/Makefile' then "make"
+        else if fs.existsSync buildRoot + '/build.ninja' then "ninja"
+        else if fs.existsSync buildRoot + '/binding.gyp' then "gyp"
+        else if fs.existsSync buildRoot + '/CMakeLists.txt' then "cmake"
+        else if fs.existsSync buildRoot + '/Makefile' then "make"
         else Promise.reject "bbt can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
 
   buildWith =
     gyp: (step) ->
-      dep.objDir = step.buildDir = "#{buildRoot}/build"
-      if fs.existsSync step.rootDir + '/binding.gyp' then nodeGyp()
+      dep.d.object = dep.d.build = "#{buildRoot}/build"
+      if fs.existsSync buildRoot + '/binding.gyp' then nodeGyp()
       else
         buildContext()
         .then (context) -> generateGypBindings context
         .then -> nodeGyp step
 
     cmake: (step) ->
-      dep.objDir = step.buildDir = "#{buildRoot}/build"
-      cmake = require('./cmake')(dep, step, argv)
-      if fs.existsSync buildRoot + '/CMakeLists.txt' then cmake.cmake()
+      cmake = require('./cmake')(step, dep, argv)
+      cmakepath = path.join buildRoot, step.path?.CMakeLists || ""
+      bindingPath = path.join cmakepath, '/CMakeLists.txt'
+      #process.chdir path.dirname dep.d.build
+      if fs.existsSync bindingPath
+        # unless fs.existsSync "#{buildRoot}/CMakeLists.txt"
+        #   fs.symlinkSync bindingPath, "#{buildRoot}/CMakeLists.txt"
+        cmake.cmake()
       else
         buildContext()
         .then (context) ->
           cmake.configure context
-          .then (CMakeLists) ->
-            bindingPath = step.rootDir + '/CMakeLists.txt'
-            fs.writeFileAsync bindingPath, CMakeLists
-            .then ->
-              db.deps.update {name: dep.name}, $set: cMakeFile: bindingPath
+        .then (CMakeLists) ->
+          fs.writeFileAsync bindingPath, CMakeLists
+          .then ->
+            db.deps.updateAsync {name: dep.name}, $set: cMakeFile: bindingPath
+        .then ->
           cmake.cmake()
 
     make: (step) ->
-      step.buildDir = buildRoot
-      dep.objDir = "#{buildRoot}/obj"
+      dep.d.object = "#{buildRoot}/obj"
       command = step.make?.command || "make"
-      if fs.existsSync step.rootDir + '/Makefile'
-        process.chdir step.buildDir
+      if fs.existsSync buildRoot + '/Makefile'
+        process.chdir dep.d.build
         require('./sh')(step, argv).exec "CXXFLAGS=\"#{step.CXXFLAGS}\" #{command} -j#{numCPUs}"
       else
         Promise.reject "bbt doesn't support autogen for make yet"
 
     ninja: (step) ->
       ninja = require('./ninja')(step,argv)
-      bindingPath = step.rootDir + '/build.ninja'
+      console.log step
+      bindingPath = buildRoot + '/build.ninja'
       buildContext()
       .then (context) ->
         if step.cxxFlags then context.cxxFlags = step.cxxFlags
@@ -205,7 +203,7 @@ module.exports = (dep, argv, db, npmDir) ->
         file.end()
         ps.wait file
       .then ->
-        db.deps.update {name: dep.name}, $set: ninjaFile: bindingPath
+        db.deps.updateAsync {name: dep.name}, $set: ninjaFile: bindingPath
         if argv.verbose then console.log 'build ninja @', bindingPath
         ninja.build(path.dirname bindingPath)
 
@@ -226,4 +224,4 @@ module.exports = (dep, argv, db, npmDir) ->
       Promise.each task.steps, (step) -> buildStep step
     else buildStep task
 
-  execute: -> build().then -> db.deps.update {name: dep.name}, $set: built: true
+  execute: -> build().then -> db.deps.updateAsync {name: dep.name}, $set: built: true

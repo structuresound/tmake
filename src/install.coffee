@@ -6,10 +6,10 @@ path = require('path')
 module.exports = (dep, argv, db) ->
   task = dep.install || {}
 
-  if task.headersPath
-    console.log 'using specified public headers', "#{task.rootDir}/#{task.headersPath}"
-    task.headersDir = "#{task.rootDir}/#{task.headersPath}"
-  if task.libsPath then task.libsDir = "#{task.rootDir}/#{task.libsPath}"
+  if task.path?.headers
+    console.log 'using specified public headers install dir', "#{dep.d.root}/#{task.path.headers}"
+    task.headersDir = "#{dep.d.root}/#{task.path.headers}"
+  if task.path?.libs then task.libsDir = "#{dep.d.root}/#{task.path.libs}"
 
   context =
     src: (glob, opt) ->
@@ -33,9 +33,9 @@ module.exports = (dep, argv, db) ->
 
   execute = ->
     installLibs = task.pipeline || ->
-      libPath = dep.buildDir
-      if task.libPath then libPath = "#{dep.rootDir}/#{task.libPath}"
-      if argv.verbose then console.log '[ install libs ] from', libPath, 'to', dep.libDir
+      libPath = dep.d.build
+      if task.path?.libs then libPath = "#{dep.d.root}/#{task.path.libs}"
+      if argv.verbose then console.log '[ install libs ] from', libPath, 'to', dep.d.lib
       patterns = task.libs || ['**/*.a']
       if task.type == 'dynamic' then patterns = task.libs || ['**/*.dylib', '**/*.so', '**/*.dll']
       @src patterns, cwd: libPath
@@ -44,20 +44,20 @@ module.exports = (dep, argv, db) ->
         file.base = path.dirname file.path
         console.log file.base
         db.deps.updateAsync name: dep.name,
-          $addToSet: libs: dep.libDir + '/' + path.relative file.base, file.path
+          $addToSet: libs: dep.d.lib + '/' + path.relative file.base, file.path
         .then -> emit(null, file)
-      .pipe @dest dep.libDir
+      .pipe @dest dep.d.lib
     installHeaders = ->
-      if task.headersPath then task.includeDir = "#{dep.srcDir}/#{task.headersPath}"
+      if task.path?.headers then dep.d.include = "#{dep.d.source}/#{task.path.headers}"
       patterns = task.headers || ["**/*.h", "**/*.hpp"]
-      if argv.verbose then console.log '[ install headers ] from', dep.srcDir, 'to', dep.includeDir
-      @src patterns, cwd: dep.srcDir
+      if argv.verbose then console.log '[ install headers ] from', dep.d.source, 'to', dep.d.include
+      @src patterns, cwd: dep.d.source
       .pipe @map (file, emit) ->
         unless argv.quiet then console.log 'install header', path.relative file.cwd, file.path
         db.deps.updateAsync name: dep.name,
-          $addToSet: headers: dep.includeDir + '/' + path.relative file.base, file.path
+          $addToSet: headers: dep.d.include + '/' + path.relative file.base, file.path
         .then -> emit(null, file)
-      .pipe @dest dep.includeDir
+      .pipe @dest dep.d.include
     streamPromise installLibs
     .then ->
       streamPromise installHeaders

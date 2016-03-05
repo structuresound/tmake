@@ -1,4 +1,4 @@
-exec = require('child_process').exec;
+require('source-map-support').install()
 coffee = require('coffee-script')
 _ = require('underscore')
 Promise = require("bluebird")
@@ -7,98 +7,14 @@ path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
-util = require('util')
-colors = require ('chalk')
-
 defaultConfig = 'bbt.cson'
 _cwd = process.cwd()
 db = require('./db')(_cwd)
-
-pgname = "chroma"
-forceYes = false
-
-_check = (val, type) ->
-  switch type
-    when "String" then typeof val == 'string'
-    when "Number" then !isNaN(parseFloat(val)) && isFinite(val)
-    when "Array" then Array.isArray val
-    when "Object" then val != null and typeof val == 'object'
-    when "Boolean" then typeof val == 'boolean'
-    when "Undefined" then true
-
-check = (val, type) ->
-  if _check type, "String"
-    _check val, type
-  else if _check type, "Array"
-    _.reduce type, (memo, sType) ->
-      memo + _check(val, sType)
-    , 0
-  else
-    throw "checking unsupported type"
-
-cmdOptionTypes = (cmd) ->
-  switch cmd
-    when 'example'
-      name: "examples"
-      type: ["Number", "Undefined"]
-    when 'ls', 'list'
-      name: "collection"
-      type: ["String", "Undefined"]
-    when 'ssh'
-      name: "node"
-      type: ["String", "Undefined"]
-    when 'provision'
-      name: "script"
-      type: "String"
-    when 'test'
-      name: "cluster"
-      type: ["String", "Undefined"]
-    else
-      name: ""
-      type: "Undefined"
-
-prompt =
-  done: -> process.stdin.pause()
-  prompt: -> process.stdout.write prompt.message
-  ask: (q, a) ->
-    new Promise (resolve) ->
-      prompt.message = colors.yellow(q) + ': '
-      prompt.onReceived = (data) ->
-        prompt.done()
-        if a
-          if data == (a + '\n') then return resolve true
-        else if data == 'y\n' or data == 'yes\n' or forceYes then return resolve true
-        resolve false
-      prompt.start()
-  start: ->
-    process.stdin.resume()
-    process.stdin.setEncoding 'utf8'
-    process.stdin.on 'data', (text) -> prompt.onReceived text
-    prompt.prompt()
-  onReceived: (text) -> console.log 'received data:', text, util.inspect(text)
+prompt = require('./promptise')
 
 module.exports = (argv, binDir, npmDir) ->
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
-  hello = -> console.log "if this is a new project run 'bbt example' or type 'bbt help' for more options"
-  manual = ->
-    console.log """
-
-                usage: bbt command [option]
-
-                [commands]
-
-                example [name]   copy an example to the current directory
-
-                all (default)    fetch, update, build, install
-                fetch            git / get dependencies
-                update           transform dependencies
-                build            build with various build systems
-                install          place libraries into main libs folder
-                clean            clean project, 'clean all' to kill deps
-
-                db [name]        list the internal state of bbt
-
-                """
+  cli = require('./cli')
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
@@ -137,6 +53,7 @@ module.exports = (argv, binDir, npmDir) ->
       if dep.transform then require('./transform')(dep, argv, db).execute()
     build: (dep) -> require('./build')(dep, argv, db, npmDir).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
+    clean: (dep) -> cleanDep dep
 
   resolveDepName = (dep) ->
     if dep.name then return dep.name
@@ -161,12 +78,12 @@ module.exports = (argv, binDir, npmDir) ->
 
   cleanDep = (dep) ->
     console.log 'clean module', dep.name
-    fs.nuke dep.buildDir
+    fs.nuke dep.d.build
     _.each dep.libs, (libFile) ->
       if fs.existsSync(libFile) then fs.unlinkSync libFile
     _.each dep.headers, (headerFile) ->
       if fs.existsSync(headerFile) then fs.unlinkSync headerFile
-    fs.prune dep.rootDir
+    fs.prune dep.d.root
     modifier =
       $unset:
         libs: true
@@ -187,7 +104,7 @@ module.exports = (argv, binDir, npmDir) ->
       db.deps.updateAsync {name: dep.name}, modifier
 
   execute = (config, steps) ->
-    config.homeDir = _cwd
+    config.d = home: _cwd
     if argv._[1]
       dep = findDep argv._[1], config
       if dep then config = dep
@@ -197,9 +114,7 @@ module.exports = (argv, binDir, npmDir) ->
       console.log msg
       console.log '[ done !!! ]'
 
-  upload = ->
-
-  processDep = (dep, steps, stack) ->
+  resolvePaths = (dep) ->
     defaultPathOptions = _.extendOwn
       source: ""
       headers: ""
@@ -211,22 +126,28 @@ module.exports = (argv, binDir, npmDir) ->
       temp: "transform"
       include: "include"
     , dep.path || {}
-    pathOptions = _.extendOwn defaultPathOptions, argv
-    dep.name = resolveDepName dep
-    dep.homeDir = "#{_cwd}/.bbt"
-    dep.rootDir = "#{dep.homeDir}/#{dep.name}"
-    dep.cloneDir = path.join dep.rootDir, pathOptions.clone
-    if dep.transform
-      dep.tempDir = path.join dep.rootDir, pathOptions.temp
-      dep.srcDir = path.join dep.tempDir, pathOptions.source
-    else
-      dep.srcDir = path.join dep.cloneDir, pathOptions.source
-    dep.buildDir ?= path.join dep.rootDir, pathOptions.build
-    dep.libDir ?= path.join dep.rootDir, pathOptions.libs
-    dep.includeDir ?= path.join dep.rootDir, pathOptions.include
-    dep.installDir ?= path.join dep.homeDir, pathOptions.install
 
-    console.log dep
+    pathOptions = _.extendOwn defaultPathOptions, argv
+
+    d = _.extend {}, dep.d
+
+    d.home ?= "#{_cwd}/.bbt"
+    d.root ?= "#{d.home}/#{dep.name}"
+    d.temp ?= path.join d.root, pathOptions.temp
+    d.clone ?= path.join d.root, pathOptions.clone
+    if dep.transform
+      d.source = path.join d.temp, pathOptions.source
+    else
+      d.source = path.join d.clone, pathOptions.source
+    d.build ?= path.join d.root, pathOptions.build
+    d.lib ?= path.join d.root, pathOptions.libs
+    d.include ?= path.join d.root, pathOptions.include
+    d.install ?= path.join d.home, pathOptions.install
+    d
+
+  processDep = (dep, steps, stack) ->
+    dep.name = resolveDepName dep
+    dep.d = resolvePaths dep
     stack.push dep
     (->
       if dep.deps then Promise.each dep.deps, (dep) ->
@@ -252,42 +173,52 @@ module.exports = (argv, binDir, npmDir) ->
         stack.pop()
         Promise.resolve "[ CACHED: #{dep.name}]"
 
+  initDb = ->
+    db.deps = db.newCollection 'deps'
+
   run: ->
+    initDb()
     fs.getConfigAsync bbtConfigPath
     .then (config) ->
+      argv._[0] ?= 'make'
+      try
+        cli.parse argv
+      catch e
+        return console.log e
       if config
-        switch argv._[0] || 'all'
+        switch argv._[0]
           when 'clean'
             depToClean = argv._[1] || config.name
             if depToClean == 'all'
-              db.deps.find name: depToClean
+              db.deps.findAsync name: depToClean
               .then (deps) ->
-                Promise.each deps, cleanDep
+                Promise.each deps, (dep) -> execute dep, ["clean"]
               .then ->
                 fs.nuke _cwd + '/.bbt'
               console.log 'so fresh'
             else
               db.deps.findOneAsync name: depToClean
               .then (dep) ->
-                cleanDep dep
+                if dep then execute dep, ["clean"]
+                else console.log 'didn\'t find dep for', depToClean
           when 'push'
-            upload()
+            console.log 'not implemented' #upload()
           when 'fetch'
             execute config, ["npmDeps","fetch"]
           when 'update'
             execute config, ["npmDeps","fetch","transform"]
           when 'build', 'rebuild'
             execute config, ["npmDeps","fetch","transform","build"]
-          when 'all'
+          when 'make'
             execute config, ["npmDeps","fetch","transform","build","install"]
           when 'install'
             execute config, ["install"]
-          when 'db'
+          when 'ls'
             selector = {}
             if argv._[1] then selector = name: argv._[1]
             db.deps.findAsync selector
             .then (deps) -> console.log deps
-          else hello()
+          else console.log cli.manual()
       else
         switch argv._[0]
           when 'init'
@@ -296,6 +227,6 @@ module.exports = (argv, binDir, npmDir) ->
             example = argv._[1] || "served"
             fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
             .pipe fs.dest _cwd
-          when 'help', 'man', 'manual' then manual()
+          when 'help', 'man', 'manual' then console.log cli.manual()
           else
-            hello()
+            console.log cli.hello()

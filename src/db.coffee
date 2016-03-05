@@ -1,8 +1,9 @@
-Datastore = require('nedb-promise').datastore
+Datastore = require('nedb')
+Promise = require 'bluebird'
 
 module.exports = (rootDir) ->
-  collection = (name) -> new Datastore
-    filename: rootDir + "/.bbt/db/#{name}.db"
-    autoload: true
-
-  deps: collection 'deps'
+  newCollection: (name) ->
+    db = new Datastore
+      filename: rootDir + "/.bbt/db/#{name}.db"
+      autoload: true
+    Promise.promisifyAll db

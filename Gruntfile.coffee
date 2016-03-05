@@ -2,11 +2,14 @@ module.exports = (grunt) ->
   grunt.initConfig
     coffee:
       compile:
-        expand: true,
-        flatten: true,
-        cwd: "#{__dirname}/src/",
-        src: ['*.coffee'],
-        dest: 'lib/',
+        expand: true
+        options:
+          bare: true
+          sourceMap: true
+        flatten: false
+        cwd: "#{__dirname}/src/"
+        src: ['*.coffee']
+        dest: 'lib/'
         ext: '.js'
     nodeunit: files: [ 'test/**/*_test.js' ]
     jshint:

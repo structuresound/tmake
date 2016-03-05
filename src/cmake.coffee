@@ -3,28 +3,36 @@ Promise = require 'bluebird'
 fs = require './fs'
 numCPUs = require('os').cpus().length
 path = require('path')
+sh = require('shelljs')
+BuildSystem = require('cmake-js').BuildSystem
 
-module.exports = (dep, task, argv) ->
-  sh = require('./sh')(task, argv)
+spawn = require('child-process-promise').spawn
+splitargs = require('splitargs')
 
-  console.log 'cmake src dir is ', task.rootDir
+module.exports = (task, dep, argv) ->
   options =
-    directory: task.rootDir
+    directory: dep.d.root
 
-  #fs.nuke task.rootDir + '/build'
-
-  BuildSystem = require('cmake-js').BuildSystem
   buildSystem = new BuildSystem options
 
-  flags = {}
+  flags = _.extend {}, task.cmake
 
-  _.extend flags, task.cmake
+  _run = (command) ->
+    args = splitargs(command)
+    name = args[0]
+    args.splice 0, 1
+    spawn(name, args, stdio: 'inherit')
+    .progress (childProcess) ->
+      unless argv.quiet
+        childProcess?.stdout?.on 'data', (data) -> console.log data.toString()
+        childProcess?.stderr?.on 'error', (data) -> Promise.reject data.toString()
+    .fail (err) -> Promise.reject err
 
   buildSystem.cmake._run = (command) ->
     if command.indexOf('--build') != -1
       config = task.cmake?.build
       command += " -- -j#{numCPUs}"
-    else if command.indexOf('--install') != -1 then config = task.cmake?.install
+    else if command.indexOf('--install') != -1 then config = config.install
     else config = task.cmake?.configure
     # defaults =
     #   EXECUTABLE_OUTPUT_PATH: "~/bin/"
@@ -33,10 +41,11 @@ module.exports = (dep, task, argv) ->
     _.each config, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
-          value = "#{dep.rootDir}/#{value.slice(2)}"
+          value = "#{dep.d.root}/#{value.slice(2)}"
       command += " -D#{key}=#{value}"
+
     if argv.verbose then console.log("run cmake command: ", command);
-    sh.run command
+    _run command
 
   cmakeArrayToQuotedList = (array) ->
     s = ""
@@ -52,8 +61,8 @@ module.exports = (dep, task, argv) ->
               """
 
   flags = -> """\n
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-  """
+             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+             """
 
   boost = ->
     if @boost

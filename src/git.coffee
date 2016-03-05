@@ -9,40 +9,37 @@ module.exports = (dep, db) ->
     config = url: "https://github.com/#{dep.git}.git"
   else
     config = dep.git || {}
-  config.name ?= dep.name
-  config.srcDir ?= dep.cloneDir
-  config.version ?= dep.version
 
   metaPath = ->
     dep.cacheDir + '/' + 'versions'
 
   remove = ->
     new Promise (resolve) ->
-      if fs.existsSync dep.cloneDir
-        fs.nuke dep.cloneDir
+      if fs.existsSync dep.d.clone
+        fs.nuke dep.d.clone
       resolve()
 
   clone = ->
-    console.log 'cloning', config.url, 'into', dep.cloneDir
+    console.log 'cloning', config.url, 'into', dep.d.clone
     new Promise (resolve, reject) ->
-      git.clone config.url, dep.cloneDir, ->
+      git.clone config.url, dep.d.clone, ->
         db.deps.updateAsync
-          name: dep.name
-        ,
-          $set:
-            version: (config.version || "master")
             name: dep.name
-        ,
-          upsert: true
+          ,
+            $set:
+              version: (dep.version || "master")
+              name: dep.name
+          ,
+            upsert: true
         .then resolve
         .catch reject
 
   validate: ->
-    db.deps.findOneAsync {name:config.name}
+    db.deps.findOneAsync {name:dep.name}
     .then (module) ->
-      if fs.existsSync(dep.cloneDir)
-        if module?.version == (config.version || "master")
-          console.log 'using ', config.name, '@', config.version || '*'
+      if fs.existsSync(dep.d.clone)
+        if module?.version == (dep.version || "master")
+          console.log 'using ', dep.name, '@', dep.version || '*'
           return Promise.resolve()
         else
           remove()

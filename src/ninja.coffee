@@ -75,10 +75,8 @@ module.exports = (step, argv) ->
       new Promise (resolve, reject) ->
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command
-          else if stdout
-            if argv.verbose then console.log 'ninja done'
-            resolve()
-          else if stderr then reject stderr
+          else if stdout then resolve stdout
+          else if stderr then resolve stderr
 
   genBuildScript = (context, fileStream) ->
     if argv.verbose then console.log 'ninjabuild, context:', context
