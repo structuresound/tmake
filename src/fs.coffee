@@ -90,7 +90,8 @@ module.exports = (->
 
   fs.getConfigAsync = (configPath) ->
     fs.findConfigAsync configPath
-    .then (resolved) -> fs.readConfigAsync resolved
+    .then (resolved) ->
+      if resolved then fs.readConfigAsync resolved
 
   fs.findConfigAsync = (configPath) ->
     fs.existsAsync configPath

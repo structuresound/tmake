@@ -6,6 +6,7 @@ fs = require './fs'
 ps = require('promise-streams')
 numCPUs = require('os').cpus().length
 path = require('path')
+platform = require './platform'
 
 manualRebuild = ->
   new Promise (resolve, reject) ->
@@ -16,8 +17,6 @@ manualRebuild = ->
         gyp.commands.build [], resolve
 
 module.exports = (dep, argv, db, npmDir) ->
-  if argv.verbose then console.log('[   build   ]')
-
   if typeof dep.build == 'string'
     task = with: dep.build
   else
@@ -26,24 +25,9 @@ module.exports = (dep, argv, db, npmDir) ->
   buildRoot = dep.d.root
   task.target ?= task.target || 'static'
 
-  if argv.verbose then console.log 'build task:', task
-  config = task.options || {}
-
-  applyArgv = (dest) ->
-    dest ?= []
-    _.each config.flags, (value, key) ->
-      dest.push "--#{key}=#{value}"
-    _.each argv, (value, key) ->
-      return if key == '_'
-      unless _.contains dest, key
-        dest.push "--#{key}=#{value}"
-    if !config.flags?.debug then dest.push '--no-debug'
-    dest
-
   nodeGyp = ->
     defaultArgv = ['node', buildRoot, '--loglevel=silent']
     gyp_argv = defaultArgv.slice()
-    applyArgv gyp_argv
     if argv.verbose then console.log 'gyp argv:', JSON.stringify(gyp_argv, 0, 2)
     gyp.parseArgv gyp_argv
     process.chdir buildRoot
@@ -87,14 +71,18 @@ module.exports = (dep, argv, db, npmDir) ->
     headersPattern = task.headers || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
     fs.glob headersPattern, buildRoot, dep.d.source
 
+  platformSources = ->
+    if task[platform.name()] then _.union task.sources, task[platform.name()].sources
+    else task.sources
+
   globSources = ->
-    sourcesPattern = task.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
+    sourcesPattern = platformSources() || ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
     if argv.verbose then console.log 'glob src:', dep.d.source, ":/", sourcesPattern
     fs.glob sourcesPattern, buildRoot, dep.d.source
 
   globDeps = (root, stack) ->
     if root.deps
-      db.deps.findAsync
+      db.find
         name:
           $in: _.map root.deps, (dep) -> dep.name
       .then (deps) ->
@@ -162,24 +150,21 @@ module.exports = (dep, argv, db, npmDir) ->
         .then -> nodeGyp step
 
     cmake: (step) ->
+      dep.d.project = path.join dep.d.source, step.path?.CMakeLists || ""
+      dep.projectFile = path.join dep.d.project, 'CMakeLists.txt'
       cmake = require('./cmake')(step, dep, argv)
-      cmakepath = path.join buildRoot, step.path?.CMakeLists || ""
-      bindingPath = path.join cmakepath, '/CMakeLists.txt'
-      #process.chdir path.dirname dep.d.build
-      if fs.existsSync bindingPath
-        # unless fs.existsSync "#{buildRoot}/CMakeLists.txt"
-        #   fs.symlinkSync bindingPath, "#{buildRoot}/CMakeLists.txt"
-        cmake.cmake()
+      if fs.existsSync dep.projectFile
+        cmake.build()
       else
         buildContext()
         .then (context) ->
-          cmake.configure context
+          cmake.gen context
         .then (CMakeLists) ->
-          fs.writeFileAsync bindingPath, CMakeLists
+          fs.writeFileAsync dep.projectFile, CMakeLists
           .then ->
-            db.deps.updateAsync {name: dep.name}, $set: cMakeFile: bindingPath
+            db.update {name: dep.name}, $set: cMakeFile: dep.projectFile
         .then ->
-          cmake.cmake()
+          cmake.build()
 
     make: (step) ->
       dep.d.object = "#{buildRoot}/obj"
@@ -191,8 +176,7 @@ module.exports = (dep, argv, db, npmDir) ->
         Promise.reject "bbt doesn't support autogen for make yet"
 
     ninja: (step) ->
-      ninja = require('./ninja')(step,argv)
-      console.log step
+      ninja = require('./ninja')(step,dep,argv)
       bindingPath = buildRoot + '/build.ninja'
       buildContext()
       .then (context) ->
@@ -203,7 +187,7 @@ module.exports = (dep, argv, db, npmDir) ->
         file.end()
         ps.wait file
       .then ->
-        db.deps.updateAsync {name: dep.name}, $set: ninjaFile: bindingPath
+        db.update {name: dep.name}, $set: ninjaFile: bindingPath
         if argv.verbose then console.log 'build ninja @', bindingPath
         ninja.build(path.dirname bindingPath)
 
@@ -212,16 +196,19 @@ module.exports = (dep, argv, db, npmDir) ->
     libsPattern = ['**/*.a']
     if step.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
     ### WHICH BUILD SYSTEM ###
+    if argv.verbose then console.log 'build with:', resolveBuildType step
     buildWith[resolveBuildType step] step
 
   build = ->
+    if argv.verbose then console.log('[   build   ]')
+    if argv.verbose then console.log 'task:', task
+
     if task.pipeline
       new Promise (resolve, reject) ->
         task.pipeline.bind(vinylContext)()
         .on 'error', reject
         .on 'finish', resolve
-    else if task.steps
-      Promise.each task.steps, (step) -> buildStep step
+    else if task.steps then Promise.each task.steps, (step) -> buildStep step
     else buildStep task
 
-  execute: -> build().then -> db.deps.updateAsync {name: dep.name}, $set: built: true
+  execute: -> build().then -> db.update {name: dep.name}, $set: built: true

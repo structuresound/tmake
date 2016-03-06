@@ -4,48 +4,41 @@ fs = require './fs'
 numCPUs = require('os').cpus().length
 path = require('path')
 sh = require('shelljs')
-BuildSystem = require('cmake-js').BuildSystem
-
-spawn = require('child-process-promise').spawn
-splitargs = require('splitargs')
 
 module.exports = (task, dep, argv) ->
-  options =
-    directory: dep.d.root
-
-  buildSystem = new BuildSystem options
-
   flags = _.extend {}, task.cmake
 
-  _run = (command) ->
-    args = splitargs(command)
-    name = args[0]
-    args.splice 0, 1
-    spawn(name, args, stdio: 'inherit')
-    .progress (childProcess) ->
-      unless argv.quiet
-        childProcess?.stdout?.on 'data', (data) -> console.log data.toString()
-        childProcess?.stderr?.on 'error', (data) -> Promise.reject data.toString()
-    .fail (err) -> Promise.reject err
+  run = (command) ->
+    if argv.verbose then console.log("run cmake command: ", command)
+    new Promise (resolve, reject) ->
+      sh.cd dep.d.build
+      sh.exec command, (code, stdout, stderr) ->
+        if code then reject "cmake exited with code " + code + "\n" + command
+        else if stdout then resolve stdout
+        else if stderr then resolve stderr
 
-  buildSystem.cmake._run = (command) ->
-    if command.indexOf('--build') != -1
-      config = task.cmake?.build
-      command += " -- -j#{numCPUs}"
-    else if command.indexOf('--install') != -1 then config = config.install
-    else config = task.cmake?.configure
-    # defaults =
-    #   EXECUTABLE_OUTPUT_PATH: "~/bin/"
-    #   LIBRARY_OUTPUT_PATH: "~/lib/"
-    # _.extend config, defaults
+  ensureBuildFolder = -> unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
+
+  configure = ->
+    ensureBuildFolder()
+    config = _.extend
+      LIBRARY_OUTPUT_PATH: dep.d.libs
+    , task.cmake?.configure
+    command = "cmake #{dep.d.project}"
     _.each config, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
-          value = "#{dep.d.root}/#{value.slice(2)}"
+          value = "#{dep.d.home}/#{value.slice(2)}"
       command += " -D#{key}=#{value}"
+    run command
 
-    if argv.verbose then console.log("run cmake command: ", command);
-    _run command
+  build = ->
+    ensureBuildFolder()
+    run "make"
+
+  ###
+  # CONFIG GEN
+  ###
 
   cmakeArrayToQuotedList = (array) ->
     s = ""
@@ -118,180 +111,16 @@ module.exports = (task, dep, argv) ->
       target_link_libraries(${PROJECT_NAME} #{libs})
       """
 
-  buildCmake = (funcs, context) ->
+  generateLists = (funcs, context) ->
     cmake = ""
     Promise.each funcs, (fn) ->
       Promise.resolve fn.bind(context)()
       .then (val) -> if val then cmake += val
     .then -> Promise.resolve cmake
 
-  configure: (context) ->
+  gen: (context) ->
     _.extend context, task
     console.log 'cmake context', context
-    buildCmake [header, boost, includeDirectories, sources, target, link], context
+    generateLists [header, boost, includeDirectories, sources, target, link], context
 
-  cmake: ->
-    command = _.first(argv._) || "build"
-
-    ifCommand = (c, f) ->
-      if c == command
-        return f()
-      false
-
-    exitOnError = (promise) ->
-      promise.catch ->
-        process.exit 1
-
-    install = -> exitOnError buildSystem.install()
-    configure = -> exitOnError buildSystem.configure()
-
-    printConfigure = ->
-      exitOnError buildSystem.getConfigureCommand().then((command) ->
-        console.info command
-      )
-
-    build = -> exitOnError buildSystem.build()
-
-    printBuild = ->
-      exitOnError buildSystem.getBuildCommand().then((command) ->
-        console.info command
-      )
-
-    clean = -> exitOnError buildSystem.clean()
-
-    printClean = ->
-      exitOnError buildSystem.getCleanCommand().then((command) ->
-        console.info command
-      )
-
-    reconfigure = -> exitOnError buildSystem.reconfigure()
-    rebuild = -> exitOnError buildSystem.rebuild()
-    compile = -> exitOnError buildSystem.compile()
-
-    done = ifCommand("install", install);
-    done = done or ifCommand('configure', configure)
-    done = done or ifCommand('print-configure', printConfigure)
-    done = done or ifCommand('build', build)
-    done = done or ifCommand('print-build', printBuild)
-    done = done or ifCommand('clean', clean)
-    done = done or ifCommand('print-clean', printClean)
-    done = done or ifCommand('reconfigure', reconfigure)
-    done = done or ifCommand('rebuild', rebuild)
-    done = done or ifCommand('compile', compile)
-
-    if !done
-      if command
-        console.error 'COM', 'Unknown command: ' + command
-        process.exit 1
-      else
-        build()
-    done
-
-### FOR CMAKE-JS Reference
-BuildSystem = (options) ->
-  @options = options or {}
-  @options.directory = path.resolve(@options.directory or process.cwd())
-  @log = new CMLog(@options)
-  appConfig = appCMakeJSConfig(@options.directory, @log)
-  if _.isPlainObject(appConfig)
-    if _.keys(appConfig).length
-      @log.verbose 'CFG', 'Applying CMake.js config from root package.json:'
-      @log.verbose 'CFG', JSON.stringify(appConfig)
-      # Applying applications's config, if there is no explicit runtime related options specified
-      @options.runtime = @options.runtime or appConfig.runtime
-      @options.runtimeVersion = @options.runtimeVersion or appConfig.runtimeVersion
-      @options.arch = @options.arch or appConfig.arch
-  @log.verbose 'CFG', 'Build system options:'
-  @log.verbose 'CFG', JSON.stringify(@options)
-  @cmake = new CMake(@options)
-  @dist = new Dist(@options)
-  @toolset = new Toolset(@options)
-  return
-
-CMake = (options) ->
-  @options = options or {}
-  @log = new CMLog(@options)
-  @dist = new Dist(@options)
-  @projectRoot = path.resolve(@options.directory or process.cwd())
-  @workDir = path.join(@projectRoot, 'build')
-  @config = if @options.debug then 'Debug' else 'Release'
-  @buildDir = path.join(@workDir, @config)
-  @_isAvailable = null
-  @targetOptions = new TargetOptions(@options)
-  @toolset = new Toolset(@options)
-  return
-
-Toolset = (options) ->
-  @options = options or {}
-  @targetOptions = new TargetOptions(@options)
-  @generator = null
-  @cCompilerPath = null
-  @cppCompilerPath = null
-  @compilerFlags = []
-  @linkerFlags = []
-  @makePath = null
-  @log = new CMLog(@options)
-  @_initialized = false
-  return
-
-Toolset::initializePosix = (install) ->
-  # 1: Compiler
-  if !environment.isGPPAvailable and !environment.isClangAvailable
-    if environment.isOSX
-      throw new Error('C++ Compiler toolset is not available. Install Xcode Commandline Tools from Apple Dev Center, or install Clang with homebrew by invoking: \'brew install llvm --with-clang --with-asan\'.')
-    else
-      throw new Error('C++ Compiler toolset is not available. Install proper compiler toolset with your package manager, eg. \'sudo apt-get install g++\'.')
-  if @options.preferClang and environment.isClangAvailable
-    if install
-      @log.info 'TOOL', 'Using clang++ compiler, because preferClang option is set, and clang++ is available.'
-    @cppCompilerPath = 'clang++'
-    @cCompilerPath = 'clang'
-  else if @options.preferGnu and environment.isGPPAvailable
-    if install
-      @log.info 'TOOL', 'Using g++ compiler, because preferGnu option is set, and g++ is available.'
-    @cppCompilerPath = 'g++'
-    @cCompilerPath = 'gcc'
-  # 2: Generator
-  if environment.isOSX
-    if @options.preferXcode
-      if install
-        @log.info 'TOOL', 'Using Xcode generator, because preferXcode option is set.'
-      @generator = 'Xcode'
-    else if @options.preferMake and environment.isMakeAvailable
-      if install
-        @log.info 'TOOL', 'Using Unix Makefiles generator, because preferMake option is set, and make is available.'
-      @generator = 'Unix Makefiles'
-    else if environment.isNinjaAvailable
-      if install
-        @log.info 'TOOL', 'Using Ninja generator, because ninja is available.'
-      @generator = 'Ninja'
-    else
-      if install
-        @log.info 'TOOL', 'Using Unix Makefiles generator.'
-      @generator = 'Unix Makefiles'
-  else
-    if @options.preferMake and environment.isMakeAvailable
-      if install
-        @log.info 'TOOL', 'Using Unix Makefiles generator, because preferMake option is set, and make is available.'
-      @generator = 'Unix Makefiles'
-    else if environment.isNinjaAvailable
-      if install
-        @log.info 'TOOL', 'Using Ninja generator, because ninja is available.'
-      @generator = 'Ninja'
-    else
-      if install
-        @log.info 'TOOL', 'Using Unix Makefiles generator.'
-      @generator = 'Unix Makefiles'
-  # 3: Flags
-  @_setupGNUStd install
-  if environment.isOSX
-    if install
-      @log.verbose 'TOOL', 'Setting default OSX compiler flags.'
-    @compilerFlags.push '-D_DARWIN_USE_64_BIT_INODE=1'
-    @compilerFlags.push '-D_LARGEFILE_SOURCE'
-    @compilerFlags.push '-D_FILE_OFFSET_BITS=64'
-    @compilerFlags.push '-DBUILDING_NODE_EXTENSION'
-    @compilerFlags.push '-w'
-    @linkerFlags.push '-undefined dynamic_lookup'
-  return
-###
+  build: -> configure().then -> build()

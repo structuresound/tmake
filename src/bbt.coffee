@@ -7,14 +7,15 @@ path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
-defaultConfig = 'bbt.cson'
 _cwd = process.cwd()
 db = require('./db')(_cwd)
 prompt = require('./promptise')
+pgname = "dbmake"
 
 module.exports = (argv, binDir, npmDir) ->
+  defaultConfig = 'bbt.cson'
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
-  cli = require('./cli')
+  cli = require('./cli')(pgname)
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
@@ -64,6 +65,7 @@ module.exports = (argv, binDir, npmDir) ->
         lastPathComponent.slice 0, lastPathComponent.lastIndexOf '.'
 
   findDep = (name, root) ->
+    if root?.name == name then return root
     found = undefined
     _.each root.deps, (dep) ->
       unless found
@@ -79,6 +81,7 @@ module.exports = (argv, binDir, npmDir) ->
   cleanDep = (dep) ->
     console.log 'clean module', dep.name
     fs.nuke dep.d.build
+    fs.nuke path.join dep.d.root, 'temp'
     _.each dep.libs, (libFile) ->
       if fs.existsSync(libFile) then fs.unlinkSync libFile
     _.each dep.headers, (headerFile) ->
@@ -98,10 +101,7 @@ module.exports = (argv, binDir, npmDir) ->
             modifier.$unset.cMakeFile = true
             modifier.$unset.ninjaFile = true
             fs.unlinkSync buildFile
-          db.deps.updateAsync {name: dep.name}, modifier
-      else
-    else
-      db.deps.updateAsync {name: dep.name}, modifier
+    db.update {name: dep.name}, modifier
 
   execute = (config, steps) ->
     config.d = home: _cwd
@@ -150,18 +150,20 @@ module.exports = (argv, binDir, npmDir) ->
     dep.d = resolvePaths dep
     stack.push dep
     (->
-      if dep.deps then Promise.each dep.deps, (dep) ->
-        processDep dep, steps, stack
-        .then (msg) -> console.log msg
+      if dep.deps then Promise.each dep.deps, (dd) ->
+        processDep dd, steps, stack
       else Promise.resolve null
     )()
     .then ->
-      db.deps.updateAsync {name: dep.name}, {$set: dep}, {upsert: true}
+      db.update {name: dep.name}, {$set: dep}, {upsert: true}
     .then ->
-      db.deps.findOneAsync
+      db.findOne
         name: dep.name
     .then (depState) ->
-      if argv._[0] == "rebuild" || argv.force || !depState?.built
+      if (argv._[0] == "rebuild" ||
+      argv._[0] == "clean" ||
+      argv.force ||
+      !depState?.built)
         Promise.each steps, (step) ->
           if argv.verbose then console.log _.map(stack, (d) -> d.name), step
           process.chdir _cwd
@@ -173,14 +175,10 @@ module.exports = (argv, binDir, npmDir) ->
         stack.pop()
         Promise.resolve "[ CACHED: #{dep.name}]"
 
-  initDb = ->
-    db.deps = db.newCollection 'deps'
-
   run: ->
-    initDb()
     fs.getConfigAsync bbtConfigPath
     .then (config) ->
-      argv._[0] ?= 'make'
+      argv._[0] ?= 'all'
       try
         cli.parse argv
       catch e
@@ -190,14 +188,14 @@ module.exports = (argv, binDir, npmDir) ->
           when 'clean'
             depToClean = argv._[1] || config.name
             if depToClean == 'all'
-              db.deps.findAsync name: depToClean
+              db.find name: depToClean
               .then (deps) ->
                 Promise.each deps, (dep) -> execute dep, ["clean"]
               .then ->
                 fs.nuke _cwd + '/.bbt'
               console.log 'so fresh'
             else
-              db.deps.findOneAsync name: depToClean
+              db.findOne name: depToClean
               .then (dep) ->
                 if dep then execute dep, ["clean"]
                 else console.log 'didn\'t find dep for', depToClean
@@ -209,14 +207,16 @@ module.exports = (argv, binDir, npmDir) ->
             execute config, ["npmDeps","fetch","transform"]
           when 'build', 'rebuild'
             execute config, ["npmDeps","fetch","transform","build"]
-          when 'make'
+          when 'all'
             execute config, ["npmDeps","fetch","transform","build","install"]
           when 'install'
             execute config, ["install"]
+          when 'example'
+            console.log "there's already a project in this folder"
           when 'ls'
             selector = {}
             if argv._[1] then selector = name: argv._[1]
-            db.deps.findAsync selector
+            db.find selector
             .then (deps) -> console.log deps
           else console.log cli.manual()
       else
@@ -225,7 +225,9 @@ module.exports = (argv, binDir, npmDir) ->
             init()
           when 'example'
             example = argv._[1] || "served"
-            fs.src ["**/*"], cwd: path.join npmDir, "examples/#{example}"
+            examplePath = path.join npmDir, "examples/#{example}"
+            console.log 'installed', example, "type '#{pgname}' to build"
+            fs.src ["**/*"], cwd: examplePath
             .pipe fs.dest _cwd
           when 'help', 'man', 'manual' then console.log cli.manual()
           else

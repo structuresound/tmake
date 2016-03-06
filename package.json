@@ -52,7 +52,6 @@
     "gift": "^0.6.1",
     "map-stream": "0.0.6",
     "minimist": "^1.2.0",
-    "nedb": "^1.8.0",
     "nedb-promise": "^1.0.3",
     "ninja-build-gen": "^0.2.1",
     "node-gyp": "^3.1.0",

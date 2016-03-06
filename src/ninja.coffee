@@ -1,4 +1,3 @@
-os = require('os')
 ps = require('promise-streams')
 fs = require('fs')
 unzip = require('unzip')
@@ -8,34 +7,35 @@ path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
+platform = require './platform'
 
 ninjaVersion = "1.6.0"
-platformName =
-  linux: "linux"
-  darwin: "mac"
-  win32: "win"
 
-ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platformName[os.platform()]}.zip"
+ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
 ninjaPath = "#{process.cwd()}/.bbt"
 ninjaLocal = ninjaPath + "/ninja"
 
-module.exports = (step, argv) ->
+module.exports = (step, dep,argv) ->
   useSystemNinja = ->
     if step.useSystemNinja
       if sh.which 'ninja' then return "ninja"
     false
 
   getNinja = ->
-    if fs.existsSync ninjaLocal || useSystemNinja()
-      if argv.verbose then console.log 'found ninja'
-      ninjaPath = ninjaLocal || useSystemNinja
-      Promise.resolve ninjaPath
-    else
-      if argv.verbose then console.log 'fetch ninja binaries . . . '
-      ps.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
-      .then ->
-        sh.chmod "+x", "#{ninjaLocal}"
-        Promise.resolve ninjaLocal
+    ninjaExecutable = ninjaLocal || useSystemNinja()
+    fs.existsAsync ninjaExecutable
+    .then (exists) ->
+      if exists
+        if argv.verbose then console.log 'found ninja'
+        Promise.resolve ninjaExecutable
+      else
+        if argv.verbose then console.log 'fetch ninja binaries . . . '
+        ps.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
+        .then ->
+          if argv.verbose then console.log 'installed . . . chmod'
+          sh.chmod "+x", "#{ninjaLocal}"
+          if argv.verbose then console.log '. . . ninja installed'
+          Promise.resolve ninjaLocal
 
   stdOptions =
     O2: true
@@ -70,9 +70,10 @@ module.exports = (step, argv) ->
     flags
 
   build = (dir) ->
-    getNinja().then (ninjaPath) ->
+    getNinja()
+    .then (ninjaPath) ->
       command = "#{ninjaPath} -C #{dir}"
-      new Promise (resolve, reject) ->
+      return new Promise (resolve, reject) ->
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command
           else if stdout then resolve stdout
@@ -111,8 +112,9 @@ module.exports = (step, argv) ->
       ninjaConfig.edge('build/' + name + '.o').from(filePath).using("compile")
 
     linkInput = linkNames.join(" ")
-    ninjaConfig.edge('build/lib' + step.name + '.a').from(linkInput).using("link")
+    ninjaConfig.edge('build/lib' + dep.name + '.a').from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 
   configure: genBuildScript
   build: build
+  getNinja: getNinja

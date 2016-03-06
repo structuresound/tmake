@@ -23,7 +23,7 @@ module.exports = (dep, db) ->
     console.log 'cloning', config.url, 'into', dep.d.clone
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, ->
-        db.deps.updateAsync
+        db.update
             name: dep.name
           ,
             $set:
@@ -35,7 +35,7 @@ module.exports = (dep, db) ->
         .catch reject
 
   validate: ->
-    db.deps.findOneAsync {name:dep.name}
+    db.findOne {name:dep.name}
     .then (module) ->
       if fs.existsSync(dep.d.clone)
         if module?.version == (dep.version || "master")

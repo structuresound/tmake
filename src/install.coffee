@@ -43,7 +43,7 @@ module.exports = (dep, argv, db) ->
         unless argv.quiet then console.log 'install static lib', path.relative file.cwd, file.path
         file.base = path.dirname file.path
         console.log file.base
-        db.deps.updateAsync name: dep.name,
+        db.update name: dep.name,
           $addToSet: libs: dep.d.lib + '/' + path.relative file.base, file.path
         .then -> emit(null, file)
       .pipe @dest dep.d.lib
@@ -54,7 +54,7 @@ module.exports = (dep, argv, db) ->
       @src patterns, cwd: dep.d.source
       .pipe @map (file, emit) ->
         unless argv.quiet then console.log 'install header', path.relative file.cwd, file.path
-        db.deps.updateAsync name: dep.name,
+        db.update name: dep.name,
           $addToSet: headers: dep.d.include + '/' + path.relative file.base, file.path
         .then -> emit(null, file)
       .pipe @dest dep.d.include
