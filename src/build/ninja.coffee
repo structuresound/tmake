@@ -1,13 +1,13 @@
 ps = require('promise-streams')
-fs = require('fs')
 unzip = require('unzip')
 request = require('request-promise')
-numCPUs = require('os').cpus().length
 path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-platform = require './platform'
+
+platform = require '../platform'
+fs = require('../fs')
 
 ninjaVersion = "1.6.0"
 
@@ -15,9 +15,9 @@ ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersi
 ninjaPath = "#{process.cwd()}/.bbt"
 ninjaLocal = ninjaPath + "/ninja"
 
-module.exports = (step, dep,argv) ->
+module.exports = (task, dep, argv) ->
   useSystemNinja = ->
-    if step.useSystemNinja
+    if task.useSystemNinja
       if sh.which 'ninja' then return "ninja"
     false
 
@@ -70,10 +70,10 @@ module.exports = (step, dep,argv) ->
     flags
 
   build = (dir) ->
-    getNinja()
-    .then (ninjaPath) ->
-      command = "#{ninjaPath} -C #{dir}"
-      return new Promise (resolve, reject) ->
+    new Promise (resolve, reject) ->
+      getNinja()
+      .then (ninjaPath) ->
+        command = "#{ninjaPath} -C #{dir}"
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command
           else if stdout then resolve stdout
@@ -90,8 +90,8 @@ module.exports = (step, dep,argv) ->
 
     cc = context.compiler or "gcc"
 
-    compileCommand = "#{cc} -MMD -MF $out.d#{jsonToCflags step.cflags} -c $in -o $out #{includeString}"
-    linkCommand = "ar rv $out $in#{jsonToLDFlags step.ldflags}"
+    compileCommand = "#{cc} -MMD -MF $out.d#{jsonToCflags context.cflags} -c $in -o $out #{includeString}"
+    linkCommand = "ar rv $out $in#{jsonToLDFlags context.ldflags}"
 
     ninjaConfig
     .rule 'compile'
@@ -115,6 +115,6 @@ module.exports = (step, dep,argv) ->
     ninjaConfig.edge('build/lib' + dep.name + '.a').from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 
-  configure: genBuildScript
+  generate: genBuildScript
   build: build
   getNinja: getNinja

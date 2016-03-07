@@ -29,8 +29,7 @@ module.exports = (p) ->
       typeName: "optional"
       description: ["copy an #{c.y "example"} to the current directory","the default is a c++11 http server: #{c.y "served"}"]
     ls: packageCommand "list state of a #{c.y "package"} from the local #{p} database"
-    install:
-      description: "copy libs and headers to destination"
+    install: packageCommand description: "copy libs and headers to destination"
     all: packageCommand "fetch, update, build, install"
     fetch: packageCommand "git / get dependencies for all or #{c.y "package"}"
     build: packageCommand "build this project or dependency #{c.y "package"}"

@@ -8,4 +8,5 @@ module.exports = (->
     win32: "win"
 
   name: -> platformName[os.platform()]
+  j: -> os.cpus().length
 )()

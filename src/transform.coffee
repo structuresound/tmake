@@ -32,4 +32,7 @@ module.exports = (dep, argv, db) ->
       .on 'end', resolve
       .on 'error', reject
 
-  execute: -> transform().then -> db.update {name: dep.name}, $set: transformed: true
+  execute: -> transform().then ->
+    db.update name: dep.name, 
+      $set: transformed: true
+    , {}

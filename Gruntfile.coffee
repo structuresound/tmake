@@ -8,7 +8,7 @@ module.exports = (grunt) ->
           sourceMap: true
         flatten: false
         cwd: "#{__dirname}/src/"
-        src: ['*.coffee']
+        src: ['**/*.coffee']
         dest: 'lib/'
         ext: '.js'
     nodeunit: files: [ 'test/**/*_test.js' ]
@@ -18,7 +18,7 @@ module.exports = (grunt) ->
       test: src: [ 'test/**/*.js' ]
     watch:
       coffee:
-        files: 'src/*.coffee'
+        files: 'src/**/*.coffee'
         tasks: [ 'coffee', 'jshint' ]
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'

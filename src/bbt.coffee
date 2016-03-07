@@ -1,4 +1,4 @@
-require('source-map-support').install()
+`require('source-map-support').install()`
 coffee = require('coffee-script')
 _ = require('underscore')
 Promise = require("bluebird")
@@ -7,15 +7,26 @@ path = require('path')
 fs = require('./fs')
 require('./string')
 npm = require("npm")
-_cwd = process.cwd()
-db = require('./db')(_cwd)
-prompt = require('./promptise')
+prompt = require('./prompt')
 pgname = "dbmake"
 
+deepObjectExtend = (target, source) ->
+  for prop of source
+    if source.hasOwnProperty(prop)
+      if target[prop] and typeof source[prop] == 'object'
+        deepObjectExtend target[prop], source[prop]
+      else
+        target[prop] = source[prop]
+  target
+
 module.exports = (argv, binDir, npmDir) ->
+  _cwd = process.cwd()
+  db = require('./db')(_cwd)
+  cli = require('./cli')(pgname)
+  graph = require('./graph')(db)
+
   defaultConfig = 'bbt.cson'
   bbtConfigPath = _cwd + '/' + (argv.config || defaultConfig)
-  cli = require('./cli')(pgname)
 
   init = ->
     unless fs.existsSync(bbtConfigPath)
@@ -52,7 +63,7 @@ module.exports = (argv, binDir, npmDir) ->
 
     transform: (dep) ->
       if dep.transform then require('./transform')(dep, argv, db).execute()
-    build: (dep) -> require('./build')(dep, argv, db, npmDir).execute()
+    build: (dep) -> require('./build/build')(dep, argv, db, npmDir).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
 
@@ -101,10 +112,12 @@ module.exports = (argv, binDir, npmDir) ->
             modifier.$unset.cMakeFile = true
             modifier.$unset.ninjaFile = true
             fs.unlinkSync buildFile
-    db.update {name: dep.name}, modifier
+    db.update {name: dep.name}, modifier, {}
 
   execute = (config, steps) ->
-    config.d = home: _cwd
+    config.d =
+      root: _cwd
+      clone: _cwd
     if argv._[1]
       dep = findDep argv._[1], config
       if dep then config = dep
@@ -115,34 +128,49 @@ module.exports = (argv, binDir, npmDir) ->
       console.log '[ done !!! ]'
 
   resolvePaths = (dep) ->
-    defaultPathOptions = _.extendOwn
+    defaultPathOptions =
       source: ""
       headers: ""
       tests: "test"
-      clone: "src"
-      build: "build"
-      libs: "lib"
-      install: ""
+      clone: "source"
       temp: "transform"
-      include: "include"
-    , dep.path || {}
+      build: "build"
+      include: ""
+      project: ""
+      install:
+        headers:
+          from: ""
+          to: "include"
+        libraries:
+          from: "build"
+          to: "libraries"
 
-    pathOptions = _.extendOwn defaultPathOptions, argv
+    pathOptions = deepObjectExtend defaultPathOptions, dep.path
 
     d = _.extend {}, dep.d
 
-    d.home ?= "#{_cwd}/.bbt"
-    d.root ?= "#{d.home}/#{dep.name}"
+    # fetch
+    d.home ?= "#{_cwd}/.bbt" # reference for build tools, should probably remove
+    d.root ?= "#{d.home}/#{dep.name}" # lowest level a package should have access to
     d.temp ?= path.join d.root, pathOptions.temp
     d.clone ?= path.join d.root, pathOptions.clone
+    # build
     if dep.transform
       d.source = path.join d.temp, pathOptions.source
     else
       d.source = path.join d.clone, pathOptions.source
+    d.project = path.join d.root, pathOptions.project
+    d.include ?= path.join d.source, pathOptions.include
     d.build ?= path.join d.root, pathOptions.build
-    d.lib ?= path.join d.root, pathOptions.libs
-    d.include ?= path.join d.root, pathOptions.include
-    d.install ?= path.join d.home, pathOptions.install
+    # install
+    d.install =
+      headers:
+        from: path.join d.source, pathOptions.install.headers.from
+        to: path.join d.root, pathOptions.install.headers.to
+      libraries:
+        from: path.join d.root, pathOptions.install.libraries.from
+        to: path.join d.root, pathOptions.install.libraries.to
+    console.log d
     d
 
   processDep = (dep, steps, stack) ->

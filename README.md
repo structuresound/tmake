@@ -8,12 +8,14 @@ buildless build tool can:
 
 ## REQUIREMENTS
 
+Trying to make this as automatic as possible
+
 * nodejs - https://nodejs.org/en/
   * it is built in node
   * https://www.google.com/search?client=safari&rls=en&q=install+nodejs&ie=UTF-8&oe=UTF-8
-* cmake - https://cmake.org
-  * if you're going to build anything with cmake
-  * https://www.google.com/search?client=safari&rls=en&q=install+cmake&ie=UTF-8&oe=UTF-8
+* build tools
+  * ninja - will be automatically installed locally
+  * cmake - https://cmake.org https://www.google.com/search?client=safari&rls=en&q=install+cmake&ie=UTF-8&oe=UTF-8
 * some build tools i.e.
   * xcode on mac
   * build-essentials on linux
@@ -43,66 +45,64 @@ bbt
 curl http://127.0.0.1:8080/hello
 ```
 
-## What does that last script do?
+## What's the build file look like?
 
-running 'bbt example' will copy in something like this
+this would package google's re2 library
 
-bbt.coffee
 ```coffee
-name: "test_server"
+git: "google/re2"
 build:
-  with: "cmake"
-  target: "bin"
-  boost: libs: ["asio", "system"]
+  sources: ["re2/*.cc", "util/*.cc"]
+  linux: sources: ["!util/threadwin.cc"]
+  mac: sources: ["!util/threadwin.cc"]
+  with: "ninja"
+  target: "static"
+  cflags:
+    O3: 1
+    std: "c++11"
+    g: 1
+    pthread: 1
+    Wall: 1
+    Wextra: 1
+    "Wno-unused-parameter": 1
+    "Wno-missing-field-initializers": 1
+```
+
+## Use a dependency
+
+To depend on that re2 lib?
+
+```coffee
+name: myProject
+sources: ["src/*.cpp"]
+build: with: "ninja"
 deps: [
-  git: "datasift/served"
-  build:
-    cmake:
-      configure:
-        RE2_LIBRARY: "~/lib/libre2.a"
-        RE2_INCLUDE_DIR: "~/include"
-        SERVED_BUILD_STATIC: "ON"
-        SERVED_BUILD_TESTS: "OFF"
-        SERVED_BUILD_SHARED: "OFF"
-  install:
-    headersPath: 'src'
-    libPath: 'lib'
-  deps: [
-    git: "google/re2"
-    build: "make"
-  ]
+  db: "google/re2"
+  build: cflags: linux: Wall: 0 #override something on our dep
 ]
 ```
-src/main.cpp
-```cpp
-#include <served/served.hpp>
 
-int main(int argc, char const* argv[]) {
-    // Create a multiplexer for handling requests
-    served::multiplexer mux;
+## Reasons
 
-    // GET /hello
-    mux.handle("/hello")
-        .get([](served::response & res, const served::request & req) {
-            res << "Hello world!";
-        });
+* native code can run fast, let's make it easy to share and build
 
-    // Create the server and run with 10 handler threads.
-    served::net::server server("127.0.0.1", "8080", mux);
-    server.run(10);
+# standing on shoulders
 
-    return (EXIT_SUCCESS);
-}
-```
+* structured tree as configuration file (json)
+* export to a fast build system (cmake -> ninja)
+* lint / test packages as part of the contribute process (cocoapods)
+* transform existing files using globs and streams (gulp / vinyl fs)
+* flat dependencies / shallow trees (npm)
+* no non-expiring caches locally (docker)
 
-## Reasons this might be a good idea?
+## philosophies
 
-* because the node-js ecosystem is inspiring and there should be something like it for c++
-* because existing tools that make it convenient to build c++ apps usually giant frameworks that are mutually incompatible, and / or poorly user extensible
-* because json is a nice way to config your deps
-* because deps should be continuously tested
-* because any cloud vm should be able to run your builds too
-* because gulp makes it easy to transform existing repos
+* structured data, easy to override anything all the way up a dependency tree
+* overrides using css style selectors, swap object keys for classes
+* support other build tools
+* be embeddable in another project / build system
+* no globals, where possible - project folder is the universe
+* not a bitcoin miner, let's cache some things
 
 ## Contributing
 This tool is currently experimental, and possibly not useful, examine at your own risk.

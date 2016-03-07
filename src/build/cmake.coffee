@@ -1,6 +1,6 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require './fs'
+fs = require '../fs'
 numCPUs = require('os').cpus().length
 path = require('path')
 sh = require('shelljs')
@@ -22,7 +22,7 @@ module.exports = (task, dep, argv) ->
   configure = ->
     ensureBuildFolder()
     config = _.extend
-      LIBRARY_OUTPUT_PATH: dep.d.libs
+      LIBRARY_OUTPUT_PATH: dep.d.lib
     , task.cmake?.configure
     command = "cmake #{dep.d.project}"
     _.each config, (value, key) ->
@@ -112,15 +112,15 @@ module.exports = (task, dep, argv) ->
       """
 
   generateLists = (funcs, context) ->
-    cmake = ""
+    list = ""
     Promise.each funcs, (fn) ->
       Promise.resolve fn.bind(context)()
-      .then (val) -> if val then cmake += val
-    .then -> Promise.resolve cmake
+      .then (val) -> if val then list += val
+    .then ->
+      Promise.resolve list
 
-  gen: (context) ->
+  generate: (context) ->
     _.extend context, task
-    console.log 'cmake context', context
     generateLists [header, boost, includeDirectories, sources, target, link], context
 
   build: -> configure().then -> build()
