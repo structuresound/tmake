@@ -63,7 +63,11 @@ module.exports = (argv, binDir, npmDir) ->
 
     transform: (dep) ->
       if dep.transform then require('./transform')(dep, argv, db).execute()
-    build: (dep) -> require('./build/build')(dep, argv, db, npmDir).execute()
+    configure: (dep) ->
+      require('./build/configure')(dep, argv, db, npmDir).execute()
+    build: (dep) ->
+      configure = require('./build/configure')(dep, argv, db, npmDir)
+      require('./build/build')(dep, argv, db, configure).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
 
@@ -231,14 +235,16 @@ module.exports = (argv, binDir, npmDir) ->
             console.log 'not implemented' #upload()
           when 'fetch'
             execute config, ["npmDeps","fetch"]
-          when 'update'
+          when 'transform'
             execute config, ["npmDeps","fetch","transform"]
+          when 'configure'
+            execute config, ["npmDeps","fetch","transform","configure"]
           when 'build', 'rebuild'
-            execute config, ["npmDeps","fetch","transform","build"]
-          when 'all'
-            execute config, ["npmDeps","fetch","transform","build","install"]
+            execute config, ["build"]
           when 'install'
             execute config, ["install"]
+          when 'all'
+            execute config, ["npmDeps","fetch","transform","configure","build","install"]
           when 'example'
             console.log "there's already a project in this folder"
           when 'ls'

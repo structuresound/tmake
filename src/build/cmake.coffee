@@ -6,8 +6,6 @@ path = require('path')
 sh = require('shelljs')
 
 module.exports = (task, dep, argv) ->
-  flags = _.extend {}, task.cmake
-
   run = (command) ->
     if argv.verbose then console.log("run cmake command: ", command)
     new Promise (resolve, reject) ->
@@ -22,7 +20,7 @@ module.exports = (task, dep, argv) ->
   configure = ->
     ensureBuildFolder()
     config = _.extend
-      LIBRARY_OUTPUT_PATH: dep.d.lib
+      LIBRARY_OUTPUT_PATH: dep.d.install.libraries.from
     , task.cmake?.configure
     command = "cmake #{dep.d.project}"
     _.each config, (value, key) ->
@@ -52,10 +50,6 @@ module.exports = (task, dep, argv) ->
               cmake_minimum_required(VERSION #{@cmake?.minimumVersion || 3.1})
               project(#{@name} VERSION #{@version || '0.0.1'})
               """
-
-  flags = -> """\n
-             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-             """
 
   boost = ->
     if @boost
@@ -91,6 +85,11 @@ module.exports = (task, dep, argv) ->
         set(SOURCE_FILES #{cmakeArrayToQuotedList @sources})
         """
 
+
+  flags = -> """\n
+             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cflags}")
+             """
+
   target = ->
     switch @target
       when 'static'
@@ -121,6 +120,7 @@ module.exports = (task, dep, argv) ->
 
   generate: (context) ->
     _.extend context, task
-    generateLists [header, boost, includeDirectories, sources, target, link], context
+    generateLists [header, boost, includeDirectories, sources, flags, target, link], context
 
+  configure: -> configure()
   build: -> configure().then -> build()

@@ -5,10 +5,16 @@ build:
   boost: libs: ["asio", "system"]
 deps: [
   git: "datasift/served"
+  path:
+    project: "source"
+    install:
+      libraries: from: "source/lib"
+      headers: from: "src"
   build:
+    with: "cmake" # with is optional if name is present as a key
     cmake:
       configure:
-        RE2_LIBRARY: "~/re2/lib/libre2.a"
+        RE2_LIBRARY: "~/re2/libraries/libre2.a"
         RE2_INCLUDE_DIR: "~/re2/include"
         SERVED_BUILD_STATIC: "ON"
         SERVED_BUILD_TESTS: "OFF"
@@ -17,10 +23,10 @@ deps: [
   deps: [
     git: "google/re2"
     build:
-      sources: ["re2/*.cc", "util/*.cc"]
-      linux: sources: ["!util/threadwin.cc"]
-      mac: sources: ["!util/threadwin.cc"]
       with: "ninja"
+      sources: matching: ["re2/*.cc", "util/*.cc"]
+      linux: sources: matching: ["!util/threadwin.cc"]
+      mac: sources: matching: ["!util/threadwin.cc"]
       target: "static"
       cflags:
         O3: 1

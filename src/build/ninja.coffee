@@ -37,43 +37,12 @@ module.exports = (task, dep, argv) ->
           if argv.verbose then console.log '. . . ninja installed'
           Promise.resolve ninjaLocal
 
-  stdOptions =
-    O2: true
-    std: "c++11"
-    stdlib: "libc++"
-
-  jsonToCflags = (pkgOptions) ->
-    options = _.extend stdOptions, pkgOptions
-
-    if options.O3
-      options.O2 = false
-    if options.O3 or options.O2
-      options.O1 = false
-    if options.O3 or options.O2 or options.O1
-      options.Os = false
-    if options.O3 or options.O2 or options.O1 or options.Os
-      options.O0 = false
-
-    jsonToFlags options
-
-  jsonToLDFlags = (pkgOptions) ->
-    options = pkgOptions || {}
-    jsonToFlags options
-
-  jsonToFlags = (json) ->
-    flags = ""
-    _.each json, (opt, key) ->
-      if typeof opt == 'string'
-        flags += " -#{key}=#{opt}"
-      else if opt
-        flags += " -#{key}"
-    flags
-
-  build = (dir) ->
+  build = ->
     new Promise (resolve, reject) ->
       getNinja()
       .then (ninjaPath) ->
-        command = "#{ninjaPath} -C #{dir}"
+        directory = path.dirname dep.buildFile
+        command = "#{ninjaPath} -C #{directory}"
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command
           else if stdout then resolve stdout
@@ -90,8 +59,8 @@ module.exports = (task, dep, argv) ->
 
     cc = context.compiler or "gcc"
 
-    compileCommand = "#{cc} -MMD -MF $out.d#{jsonToCflags context.cflags} -c $in -o $out #{includeString}"
-    linkCommand = "ar rv $out $in#{jsonToLDFlags context.ldflags}"
+    compileCommand = "#{cc} -MMD -MF $out.d #{context.cflags} -c $in -o $out #{includeString}"
+    linkCommand = "ar rv $out $in #{context.ldflags}"
 
     ninjaConfig
     .rule 'compile'
@@ -116,5 +85,6 @@ module.exports = (task, dep, argv) ->
     ninjaConfig.saveToStream fileStream
 
   generate: genBuildScript
+  configure: -> return undefined
   build: build
   getNinja: getNinja

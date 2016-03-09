@@ -19,7 +19,6 @@ module.exports = (dep, argv, db) ->
   task = dep.install || {}
 
   installLibs = ->
-    libPath = dep.d.build
     if argv.verbose then console.log '[ install libs ] from', dep.d.install.libraries.from, 'to', dep.d.install.libraries.to
     patterns = task.libraries?.matching || ['**/*.a']
     if task.type == 'dynamic' then patterns = task.libraries.matching || ['**/*.dylib', '**/*.so', '**/*.dll']

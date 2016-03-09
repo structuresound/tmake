@@ -2,8 +2,6 @@ check = require './check'
 _ = require('underscore')
 colors = require ('chalk')
 
-
-
 module.exports = (p) ->
   _.mixin 'sortKeysBy': (obj, comparator) ->
     keys = _.sortBy(_.keys(obj), (key) ->
@@ -32,6 +30,7 @@ module.exports = (p) ->
     install: packageCommand description: "copy libs and headers to destination"
     all: packageCommand "fetch, update, build, install"
     fetch: packageCommand "git / get dependencies for all or #{c.y "package"}"
+    configure: packageCommand "configure build system #{c.y "package"}"
     build: packageCommand "build this project or dependency #{c.y "package"}"
     rebuild: packageCommand "ignore cache, and rebuild this project or #{c.y "dependency"}"
     push: description: "upload the current config file to the #{p} package repository"
