@@ -189,7 +189,9 @@ module.exports = (argv, binDir, npmDir) ->
     .then ->
       db.update {name: dep.name}, {$set: dep}, {upsert: true}
     .then ->
-      if (argv._[0] == "clean" || argv.force)
+      db.findOne {name: dep.name}
+    .then (dbDep) ->
+      if (!dbDep.cached || argv._[0] == "clean" || argv.force)
         Promise.each steps, (step) ->
           if argv.verbose then console.log _.map(stack, (d) -> d.name), step
           process.chdir _cwd

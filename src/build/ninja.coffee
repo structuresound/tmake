@@ -52,9 +52,9 @@ module.exports = (task, dep, argv) ->
     if argv.verbose then console.log colors.green('configure ninja with context:'), context
     getRule = (ext) ->
       switch ext
-        when "cpp", "cc" then "cc"
-        when "c" then "c"
-        else "cc"
+        when ".cpp", ".cc" then "cxx"
+        when ".c" then "c"
+        else throw "unknown extension, no coresponding ninja rule"
     ninjaConfig = require('ninja-build-gen')(ninjaVersion, 'build')
     includeString = " -I" + context.includeDirs.join(" -I")
 
@@ -86,10 +86,7 @@ module.exports = (task, dep, argv) ->
       ext = path.extname filePath
       name = path.basename filePath, ext
       linkNames.push 'build/' + name + '.o'
-      if ext = 'c'
-        ninjaConfig.edge('build/' + name + '.o').from(filePath).using("c")
-      else if _.contains ['cc', 'cpp'], ext
-        ninjaConfig.edge('build/' + name + '.o').from(filePath).using("cxx")
+      ninjaConfig.edge('build/' + name + '.o').from(filePath).using(getRule ext)
 
     linkInput = linkNames.join(" ")
     ninjaConfig.edge('build/lib' + dep.name + '.a').from(linkInput).using("link")

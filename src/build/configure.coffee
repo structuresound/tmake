@@ -125,41 +125,42 @@ module.exports = (dep, argv, db, npmDir) ->
         .value()
         resolve context
 
+  buildFilePath = (systemName) ->
+    buildFileNames =
+      ninja: 'build.ninja'
+      cmake: 'CMakeLists.txt'
+      gyp: 'binding.gyp'
+      make: 'Makefile'
+    path.join dep.d.project, buildFileNames[systemName]
+
   configureFor = (systemName) ->
     configure = (context) -> console.log colors.red context; Promise.reject "no build system specified or found"
 
-    switch systemName
-      when 'ninja'
-        dep.buildFile = path.join dep.d.project, 'build.ninja'
-        configure = (context) ->
-          file = fs.createWriteStream(dep.buildFile)
-          require('./ninja')(task, dep,argv).generate context, file
-          file.end()
-          ps.wait file
-      when 'cmake'
-        dep.buildFile = path.join dep.d.project, 'CMakeLists.txt'
-        configure = (context) ->
-          require('./cmake')(task, dep, argv).generate context
-          .then (CMakeLists) ->
-            fs.writeFileAsync dep.buildFile, CMakeLists
-      when 'gyp'
-        dep.buildFile = path.join dep.d.project, 'binding.gyp'
-        configure = (context) ->
-          require('./gyp')(task, dep, argv).generate context
-          .then (binding) ->
-            if argv.verbose then console.log 'node-gyp:', dep.buildFile, JSON.stringify(binding, 0, 2)
-            fs.writeFileAsync dep.buildFile, JSON.stringify(binding, 0, 2)
-      when 'make'
-        dep.buildFile = path.join dep.d.project, 'Makefile'
-        configure = (context) ->
-          require('./make')(context).generate context
-
+    dep.buildFile ?= buildFilePath systemName
     fs.existsAsync dep.buildFile
     .then (exists) ->
       if (!exists || argv.force)
         createContext()
         .then (context) ->
-          configure context
+          switch systemName
+            when 'ninja'
+              file = fs.createWriteStream(dep.buildFile)
+              require('./ninja')(task, dep,argv).generate context, file
+              file.end()
+              ps.wait file
+            when 'cmake'
+              require('./cmake')(task, dep, argv).generate context
+              .then (CMakeLists) ->
+                fs.writeFileAsync dep.buildFile, CMakeLists
+            when 'gyp'
+              require('./gyp')(task, dep, argv).generate context
+              .then (binding) ->
+                if argv.verbose then console.log 'node-gyp:', dep.buildFile, JSON.stringify(binding, 0, 2)
+                fs.writeFileAsync dep.buildFile, JSON.stringify(binding, 0, 2)
+            when 'make'
+              require('./make')(context).generate context
+              .then (Makefile) ->
+                fs.writeFileAsync dep.buildFile, JSON.stringify(Makefile, 0, 2)
         .then ->
           db.update {name: dep.name}, {$set: {buildFile: dep.buildFile}}, {}
       else Promise.resolve dep.buildFile
