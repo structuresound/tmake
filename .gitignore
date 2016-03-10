@@ -1,4 +1,5 @@
 /lib
-.bbt
+/.bbt
 node_modules
 /bbt.coffee
+.DS_Store
