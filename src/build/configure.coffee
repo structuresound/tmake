@@ -25,39 +25,49 @@ module.exports = (dep, argv, db, npmDir) ->
 
   reduceGlobs = (base, defaults) ->
     crossPlatform = task[base]?.matching || defaults
-    if task[platform.name()]?[base]?.matching then ptr = _.union crossPlatform, task[platform.name()].sources.matching
+    if task[platform.name()]?[base]?.matching then ptr = _.union crossPlatform, task[platform.name()][base].matching
     else crossPlatform
 
-  platformSources = ->
-    if task[platform.name()]?.sources?.matching then _.union task.sources.matching, task[platform.name()].sources.matching
-    else task.sources.matching
-
   globHeaders = ->
-    ptr = reduceGlobs 'headers', ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
-    fs.glob ptr, dep.d.root, dep.d.source
+    patterns = reduceGlobs 'headers', ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
+    fs.glob patterns, dep.d.root, dep.d.source
 
   globSources = ->
-    ptr = reduceGlobs 'sources', ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
-    if argv.verbose then console.log 'glob src:', dep.d.source, ":/", ptr
-    fs.glob ptr, dep.d.root, dep.d.source
+    patterns = reduceGlobs 'sources', ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
+    if argv.verbose then console.log 'glob src:', dep.d.source, ":/", patterns
+    fs.glob patterns, dep.d.root, dep.d.source
 
   globDeps = ->
     graph.deps dep
 
   stdCFlags =
-    O2: 1
+    O: 2
+
+  stdCxxFlags =
+    O: 2
     std: "c++11"
     stdlib: "libc++"
 
   jsonToCFlags = (options) ->
+    jsonToCxxFlags _.omit options, ['std','stdlib']
+
+  jsonToCxxFlags = (options) ->
+    if options.O
+      switch options.O
+        when 3, "3" then options.O3 = true
+        when 2, "2" then options.O2 = true
+        when 2, "1" then options.O1 = true
+        when 2, "0" then options.O0 = true
+        when 2, "s" then options.Os = true
+      delete options.O
     if options.O3
-      options.O2 = false
+      delete options.O2
     if options.O3 or options.O2
-      options.O1 = false
+      delete options.O1
     if options.O3 or options.O2 or options.O1
-      options.Os = false
+      delete options.Os
     if options.O3 or options.O2 or options.O1 or options.Os
-      options.O0 = false
+      delete options.O0
 
     jsonToFlags options
 
@@ -85,10 +95,10 @@ module.exports = (dep, argv, db, npmDir) ->
         else if task.cmake then "cmake"
         else if task.gyp then "gyp"
         else if task.make then "make"
-        else if fs.existsSync dep.d.clone + '/build.ninja' then "ninja"
-        else if fs.existsSync dep.d.clone + '/CMakeLists.txt' then "cmake"
-        else if fs.existsSync dep.d.clone + '/binding.gyp' then "gyp"
-        else if fs.existsSync dep.d.clone + '/Makefile' then "make"
+        else if fs.existsSync dep.d.project + '/build.ninja' then "ninja"
+        else if fs.existsSync dep.d.project + '/CMakeLists.txt' then "cmake"
+        else if fs.existsSync dep.d.project + '/binding.gyp' then "gyp"
+        else if fs.existsSync dep.d.project + '/Makefile' then "make"
         else Promise.reject "bbt can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
 
   createContext = ->
@@ -96,8 +106,9 @@ module.exports = (dep, argv, db, npmDir) ->
       context =
         name: dep.name
         npmDir: npmDir
-        cflags: jsonToCFlags task.cflags || stdCFlags
-        ldflags: jsonToLDFlags task.ldflags
+        cFlags: jsonToCFlags task.cFlags || stdCFlags
+        cxxFlags: jsonToCxxFlags task.cxxFlags || stdCxxFlags
+        ldFlags: jsonToLDFlags task.ldFlags
       globHeaders()
       .then (headers) ->
         context.headers = headers
@@ -145,12 +156,13 @@ module.exports = (dep, argv, db, npmDir) ->
 
     fs.existsAsync dep.buildFile
     .then (exists) ->
-      if !exists || argv.force
+      if (!exists || argv.force)
         createContext()
         .then (context) ->
           configure context
         .then ->
           db.update {name: dep.name}, {$set: {buildFile: dep.buildFile}}, {}
+      else Promise.resolve dep.buildFile
 
   resolveBuildSystem: resolveBuildSystem
   getContext: -> createContext()

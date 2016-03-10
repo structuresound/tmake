@@ -4,6 +4,7 @@ fs = require '../fs'
 numCPUs = require('os').cpus().length
 path = require('path')
 sh = require('shelljs')
+colors = require ('chalk')
 
 module.exports = (task, dep, argv) ->
   run = (command) ->
@@ -79,16 +80,15 @@ module.exports = (task, dep, argv) ->
         """
 
   sources = ->
-    switch @target
-      when 'static', 'dynamic', 'bin', 'node'
-        """\n
-        set(SOURCE_FILES #{cmakeArrayToQuotedList @sources})
-        """
+    """\n
+    set(SOURCE_FILES ${$SOURCE_FILES} #{cmakeArrayToQuotedList @sources})
+    """
 
-
-  flags = -> """\n
-             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cflags}")
-             """
+  flags = ->
+    """\n
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cxxFlags}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} #{@cFlags}")
+    """
 
   target = ->
     switch @target
@@ -119,8 +119,9 @@ module.exports = (task, dep, argv) ->
       Promise.resolve list
 
   generate: (context) ->
-    _.extend context, task
-    generateLists [header, boost, includeDirectories, sources, flags, target, link], context
+    if argv.verbose then console.log colors.green('configure cmake with context:'), JSON.stringify context,0,2
+    ctx = _.extend task, context
+    generateLists [header, boost, includeDirectories, sources, flags, target, link], ctx
 
   configure: -> configure()
   build: -> configure().then -> build()

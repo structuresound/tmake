@@ -4,6 +4,8 @@ path = require('path')
 _ = require 'underscore'
 ps = require('promise-streams')
 CSON = require('cson')
+glob = require('glob-all')
+check = require('./check')
 
 module.exports = (->
   fs.nuke = (path) ->
@@ -38,14 +40,6 @@ module.exports = (->
   fs.map = require 'map-stream'
   fs.src = fs.vinyl.src
   fs.dest = fs.vinyl.dest
-  fs.glob = (srcPattern, relative, cwd) ->
-    list = []
-    ps.wait(fs.vinyl.src(srcPattern, cwd: cwd)
-    .pipe fs.map (file, cb) ->
-      if relative then list.push path.relative(relative || '/', file.path)
-      else list.push file.path
-      cb null, file
-    ).then -> list
 
   fs.fileStreamPromise = (file) ->
     ps.wait(file)
@@ -54,6 +48,21 @@ module.exports = (->
     new Promise (resolve, reject) ->
       fs.unlink path, (err) ->
         if err then reject err else resolve 1
+
+  fs._glob = (srcPattern, relative, cwd) ->
+    new Promise (resolve, reject) ->
+      glob srcPattern, {cwd: cwd, root: relative, nonull: false}, (er, results) ->
+        if er then reject er
+        else if results
+          #console.log srcPattern, 'found', _.map results, (file) -> path.relative(relative || '/', cwd + '/' + file)
+          resolve _.map results, (file) -> path.relative(relative || '/', cwd + '/' + file)
+        else reject 'no files found'
+
+  fs.glob = (pattern_s, relative, cwd) ->
+    patterns = []
+    if check pattern_s, String then patterns.push pattern_s
+    else if check pattern_s, Array then patterns = pattern_s
+    fs._glob patterns, relative, cwd
 
   fs.globDirs = (srcPattern, relative, cwd) ->
     fs.glob srcPattern, relative, cwd

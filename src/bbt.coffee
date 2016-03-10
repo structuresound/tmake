@@ -189,13 +189,7 @@ module.exports = (argv, binDir, npmDir) ->
     .then ->
       db.update {name: dep.name}, {$set: dep}, {upsert: true}
     .then ->
-      db.findOne
-        name: dep.name
-    .then (depState) ->
-      if (argv._[0] == "rebuild" ||
-      argv._[0] == "clean" ||
-      argv.force ||
-      !depState?.built)
+      if (argv._[0] == "clean" || argv.force)
         Promise.each steps, (step) ->
           if argv.verbose then console.log _.map(stack, (d) -> d.name), step
           process.chdir _cwd
@@ -239,7 +233,7 @@ module.exports = (argv, binDir, npmDir) ->
             execute config, ["npmDeps","fetch","transform"]
           when 'configure'
             execute config, ["npmDeps","fetch","transform","configure"]
-          when 'build', 'rebuild'
+          when 'build'
             execute config, ["build"]
           when 'install'
             execute config, ["install"]

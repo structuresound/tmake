@@ -2,9 +2,6 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
-ps = require('promise-streams')
-path = require('path')
-platform = require '../platform'
 colors = require ('chalk')
 
 module.exports = (dep, argv, db, configure) ->
@@ -22,7 +19,7 @@ module.exports = (dep, argv, db, configure) ->
       if exists
         switch system
           when 'ninja'
-            runner = require('./ninja')(task, dep,argv)
+            runner = require('./ninja')(task, dep, argv)
           when 'cmake'
             runner = require('./cmake')(task, dep, argv)
           when 'gyp'

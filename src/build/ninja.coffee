@@ -5,17 +5,17 @@ path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-
 platform = require '../platform'
 fs = require('../fs')
-
-ninjaVersion = "1.6.0"
-
-ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
-ninjaPath = "#{process.cwd()}/.bbt"
-ninjaLocal = ninjaPath + "/ninja"
+colors = require ('chalk')
 
 module.exports = (task, dep, argv) ->
+  ninjaVersion = "1.6.0"
+
+  ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
+  ninjaPath = "#{process.cwd()}/.bbt"
+  ninjaLocal = ninjaPath + "/ninja"
+
   useSystemNinja = ->
     if task.useSystemNinja
       if sh.which 'ninja' then return "ninja"
@@ -49,24 +49,32 @@ module.exports = (task, dep, argv) ->
           else if stderr then resolve stderr
 
   genBuildScript = (context, fileStream) ->
-    if argv.verbose then console.log 'ninjabuild, context:', context
+    if argv.verbose then console.log colors.green('configure ninja with context:'), context
     getRule = (ext) ->
       switch ext
-        when "cpp", "cc", "c" then "cc"
+        when "cpp", "cc" then "cc"
+        when "c" then "c"
         else "cc"
     ninjaConfig = require('ninja-build-gen')(ninjaVersion, 'build')
     includeString = " -I" + context.includeDirs.join(" -I")
 
     cc = context.compiler or "gcc"
 
-    compileCommand = "#{cc} -MMD -MF $out.d #{context.cflags} -c $in -o $out #{includeString}"
-    linkCommand = "ar rv $out $in #{context.ldflags}"
+    cCommand = "#{cc} -MMD -MF $out.d #{context.cFlags} -c $in -o $out #{includeString}"
+    cxxCommand = "#{cc} -MMD -MF $out.d #{context.cxxFlags} -c $in -o $out #{includeString}"
+    linkCommand = "ar rv $out $in #{context.ldFlags}"
 
     ninjaConfig
-    .rule 'compile'
+    .rule 'c'
     .depfile '$out.d'
-    .run compileCommand
-    .description compileCommand
+    .run cCommand
+    .description cCommand
+
+    ninjaConfig
+    .rule 'cxx'
+    .depfile '$out.d'
+    .run cxxCommand
+    .description cxxCommand
 
     ninjaConfig
     .rule('link')
@@ -78,7 +86,10 @@ module.exports = (task, dep, argv) ->
       ext = path.extname filePath
       name = path.basename filePath, ext
       linkNames.push 'build/' + name + '.o'
-      ninjaConfig.edge('build/' + name + '.o').from(filePath).using("compile")
+      if ext = 'c'
+        ninjaConfig.edge('build/' + name + '.o').from(filePath).using("c")
+      else if _.contains ['cc', 'cpp'], ext
+        ninjaConfig.edge('build/' + name + '.o').from(filePath).using("cxx")
 
     linkInput = linkNames.join(" ")
     ninjaConfig.edge('build/lib' + dep.name + '.a').from(linkInput).using("link")

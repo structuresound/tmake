@@ -32,7 +32,6 @@ module.exports = (p) ->
     fetch: packageCommand "git / get dependencies for all or #{c.y "package"}"
     configure: packageCommand "configure build system #{c.y "package"}"
     build: packageCommand "build this project or dependency #{c.y "package"}"
-    rebuild: packageCommand "ignore cache, and rebuild this project or #{c.y "dependency"}"
     push: description: "upload the current config file to the #{p} package repository"
     clean: packageCommand "clean project, #{c.y "package"}, or 'all'"
     test: packageCommand "test this project or dependency #{c.y "package"}"
