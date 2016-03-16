@@ -1,55 +1,78 @@
 _ = require('underscore')
-fs = require('vinyl-fs')
-Promise = require("bluebird")
+_vinyl = require('vinyl-fs')
+_p = require("bluebird")
 path = require('path')
-ps = require('promise-streams')
+fs = require('./fs')
+sh = require "shelljs"
+colors = require ('chalk')
+map = require('map-stream')
 
 vinyl =
+  dest: _vinyl.dest
   src: (glob, opt) ->
     patterns = _.map glob, (string) ->
       if string.startsWith '/'
         return string.slice(1)
       string
-    fs.src patterns, opt
-  dest: fs.dest
-  map: require 'map-stream'
+    _vinyl.src patterns, opt
 
 module.exports = (dep, argv, db) ->
 
   task = dep.install || {}
 
+  copy = (patterns, from, to, flatten) ->
+    filePaths = []
+    fs.wait(vinyl.src(patterns, cwd: from)
+    .pipe(map (file, emit) ->
+      if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
+      if flatten then file.base = path.dirname file.path
+      newPath = to + '/' + path.relative file.base, file.path
+      filePaths.push path.relative dep.d.root, newPath
+      emit(null, file)
+    ).pipe(vinyl.dest to)
+    ).then ->
+      _p.resolve filePaths
+
+  installBin = ->
+    if _.contains ['bin'], dep.target
+      from = path.join(dep.d.install.binaries.from, dep.name)
+      to = path.join(dep.d.install.binaries.to, dep.name)
+      if argv.verbose then console.log colors.green '[ install bin ] from', from, 'to', to
+      sh.mv from, to
+    else _p.resolve('bin')
+
   installLibs = ->
-    if argv.verbose then console.log '[ install libs ] from', dep.d.install.libraries.from, 'to', dep.d.install.libraries.to
-    patterns = task.libraries?.matching || ['**/*.a']
-    if task.type == 'dynamic' then patterns = task.libraries.matching || ['**/*.dylib', '**/*.so', '**/*.dll']
-    vinyl.src patterns, cwd: dep.d.install.libraries.from
-    .pipe vinyl.map (file, emit) ->
-      if argv.verbose then console.log 'install static lib', path.relative file.cwd, file.path
-      file.base = path.dirname file.path
-      console.log file.base
-      newPath = dep.d.install.libraries.to + '/' +  path.relative file.base, file.path
-      db.update name: dep.name,
-        $addToSet: libs: path.relative dep.d.root, newPath
-      , {}
-      .then -> emit(null, file)
-    .pipe vinyl.dest dep.d.install.libraries.to
+    if _.contains ['static','dynamic'], dep.target
+      if argv.verbose then console.log colors.green '[ install libs ] from', dep.d.install.libraries.from, 'to', dep.d.install.libraries.to
+      patterns = task.libraries?.matching || ['*.a']
+      if dep.target == 'dynamic' then patterns = task.libraries.matching || ['*.dylib', '*.so', '*.dll']
+      copy patterns, dep.d.install.libraries.from, dep.d.install.libraries.to, true
+      .then (libPaths) ->
+        db.update name: dep.name,
+          $set: libs: libPaths
+        , {}
+    else _p.resolve('libs')
 
   installHeaders = ->
-    patterns = task.headers?.matching || ["**/*.h", "**/*.hpp"]
-    if argv.verbose then console.log '[ install headers ] from', dep.d.install.headers.from, 'to', dep.d.install.headers.to
-    vinyl.src patterns, cwd: dep.d.install.headers.from
-    .pipe vinyl.map (file, emit) ->
-      if argv.verbose then console.log 'install header', path.relative file.cwd, file.path
-      newPath = dep.d.install.headers.to + '/' + path.relative file.base, file.path
-      db.update name: dep.name,
-        $addToSet: headers: path.relative dep.d.root, newPath
-      , {}
-      .then -> emit(null, file)
-    .pipe vinyl.dest dep.d.install.headers.to
+    if _.contains ['static','dynamic'], dep.target
+      patterns = task.headers?.matching || ["**/*.h", "**/*.hpp"]
+      if argv.verbose then console.log colors.green '[ install headers ] from', dep.d.install.headers.from, 'to', dep.d.install.headers.to
+      copy patterns, dep.d.install.headers.from, dep.d.install.headers.to, false
+      .then (headerPaths) ->
+        db.update name: dep.name,
+          $set: headers: headerPaths
+        , {}
+    else _p.resolve('headers')
 
   execute = ->
-    ps.wait installLibs()
-    .then -> ps.wait installHeaders()
-    .then -> db.update {name: dep.name}, {$set: {installed: true}}, {}
+    installHeaders()
+    .then ->
+      installLibs()
+    .then ->
+      if argv.verbose then console.log colors.green "libs"
+      installBin()
+    .then ->
+      if argv.verbose then console.log colors.green "installed"
+      db.update {name: dep.name}, {$set: {installed: true}}, {}
 
   execute: execute

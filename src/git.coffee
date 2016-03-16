@@ -3,6 +3,7 @@ Promise = require("bluebird")
 git = require 'gift'
 fs = require('./fs')
 sh = require 'shelljs'
+colors = require ('chalk')
 
 module.exports = (dep, db) ->
   if typeof dep.git == 'string'
@@ -20,7 +21,7 @@ module.exports = (dep, db) ->
       resolve()
 
   clone = ->
-    console.log 'cloning', config.url, 'into', dep.d.clone
+    console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, ->
         db.update

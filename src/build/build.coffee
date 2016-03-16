@@ -1,4 +1,3 @@
-`require('source-map-support').install()`
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
@@ -19,9 +18,9 @@ module.exports = (dep, argv, db, configure) ->
       if exists
         switch system
           when 'ninja'
-            runner = require('./ninja')(task, dep, argv)
+            runner = require('./ninja')(dep, argv)
           when 'cmake'
-            runner = require('./cmake')(task, dep, argv)
+            runner = require('./cmake')(dep, argv)
           when 'gyp'
             runner = require('./gyp')(task, dep, argv)
           when 'make'

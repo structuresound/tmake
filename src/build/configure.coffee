@@ -1,44 +1,38 @@
-`require('source-map-support').install()`
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
-ps = require('promise-streams')
 path = require('path')
 platform = require '../platform'
 colors = require ('chalk')
 
-module.exports = (dep, argv, db, npmDir) ->
-  graph = require('../graph')(db)
-
+module.exports = (dep, argv, db, graph, npmDir) ->
   if dep.configure
     if typeof dep.configure == 'string'
-      task = with: dep.configure
+      build = with: dep.configure
     else
-      task = dep.configure || {}
+      build = dep.configure || {}
   else if dep.build
     if typeof dep.build == 'string'
-      task = with: dep.build
+      build = with: dep.build
     else
-      task = dep.build || {}
-
-  dep.target ?= 'static'
+      build = dep.build || {}
 
   reduceGlobs = (base, defaults) ->
-    crossPlatform = task[base]?.matching || defaults
-    if task[platform.name()]?[base]?.matching then ptr = _.union crossPlatform, task[platform.name()][base].matching
+    crossPlatform = build[base]?.matching || defaults
+    if build[platform.name()]?[base]?.matching
+      _.union crossPlatform, build[platform.name()][base].matching
     else crossPlatform
 
   globHeaders = ->
     patterns = reduceGlobs 'headers', ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
-    fs.glob patterns, dep.d.root, dep.d.source
+    fs.glob patterns, dep.d.project, dep.d.source
 
   globSources = ->
-    patterns = reduceGlobs 'sources', ['**/*.cpp', '**/*.cc', '**/*.c', '!**/*.test.cpp', '!build/**', '!test/**', '!tests/**']
-    if argv.verbose then console.log 'glob src:', dep.d.source, ":/", patterns
-    fs.glob patterns, dep.d.root, dep.d.source
+    patterns = reduceGlobs 'sources', ['*.cpp', '*.cc', '*.c']
+    if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
+    fs.glob patterns, dep.d.project, dep.d.source
 
-  globDeps = ->
-    graph.deps dep
+  globDeps = -> graph.deps dep
 
   stdCFlags =
     O: 2
@@ -52,28 +46,29 @@ module.exports = (dep, argv, db, npmDir) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
 
   jsonToCxxFlags = (options) ->
-    if options.O
-      switch options.O
+    opt = _.copy options
+    if opt.O
+      switch opt.O
         when 3, "3" then options.O3 = true
         when 2, "2" then options.O2 = true
-        when 2, "1" then options.O1 = true
-        when 2, "0" then options.O0 = true
-        when 2, "s" then options.Os = true
-      delete options.O
+        when 1, "1" then options.O1 = true
+        when 0, "0" then options.O0 = true
+        when "s" then options.Os = true
+      delete opt.O
     if options.O3
-      delete options.O2
-    if options.O3 or options.O2
-      delete options.O1
-    if options.O3 or options.O2 or options.O1
+      delete opt.O2
+    if opt.O3 or opt.O2
+      delete opt.O1
+    if opt.O3 or opt.O2 or opt.O1
       delete options.Os
-    if options.O3 or options.O2 or options.O1 or options.Os
-      delete options.O0
+    if opt.O3 or opt.O2 or opt.O1 or opt.Os
+      delete opt.O0
 
-    jsonToFlags options
+    jsonToFlags opt
 
-  jsonToLDFlags = (pkgOptions) ->
-    options = pkgOptions || {}
-    jsonToFlags options
+  jsonToLDFlags = (options) ->
+    opt = _.copy options
+    jsonToFlags opt
 
   jsonToFlags = (json) ->
     flags = ""
@@ -85,16 +80,16 @@ module.exports = (dep, argv, db, npmDir) ->
     flags
 
   resolveBuildSystem = ->
-    switch task.with
+    switch build.with
       when "ninja" then "ninja"
       when "cmake" then "cmake"
       when "gyp" then "gyp"
       when "make" then "make"
       else
-        if task.ninja then "ninja"
-        else if task.cmake then "cmake"
-        else if task.gyp then "gyp"
-        else if task.make then "make"
+        if build.ninja then "ninja"
+        else if build.cmake then "cmake"
+        else if build.gyp then "gyp"
+        else if build.make then "make"
         else if fs.existsSync dep.d.project + '/build.ninja' then "ninja"
         else if fs.existsSync dep.d.project + '/CMakeLists.txt' then "cmake"
         else if fs.existsSync dep.d.project + '/binding.gyp' then "gyp"
@@ -105,10 +100,11 @@ module.exports = (dep, argv, db, npmDir) ->
     new Promise (resolve) ->
       context =
         name: dep.name
+        target: dep.target
         npmDir: npmDir
-        cFlags: jsonToCFlags task.cFlags || stdCFlags
-        cxxFlags: jsonToCxxFlags task.cxxFlags || stdCxxFlags
-        ldFlags: jsonToLDFlags task.ldFlags
+        cFlags: jsonToCFlags build.cFlags || stdCFlags
+        cxxFlags: jsonToCxxFlags build.cxxFlags || stdCxxFlags
+        ldFlags: jsonToLDFlags build.ldFlags || {}
       globHeaders()
       .then (headers) ->
         context.headers = headers
@@ -117,12 +113,13 @@ module.exports = (dep, argv, db, npmDir) ->
         context.sources = sources
         globDeps()
       .then (depGraph) ->
-        context.includeDirs = _.map depGraph, (subDep) -> subDep.d.install.headers.to
-        context.includeDirs.push dep.d.include
-        context.libs = _.chain depGraph
-        .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
-        .flatten()
-        .value()
+        if depGraph.length
+          context.includeDirs = _.map depGraph, (subDep) -> subDep.d.install.headers.to
+          context.libs = _.chain depGraph
+          .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
+          .flatten()
+          .value()
+        context.includeDirs = _.union context.includeDirs, dep.d.include.dirs
         resolve context
 
   buildFilePath = (systemName) ->
@@ -145,15 +142,15 @@ module.exports = (dep, argv, db, npmDir) ->
           switch systemName
             when 'ninja'
               file = fs.createWriteStream(dep.buildFile)
-              require('./ninja')(task, dep,argv).generate context, file
+              require('./ninja')(dep,argv).generate context, file
               file.end()
-              ps.wait file
+              fs.wait file
             when 'cmake'
-              require('./cmake')(task, dep, argv).generate context
+              require('./cmake')(dep, argv).generate context
               .then (CMakeLists) ->
                 fs.writeFileAsync dep.buildFile, CMakeLists
             when 'gyp'
-              require('./gyp')(task, dep, argv).generate context
+              require('./gyp')(build, dep, argv).generate context
               .then (binding) ->
                 if argv.verbose then console.log 'node-gyp:', dep.buildFile, JSON.stringify(binding, 0, 2)
                 fs.writeFileAsync dep.buildFile, JSON.stringify(binding, 0, 2)
@@ -169,7 +166,7 @@ module.exports = (dep, argv, db, npmDir) ->
   getContext: -> createContext()
   execute: ->
     console.log colors.green '[   configure   ]'
-    if argv.verbose then console.log 'task:', task
+    if argv.verbose then console.log 'build configuration:', build
     libsPattern = ['**/*.a']
     if dep.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
     if argv.verbose then console.log 'configure for:', resolveBuildSystem()

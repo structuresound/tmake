@@ -1,4 +1,3 @@
-ps = require('promise-streams')
 unzip = require('unzip')
 request = require('request-promise')
 path = require('path')
@@ -9,7 +8,7 @@ platform = require '../platform'
 fs = require('../fs')
 colors = require ('chalk')
 
-module.exports = (task, dep, argv) ->
+module.exports = (dep, argv) ->
   ninjaVersion = "1.6.0"
 
   ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
@@ -17,12 +16,13 @@ module.exports = (task, dep, argv) ->
   ninjaLocal = ninjaPath + "/ninja"
 
   useSystemNinja = ->
-    if task.useSystemNinja
+    if dep.system?.ninja
       if sh.which 'ninja' then return "ninja"
+      else console.log "system ninja specified, but can't find it"
     false
 
   getNinja = ->
-    ninjaExecutable = ninjaLocal || useSystemNinja()
+    ninjaExecutable = useSystemNinja() || ninjaLocal
     fs.existsAsync ninjaExecutable
     .then (exists) ->
       if exists
@@ -30,7 +30,7 @@ module.exports = (task, dep, argv) ->
         Promise.resolve ninjaExecutable
       else
         if argv.verbose then console.log 'fetch ninja binaries . . . '
-        ps.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
+        fs.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
         .then ->
           if argv.verbose then console.log 'installed . . . chmod'
           sh.chmod "+x", "#{ninjaLocal}"

@@ -1,8 +1,7 @@
-Promise = require("bluebird")
+_p = require("bluebird")
+_ = require 'underscore'
 fs = require('fs')
 path = require('path')
-_ = require 'underscore'
-ps = require('promise-streams')
 CSON = require('cson')
 glob = require('glob-all')
 check = require('./check')
@@ -40,21 +39,23 @@ module.exports = (->
   fs.map = require 'map-stream'
   fs.src = fs.vinyl.src
   fs.dest = fs.vinyl.dest
-
-  fs.fileStreamPromise = (file) ->
-    ps.wait(file)
+  fs.wait = (streamPipe, alreadyResolved) ->
+    new _p (resolve, reject) ->
+      alreadyResolved = false
+      streamPipe.on 'end', -> unless alreadyResolved then resolve()
+      streamPipe.on 'finish', -> if alreadyResolved then resolve()
+      streamPipe.on 'error', (err) -> reject err
 
   fs.deleteAsync = (path) ->
-    new Promise (resolve, reject) ->
+    new _p (resolve, reject) ->
       fs.unlink path, (err) ->
         if err then reject err else resolve 1
 
   fs._glob = (srcPattern, relative, cwd) ->
-    new Promise (resolve, reject) ->
-      glob srcPattern, {cwd: cwd, root: relative, nonull: false}, (er, results) ->
+    new _p (resolve, reject) ->
+      glob srcPattern, {cwd: cwd || process.cwd(), root: relative || process.cwd(), nonull: false}, (er, results) ->
         if er then reject er
         else if results
-          #console.log srcPattern, 'found', _.map results, (file) -> path.relative(relative || '/', cwd + '/' + file)
           resolve _.map results, (file) -> path.relative(relative || '/', cwd + '/' + file)
         else reject 'no files found'
 
@@ -67,24 +68,24 @@ module.exports = (->
   fs.globDirs = (srcPattern, relative, cwd) ->
     fs.glob srcPattern, relative, cwd
     .then (list) ->
-      Promise.resolve _.uniq _.reduce(list, (memo, header) ->
+      _p.resolve _.uniq _.reduce(list, (memo, header) ->
         if relative then memo.concat path.dirname(path.relative relative, header)
         else memo.concat path
       , [])
 
   fs.existsAsync = (filePath) ->
-    new Promise (resolve) ->
+    new _p (resolve) ->
       fs.exists filePath, (exists) ->
         resolve exists
 
   fs.readFileAsync = (filePath, format) ->
-    new Promise (resolve, reject) ->
+    new _p (resolve, reject) ->
       fs.readFile filePath, format, (err,data) ->
         reject err if err
         resolve data
 
   fs.writeFileAsync = (filePath, options) ->
-    new Promise (resolve, reject) ->
+    new _p (resolve, reject) ->
       fs.writeFile filePath, options, (err,data) ->
         reject err if err
         resolve data
@@ -93,9 +94,8 @@ module.exports = (->
   fs.findOneAsync = (srcPattern, relative, cwd) ->
     fs.findAsync srcPattern, relative, cwd
     .then (array) ->
-      #console.log 'found', array
-      if array.length then Promise.resolve array[0]
-      else Promise.resolve undefined
+      if array.length then _p.resolve array[0]
+      else _p.resolve undefined
 
   fs.getConfigAsync = (configPath) ->
     fs.findConfigAsync configPath
@@ -106,7 +106,7 @@ module.exports = (->
     fs.existsAsync configPath
     .then (exists) ->
       if exists
-        Promise.resolve configPath
+        _p.resolve configPath
       else
         base = path.dirname configPath
         prefix = path.basename configPath, path.extname configPath
@@ -123,11 +123,11 @@ module.exports = (->
         .then (data) ->
           switch path.extname configPath
             when '.cson'
-              Promise.resolve CSON.parse(data)
-            when '.json' then Promise.resolve JSON.parse(data)
-            else Promise.reject 'unknown config type', configPath
+              _p.resolve CSON.parse(data)
+            when '.json' then _p.resolve JSON.parse(data)
+            else _p.reject 'unknown config type', configPath
       else
-        Promise.reject "no json file present at #{path}"
+        _p.reject "no json file present at #{path}"
 
   fs.readConfigSync = (configPath) ->
     if fs.existsSync(configPath)
@@ -135,9 +135,9 @@ module.exports = (->
       switch path.extname configPath
         when '.cson' then CSON.parse(data)
         when '.json' then JSON.parse(data)
-        else Promise.reject 'unknown config ext'
+        else _p.reject 'unknown config ext'
     else
-      Promise.reject "no json file present at #{path}"
+      _p.reject "no json file present at #{path}"
 
   return fs
 )()

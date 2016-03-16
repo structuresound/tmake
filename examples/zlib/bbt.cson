@@ -1,13 +1,11 @@
 name: "example_zlib"
+target: "bin"
 build:
-  sources: matching: ["source/*.c"]
-  target: "bin"
   with: "cmake"
 deps: [
   git: "madler/zlib"
   build:
     with: "ninja"
-    sources: matching: ["*.c"]
     cFlags:
       O: 3
       Wall: 1

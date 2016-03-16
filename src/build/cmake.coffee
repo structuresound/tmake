@@ -6,7 +6,9 @@ path = require('path')
 sh = require('shelljs')
 colors = require ('chalk')
 
-module.exports = (task, dep, argv) ->
+module.exports = (dep, argv) ->
+  ninja = require('./ninja')(dep, argv)
+
   run = (command) ->
     if argv.verbose then console.log("run cmake command: ", command)
     new Promise (resolve, reject) ->
@@ -16,14 +18,15 @@ module.exports = (task, dep, argv) ->
         else if stdout then resolve stdout
         else if stderr then resolve stderr
 
-  ensureBuildFolder = -> unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
+  ensureBuildFolder = ->
+    unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
 
   configure = ->
     ensureBuildFolder()
     config = _.extend
       LIBRARY_OUTPUT_PATH: dep.d.install.libraries.from
-    , task.cmake?.configure
-    command = "cmake #{dep.d.project}"
+    , dep.build.cmake?.configure
+    command = "cmake -G Ninja #{dep.d.project}"
     _.each config, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
@@ -33,7 +36,7 @@ module.exports = (task, dep, argv) ->
 
   build = ->
     ensureBuildFolder()
-    run "make"
+    run "ninja"
 
   ###
   # CONFIG GEN
@@ -104,7 +107,7 @@ module.exports = (task, dep, argv) ->
   link = ->
     libs = cmakeArrayToQuotedList @libs
     if @boost then libs += " ${Boost_LIBRARIES}"
-    if task.target == 'node' then libs += " ${CMAKE_JS_LIB}"
+    if @target == 'node' then libs += " ${CMAKE_JS_LIB}"
     if libs.length
       """\n
       target_link_libraries(${PROJECT_NAME} #{libs})
@@ -120,8 +123,7 @@ module.exports = (task, dep, argv) ->
 
   generate: (context) ->
     if argv.verbose then console.log colors.green('configure cmake with context:'), JSON.stringify context,0,2
-    ctx = _.extend task, context
-    generateLists [header, boost, includeDirectories, sources, flags, target, link], ctx
+    generateLists [header, boost, includeDirectories, sources, flags, target, link], context
 
   configure: -> configure()
   build: -> configure().then -> build()
