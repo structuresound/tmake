@@ -11,8 +11,12 @@ module.exports = (dep, argv, db, configure) ->
   else
     task = dep.build || {}
 
+  ensureBuildFolder = ->
+    unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
+
   buildWith = (system) ->
     runner = build: -> Promise.reject "build system not found"
+    ensureBuildFolder()
     fs.existsAsync dep.buildFile
     .then (exists) ->
       if exists
@@ -28,7 +32,6 @@ module.exports = (dep, argv, db, configure) ->
       runner.build()
 
   build = ->
-    console.log colors.green '[   build   ]'
     if argv.verbose then console.log 'with:', configure.resolveBuildSystem()
     buildWith configure.resolveBuildSystem()
 

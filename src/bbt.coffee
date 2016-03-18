@@ -120,9 +120,10 @@ module.exports = (argv, binDir, npmDir) ->
       console.log colors.green '[ done !!! ]'
 
   processDep = (dep, steps) ->
-    console.log colors.green "#{dep.name} >> #{steps.join(' >> ')}"
+    console.log colors.green ">> #{dep.name} >>"
     if (!dep.cached || argv._[0] == "clean" || argv.force)
       _p.each steps, (step) ->
+        console.log colors.green ">> #{step} >>"
         process.chdir runDir
         BuildPhases[step](dep)
     else _p.resolve dep

@@ -30,12 +30,15 @@ module.exports = (dep, argv) ->
         Promise.resolve ninjaExecutable
       else
         if argv.verbose then console.log 'fetch ninja binaries . . . '
-        fs.wait(request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath)))
-        .then ->
-          if argv.verbose then console.log 'installed . . . chmod'
-          sh.chmod "+x", "#{ninjaLocal}"
-          if argv.verbose then console.log '. . . ninja installed'
-          Promise.resolve ninjaLocal
+        new Promise (resolve, reject) ->
+          request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath))
+          .on 'close', ->
+            if argv.verbose then console.log "chmod 755 #{ninjaLocal}"
+            fs.chmod "#{ninjaLocal}", 755, (err) ->
+              if err then reject err
+              else
+                if argv.verbose then console.log '. . . ninja installed'
+                resolve ninjaLocal
 
   build = ->
     new Promise (resolve, reject) ->
@@ -93,6 +96,5 @@ module.exports = (dep, argv) ->
     ninjaConfig.saveToStream fileStream
 
   generate: genBuildScript
-  configure: -> return undefined
   build: build
   getNinja: getNinja

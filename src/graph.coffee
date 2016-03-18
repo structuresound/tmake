@@ -142,7 +142,11 @@ module.exports = (db, runDir) ->
       _p.resolve _.map graph.dependenciesOf(dep.name), mapFn
 
   that.map = (dep, mapFn) -> that._map dep, (name) -> mapFn(cache[name])
-  that.all = (dep) -> that._map dep, (name) -> cache[name]
-  that.deps = (dep) -> that._map_deps dep, (name) -> cache[name]
+  that.all = (dep) ->
+    cache = {}
+    that._map dep, (name) -> cache[name]
+  that.deps = (dep) ->
+    cache = {}
+    that._map_deps dep, (name) -> cache[name]
 
   that

@@ -39,12 +39,11 @@ module.exports = (->
   fs.map = require 'map-stream'
   fs.src = fs.vinyl.src
   fs.dest = fs.vinyl.dest
-  fs.wait = (streamPipe, alreadyResolved) ->
+  fs.wait = (stream, readOnly) ->
     new _p (resolve, reject) ->
-      alreadyResolved = false
-      streamPipe.on 'end', -> unless alreadyResolved then resolve()
-      streamPipe.on 'finish', -> if alreadyResolved then resolve()
-      streamPipe.on 'error', (err) -> reject err
+      stream.on 'error', reject
+      if readOnly then stream.on 'finish', resolve
+      else stream.on 'end', resolve
 
   fs.deleteAsync = (path) ->
     new _p (resolve, reject) ->
@@ -84,9 +83,9 @@ module.exports = (->
         reject err if err
         resolve data
 
-  fs.writeFileAsync = (filePath, options) ->
+  fs.writeFileAsync = (filePath, data, options) ->
     new _p (resolve, reject) ->
-      fs.writeFile filePath, options, (err,data) ->
+      fs.writeFile filePath, data, options, (err,data) ->
         reject err if err
         resolve data
 

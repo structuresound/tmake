@@ -131,8 +131,6 @@ module.exports = (dep, argv, db, graph, npmDir) ->
     path.join dep.d.project, buildFileNames[systemName]
 
   configureFor = (systemName) ->
-    configure = (context) -> console.log colors.red context; Promise.reject "no build system specified or found"
-
     dep.buildFile ?= buildFilePath systemName
     fs.existsAsync dep.buildFile
     .then (exists) ->
@@ -144,7 +142,7 @@ module.exports = (dep, argv, db, graph, npmDir) ->
               file = fs.createWriteStream(dep.buildFile)
               require('./ninja')(dep,argv).generate context, file
               file.end()
-              fs.wait file
+              fs.wait file, true
             when 'cmake'
               require('./cmake')(dep, argv).generate context
               .then (CMakeLists) ->
@@ -165,7 +163,6 @@ module.exports = (dep, argv, db, graph, npmDir) ->
   resolveBuildSystem: resolveBuildSystem
   getContext: -> createContext()
   execute: ->
-    console.log colors.green '[   configure   ]'
     if argv.verbose then console.log 'build configuration:', build
     libsPattern = ['**/*.a']
     if dep.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']

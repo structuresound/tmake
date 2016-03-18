@@ -18,11 +18,7 @@ module.exports = (dep, argv) ->
         else if stdout then resolve stdout
         else if stderr then resolve stderr
 
-  ensureBuildFolder = ->
-    unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
-
   configure = ->
-    ensureBuildFolder()
     config = _.extend
       LIBRARY_OUTPUT_PATH: dep.d.install.libraries.from
     , dep.build.cmake?.configure
@@ -34,9 +30,7 @@ module.exports = (dep, argv) ->
       command += " -D#{key}=#{value}"
     run command
 
-  build = ->
-    ensureBuildFolder()
-    run "ninja"
+  build = -> run "ninja"
 
   ###
   # CONFIG GEN

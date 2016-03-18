@@ -24,4 +24,5 @@ module.exports = (->
         else if data == 'y\n' or data == 'yes\n' or that.yes then return resolve true
         resolve false
       that.start()
+  that
 )()

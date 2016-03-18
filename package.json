@@ -65,6 +65,7 @@
     "splitargs": "0.0.5",
     "underscore": "^1.8.3",
     "unzip": "^0.1.11",
+    "unzip-response": "^1.0.0",
     "vinyl-fs": "^2.3.1",
     "yesno": "0.0.1"
   }
