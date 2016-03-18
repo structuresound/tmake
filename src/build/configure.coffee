@@ -102,6 +102,7 @@ module.exports = (dep, argv, db, graph, npmDir) ->
         name: dep.name
         target: dep.target
         npmDir: npmDir
+        boost: build.boost
         cFlags: jsonToCFlags build.cFlags || stdCFlags
         cxxFlags: jsonToCxxFlags build.cxxFlags || stdCxxFlags
         ldFlags: jsonToLDFlags build.ldFlags || {}

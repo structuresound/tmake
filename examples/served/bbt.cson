@@ -1,7 +1,7 @@
 name: "example_served"
+target: "bin"
 build:
   with: "cmake"
-  target: "bin"
   boost: libs: ["asio", "system"]
 deps: [
   git: "datasift/served"
@@ -9,7 +9,7 @@ deps: [
     project: "source"
     install:
       libraries: from: "source/lib"
-      headers: from: "src"
+      headers: from: "source/src"
   build:
     with: "cmake" # with is optional if name is present as a key
     cmake:
@@ -22,12 +22,12 @@ deps: [
     boost: libs: ["asio", "system"]
   deps: [
     git: "google/re2"
+    target: "static"
     build:
       with: "ninja"
       sources: matching: ["re2/*.cc", "util/*.cc"]
       linux: sources: matching: ["!util/threadwin.cc"]
       mac: sources: matching: ["!util/threadwin.cc"]
-      target: "static"
       cflags:
         O3: 1
         std: "c++11"
