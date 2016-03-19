@@ -5,7 +5,7 @@ const packageList = ({packages}) => (
     <ul>
       {packages.map(package => (
         <li key={package._id}>
-          <a href={`/package/${package._id}`}>{package.title}</a>
+          <a href={`/package/${package._id}`}>{package.name}</a>
         </li>
       ))}
     </ul>

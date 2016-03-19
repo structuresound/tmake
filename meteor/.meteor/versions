@@ -1,3 +1,4 @@
+accounts-base@1.2.3-beta.11
 allow-deny@1.0.1-beta.11
 autopublish@1.0.4
 autoupdate@1.2.5-beta.11
@@ -16,6 +17,7 @@ cosmos:browserify@0.9.3
 ddp@1.2.2
 ddp-client@1.2.2-beta.11
 ddp-common@1.2.2
+ddp-rate-limiter@1.0.1-beta.11
 ddp-server@1.2.3-beta.11
 deps@1.0.9
 diff-sequence@1.0.2-beta.11
@@ -36,6 +38,7 @@ jquery@1.11.5-beta.11
 kadira:flow-router@2.10.1
 launch-screen@1.0.6-beta.11
 livedata@1.0.15
+localstorage@1.0.6-beta.11
 logging@1.0.9-beta.11
 meteor@1.1.11-beta.11
 meteor-base@1.0.1
@@ -51,16 +54,20 @@ modules-runtime@0.5.0-beta.11
 mongo@1.1.4-beta.11
 mongo-id@1.0.1
 mquandalle:stylus@1.1.1
+nimble:restivus@0.8.4
 npm-mongo@1.4.40-beta.11
 observe-sequence@1.0.8-beta.11
 ordered-dict@1.0.4
 promise@0.5.2-beta.11
 random@1.0.6-beta.11
+rate-limit@1.0.1-beta.11
 reactive-dict@1.1.4-beta.11
 reactive-var@1.0.6
 reload@1.1.5-beta.11
 retry@1.0.4
 routepolicy@1.0.7-beta.11
+service-configuration@1.0.6-beta.11
+simple:json-routes@1.0.4
 spacebars@1.0.8-beta.11
 spacebars-compiler@1.0.8-beta.11
 standard-minifier-css@1.0.3-beta.11

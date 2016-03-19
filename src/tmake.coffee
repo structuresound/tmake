@@ -11,9 +11,19 @@ prompt = require('./prompt')
 colors = require ('chalk')
 pgname = "bbt"
 
+Datastore = require('nedb-promise')
+
 module.exports = (argv, binDir, npmDir) ->
   runDir = process.cwd()
-  db = require('./db')(runDir)
+
+  db = new Datastore
+    filename: "#{runDir}/.#{pgname}/.db"
+    autoload: true
+
+  settings = new Datastore
+    filename: "#{npmDir}/.#{pgname}/.settings"
+    autoload: true
+
   cli = require('./cli')(pgname)
   graph = require('./graph')(db, runDir)
 

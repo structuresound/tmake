@@ -1,5 +1,5 @@
-import packages from './packages';
+import Packages from './packages';
 
 export default function () {
-  packages();
+  Packages();
 }

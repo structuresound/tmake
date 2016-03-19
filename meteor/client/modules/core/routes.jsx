@@ -6,14 +6,14 @@ import packageList from './containers/packagelist';
 import package from './containers/package';
 import Newpackage from './containers/newpackage';
 
-export default function (injectDeps, {FlowRouter}) {
+export default function(injectDeps, {FlowRouter}) {
   const MainLayoutCtx = injectDeps(MainLayout);
 
   FlowRouter.route('/', {
     name: 'packages.list',
     action() {
       mount(MainLayoutCtx, {
-        content: () => (<packageList />)
+        content: () => (<packageList/>)
       });
     }
   });

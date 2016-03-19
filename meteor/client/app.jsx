@@ -13,14 +13,6 @@ export const Layout = ({content}) => (
 export const Welcome = ({name}) => (
   <div>
     <div class="container">
-      <section>
-        <aside>
-          Hello,{name}.
-        </aside>
-        <article>
-          This is the deets
-        </article>
-      </section>
     </div>
   </div>
 );
