@@ -12,8 +12,9 @@ module.exports = (dep, argv) ->
   ninjaVersion = "1.6.0"
 
   ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
-  ninjaPath = "#{process.cwd()}/.bbt"
-  ninjaLocal = ninjaPath + "/ninja"
+  ninjaPath = argv.userCache
+  ninjaDownload = path.join ninjaPath, "ninja"
+  ninjaLocal = path.join ninjaPath, "ninja_#{ninjaVersion}"
 
   useSystemNinja = ->
     if dep.system?.ninja
@@ -34,6 +35,7 @@ module.exports = (dep, argv) ->
           request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath))
           .on 'close', ->
             if argv.verbose then console.log "chmod 755 #{ninjaLocal}"
+            sh.mv ninjaDownload, ninjaLocal
             fs.chmod "#{ninjaLocal}", 755, (err) ->
               if err then reject err
               else

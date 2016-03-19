@@ -6,35 +6,40 @@ path = require('path')
 request = require('request-promise')
 fs = require('./fs')
 require('./string')
-npm = require("npm")
-prompt = require('./prompt')
 colors = require ('chalk')
-pgname = "bbt"
-
+prompt = require('./prompt')
+platform = require './platform'
 Datastore = require('nedb-promise')
+
+pgname = "tmake"
 
 module.exports = (argv, binDir, npmDir) ->
   runDir = process.cwd()
+  argv.cachePath ?= "trie_modules"
+  argv.program ?= pgname
+  argv.userCache = "#{platform.homeDir()}/.#{pgname}"
 
   db = new Datastore
-    filename: "#{runDir}/.#{pgname}/.db"
+    filename: "#{runDir}/#{argv.cachePath}/.db"
     autoload: true
 
   settings = new Datastore
-    filename: "#{npmDir}/.#{pgname}/.settings"
+    filename: "#{argv.userCache}/cli.db"
     autoload: true
 
   cli = require('./cli')(pgname)
-  graph = require('./graph')(db, runDir)
+  graph = require('./graph')(argv, db, runDir)
 
-  defaultConfig = 'bbt.cson'
-  bbtConfigPath = runDir + '/' + (argv.config || defaultConfig)
+  defaultConfig = 'package.cson'
+  configPath = runDir + '/' + (argv.config || defaultConfig)
 
   init = ->
-    unless fs.existsSync(bbtConfigPath)
-      fs.writeFileSync defaultConfig, fs.readFileSync(binDir + '/' + defaultConfig, 'utf8')
+    unless fs.existsSync(configPath)
+      cli.createPackage()
+      .then (config) ->
+        fs.writeFileSync defaultConfig, config
     else
-      console.log "this folder already has a bbt.coffee file present"
+      console.log "aborting init, this folder already has a package.cson file present"
 
   clone = (dep) ->
     return unless dep.git
@@ -42,17 +47,6 @@ module.exports = (argv, binDir, npmDir) ->
     .validate()
 
   BuildPhases =
-    npmDeps: (dep) ->
-      if dep.require
-        new _p (resolve, reject) ->
-          npm.load (err) ->
-            return reject err if err
-            npm.commands.install dep.require, '.bbt', (err, data) ->
-              return reject err if err
-              resolve data
-            npm.on 'log', (message) ->
-              console.log message
-
     fetch: (dep) ->
       if dep.provider
         switch dep.provider
@@ -130,7 +124,7 @@ module.exports = (argv, binDir, npmDir) ->
       console.log colors.green '[ done !!! ]'
 
   processDep = (dep, steps) ->
-    console.log colors.green ">> #{dep.name} >>"
+    console.log colors.magenta "<< #{dep.name} >>"
     if (!dep.cached || argv._[0] == "clean" || argv.force)
       _p.each steps, (step) ->
         console.log colors.green ">> #{step} >>"
@@ -139,7 +133,7 @@ module.exports = (argv, binDir, npmDir) ->
     else _p.resolve dep
 
   run: ->
-    fs.getConfigAsync bbtConfigPath
+    fs.getConfigAsync configPath
     .then (config) ->
       argv._[0] ?= 'all'
       try
@@ -154,7 +148,7 @@ module.exports = (argv, binDir, npmDir) ->
               db.find name: depToClean
               .then (deps) ->
                 _p.each deps, (dep) -> execute dep, ["clean"]
-              .then -> fs.nuke runDir + '/.bbt'
+              .then -> fs.nuke path.join(runDir, argv.cachePath)
               console.log 'so fresh'
             else
               db.findOne name: depToClean
@@ -164,17 +158,17 @@ module.exports = (argv, binDir, npmDir) ->
           when 'push'
             console.log 'not implemented' #upload()
           when 'fetch'
-            execute config, ["npmDeps","fetch"]
+            execute config, ["fetch"]
           when 'transform'
-            execute config, ["npmDeps","fetch","transform"]
+            execute config, ["fetch","transform"]
           when 'configure'
-            execute config, ["npmDeps","fetch","transform","configure"]
+            execute config, ["fetch","transform","configure"]
           when 'build'
             execute config, ["build"]
           when 'install'
             execute config, ["install"]
           when 'all'
-            execute config, ["npmDeps","fetch","transform","configure","build","install"]
+            execute config, ["fetch","transform","configure","build","install"]
           when 'example'
             console.log "there's already a project in this folder"
           when 'path'

@@ -1,23 +1,23 @@
 {
-  "name": "bbt",
+  "name": "tmake",
   "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
   "version": "0.1.6",
-  "homepage": "https://github.com/structuresound/bbt",
+  "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "structuresound",
     "email": "leif@structuresound.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/structuresound/bbt.git"
+    "url": "https://github.com/structuresound/tmake.git"
   },
   "bugs": {
-    "url": "https://github.com/structuresound/bbt/issues"
+    "url": "https://github.com/structuresound/tmake/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/structuresound/bbt/blob/master/LICENSE-MIT"
+      "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
     }
   ],
   "engines": {
@@ -38,7 +38,7 @@
   "Keywords": [],
   "preferGlobal": "true",
   "bin": {
-    "bbt": "bin/bbt.js"
+    "tmake": "bin/tmake.js"
   },
   "dependencies": {
     "archy": "^1.0.0",
@@ -66,7 +66,6 @@
     "underscore": "^1.8.3",
     "unzip": "^0.1.11",
     "unzip-response": "^1.0.0",
-    "vinyl-fs": "^2.3.1",
-    "yesno": "0.0.1"
+    "vinyl-fs": "^2.3.1"
   }
 }

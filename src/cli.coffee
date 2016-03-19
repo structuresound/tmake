@@ -1,5 +1,6 @@
 check = require './check'
 _ = require('underscore')
+_p = require("bluebird")
 colors = require ('chalk')
 
 module.exports = (p) ->
@@ -63,9 +64,20 @@ module.exports = (p) ->
       else man += colors.gray "              #{o.description}\n"
     man
 
+  defaultPackage =
+    name: "newProject"
+    target: "bin"
+    build:
+      with: "cmake"
+
+  createPackage = ->
+    new _p (resolve) ->
+      resolve defaultPackage
+
   parse: (argv) ->
     cmd = argv._[0]
     throw manual() unless check cmd, String
     throw usage(cmd) unless check argv._[1], parseOptions(cmd).type
   hello: -> "if this is a new project run '#{p} example' or type '#{p} help' for more options"
+  createPackage: createPackage
   manual: manual

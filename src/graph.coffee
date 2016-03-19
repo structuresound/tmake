@@ -26,14 +26,14 @@ _.deepObjectExtend = (input, source) ->
         target[prop] = source[prop]
   target
 
-module.exports = (db, runDir) ->
+module.exports = (argv, db, runDir) ->
   that = {}
   cache = {}
   _graph = new DepGraph()
 
   that.resolvePaths = (dep) ->
     defaultPathOptions =
-      home: ".bbt"
+      home: argv.cachePath
       source: ""
       headers: ""
       tests: "test"

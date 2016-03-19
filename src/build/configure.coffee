@@ -94,7 +94,7 @@ module.exports = (dep, argv, db, graph, npmDir) ->
         else if fs.existsSync dep.d.project + '/CMakeLists.txt' then "cmake"
         else if fs.existsSync dep.d.project + '/binding.gyp' then "gyp"
         else if fs.existsSync dep.d.project + '/Makefile' then "make"
-        else Promise.reject "bbt can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
+        else Promise.reject "can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
 
   createContext = ->
     new Promise (resolve) ->

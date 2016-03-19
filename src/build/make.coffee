@@ -12,4 +12,4 @@ module.exports = (context) ->
         else if stderr then resolve stderr
 
   build: build
-  generate: -> Promise.reject "bbt doesn't support autogen for make yet"
+  generate: -> Promise.reject "sorry, no support for Makefile creation yet - use cmake or ninja instead"
