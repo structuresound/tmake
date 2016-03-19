@@ -11,7 +11,9 @@ import {
 // Global API configuration
 var Api = new Restivus({
   useDefaultAuth: true,
-  prettyJson: true
+  prettyJson: true,
+  apiPath: 'api/',
+  version: 'v1'
 });
 
 // Generates: GET, POST on /api/items and GET, PUT, DELETE on

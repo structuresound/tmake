@@ -1,20 +1,42 @@
 request = require('request-promise')
 _p = require("bluebird")
+colors = require('chalk')
 
-apiVer = 'v1'
-server = 'localhost'
-port = '3000'
+module.exports = (argv, db, prompt) ->
+  apiVer = 'v1'
+  server = 'http://localhost:3000'
 
-module.exports = (settings) ->
-  push: (json) ->
+  login = ->
+    _p.resolve console.log 'loggin in'
+
+  post: (json) ->
+    console.log colors.magenta "#{json.name} >> #{server}"
     options =
       method: 'POST'
-      uri: "https://#{server}:#{port}/#{apiVer}/packages/create"
+      uri: "#{server}/api/#{apiVer}/packages"
       body: json
       json: true
+    request options
 
-  login: (user,password,email) ->
-    settings.insert 'user', $set:
-      username: user
-      email: email
-      password: password
+  get: (_id) ->
+    options =
+      uri: "#{server}/api/#{apiVer}/packages/#{_id}"
+      headers: 'User-Agent': 'Request-Promise'
+      json: true
+    request options
+
+  login: ->
+    db.findOne 'user'
+    .then (record) ->
+      if record then login record
+      else
+        user = {}
+        prompt.ask colors.magenta "user name or email"
+        .then (res) ->
+          user.userame = res
+          prompt.ask colors.magenta "password"
+        .then (res) ->
+          user.password = res
+          db.update 'user', {$set: user}, {upsert: true}
+        .then ->
+          login user

@@ -7,28 +7,34 @@ request = require('request-promise')
 fs = require('./fs')
 require('./string')
 colors = require ('chalk')
-prompt = require('./prompt')
 platform = require './platform'
 Datastore = require('nedb-promise')
 
-pgname = "tmake"
-
 module.exports = (argv, binDir, npmDir) ->
+  pgname = "tmake"
   runDir = process.cwd()
+
   argv.cachePath ?= "trie_modules"
   argv.program ?= pgname
   argv.userCache = "#{platform.homeDir()}/.#{pgname}"
+  if argv.v then argv.verbose ?= argv.v
 
   db = new Datastore
     filename: "#{runDir}/#{argv.cachePath}/.db"
+    autoload: true
+
+  localRepo = new Datastore
+    filename: "#{argv.userCache}/packages.db"
     autoload: true
 
   settings = new Datastore
     filename: "#{argv.userCache}/cli.db"
     autoload: true
 
+  prompt = require('./prompt')(argv)
   cli = require('./cli')(pgname)
   graph = require('./graph')(argv, db, runDir)
+  cloud = require('./cloud')(argv, settings, prompt)
 
   defaultConfig = 'package.cson'
   configPath = runDir + '/' + (argv.config || defaultConfig)
@@ -66,6 +72,7 @@ module.exports = (argv, binDir, npmDir) ->
       require('./build/build')(dep, argv, db, configure).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
+    test: (dep) -> _p.resolve "#{dep.name} is tested!"
 
   cleanDep = (dep) ->
     fs.nuke dep.d.build
@@ -104,14 +111,13 @@ module.exports = (argv, binDir, npmDir) ->
         else found = recurDeps name, dep
     found
 
-  resolveRoot = (config) ->
-    config.d =
-      root: runDir
+  resolveRoot = (configFile) ->
     if argv._[1]
-      dep = recurDeps argv._[1], config
-      if dep then config = dep
+      dep = recurDeps argv._[1], configFile
+      if dep then graph.resolveDep dep
       else throw "no dependency matching " + argv._[1]
-    graph.resolveDep config
+    else
+      graph.resolveDep _.extend configFile, d: root: runDir
 
   execute = (config, steps) ->
     resolveRoot config
@@ -120,8 +126,6 @@ module.exports = (argv, binDir, npmDir) ->
     .then (deps) ->
       unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
       _p.each deps, (dep) -> processDep dep, steps
-    .then ->
-      console.log colors.green '[ done !!! ]'
 
   processDep = (dep, steps) ->
     console.log colors.magenta "<< #{dep.name} >>"
@@ -132,10 +136,56 @@ module.exports = (argv, binDir, npmDir) ->
         BuildPhases[step](dep)
     else _p.resolve dep
 
+  unlink = (config) ->
+    query = {name: config.name, version: config.version}
+    localRepo.findOne query
+    .then (doc) ->
+      if doc
+        localRepo.remove query
+      else _p.resolve()
+
+  link = (config) ->
+    prompt.ask colors.green "link will do a full build, test and if successful will link to the local db @ #{argv.userCache}\n#{colors.yellow "do that now?"} #{colors.gray "(yy = disable this warning)"}"
+    .then (res) ->
+      if res then execute config, ["fetch","transform","configure","build","install","test"]
+      else _p.reject 'user abort'
+    .then ->
+      db.findOne name: config.name
+    .then (json) ->
+      if json.built
+        console.log colors.magenta "#{json.name} >> local repo"
+        doc = _.omit json, '_id', 'buildFile', 'built', 'installed'
+        if argv.verbose then console.log JSON.stringify doc,0,2
+        query = {name: doc.name, version: doc.version}
+        localRepo.findOne query
+        .then (existing) ->
+          if existing
+            localRepo.update query, {$set: doc}, {}
+          else
+            localRepo.insert doc
+      else _p.reject "link failed because build or test failed"
+
+  push = (config) ->
+    location = 'localhost'
+    prompt.ask colors.green "push will do a clean, full build, test and if successful will upload to the #{colors.yellow "public repository"}\n#{colors.yellow "do that now?"} #{colors.gray "(yy = disable this warning)"}"
+    .then (res) ->
+      if res then execute config, ["fetch","transform","configure","build","install","test"]
+      else _p.reject 'user abort'
+    .then ->
+      db.findOne name: config.name
+    .then (json) ->
+      if json.built
+        cloud.post json
+        .then (res) ->
+          if argv.v then console.log colors.magenta "<< #{JSON.stringify res,0,2}"
+          _p.resolve res
+      else _p.reject "link failed because build or test failed"
+
   run: ->
     fs.getConfigAsync configPath
     .then (config) ->
       argv._[0] ?= 'all'
+      resolvedName = argv._[1] || config.name || graph.resolveDepName config
       try
         cli.parse argv
       catch e
@@ -143,20 +193,29 @@ module.exports = (argv, binDir, npmDir) ->
       if config
         switch argv._[0]
           when 'clean'
-            depToClean = argv._[1] || config.name || graph.resolveDepName config
-            if depToClean == 'all'
-              db.find name: depToClean
+            if resolvedName == 'all'
+              db.find name: resolvedName
               .then (deps) ->
                 _p.each deps, (dep) -> execute dep, ["clean"]
-              .then -> fs.nuke path.join(runDir, argv.cachePath)
-              console.log 'so fresh'
+              .then ->
+                fs.nuke path.join(runDir, argv.cachePath)
+                console.log 'so fresh'
             else
-              db.findOne name: depToClean
+              db.findOne name: resolvedName
               .then (dep) ->
                 if dep then execute dep, ["clean"]
-                else console.log 'didn\'t find dep for', depToClean
+                else console.log 'didn\'t find dep for', resolvedName
+          when 'link'
+            db.findOne name: resolvedName
+            .then (dep) -> link dep || config
+          when 'unlink'
+            db.findOne name: resolvedName
+            .then (dep) -> unlink dep || config
           when 'push'
-            console.log 'not implemented' #upload()
+            db.findOne name: resolvedName
+            .then (dep) -> push dep || config
+          when 'test'
+            execute config, ["test"]
           when 'fetch'
             execute config, ["fetch"]
           when 'transform'
@@ -180,8 +239,10 @@ module.exports = (argv, binDir, npmDir) ->
                 console.log JSON.stringify _.map(deps, (dep) -> graph.resolvePaths dep),0,2
           when 'ls'
             selector = {}
-            if argv._[1] then selector = name: argv._[1]
-            db.find selector
+            repo = localRepo
+            if argv._[1] == 'project' then repo = db
+            else if argv._[1] then selector = name: argv._[1]
+            repo.find selector
             .then (deps) -> console.log JSON.stringify deps,0,2
           else console.log cli.manual()
       else
@@ -191,9 +252,10 @@ module.exports = (argv, binDir, npmDir) ->
           when 'example'
             example = argv._[1] || "served"
             examplePath = path.join npmDir, "examples/#{example}"
-            console.log "installing #{example} to #{examplePath}"
+            targetFolder = argv._[2] || example
+            console.log colors.magenta "copy from #{example} to #{targetFolder}"
             fs.src ["**/*"], cwd: examplePath
-            .pipe fs.dest path.join runDir, example
+            .pipe fs.dest path.join runDir, targetFolder
           when 'help', 'man', 'manual' then console.log cli.manual()
           else
             console.log cli.hello()

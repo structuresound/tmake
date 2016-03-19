@@ -1,11 +1,11 @@
 {
   "name": "tmake",
-  "description": "build-less build tool pulls a git repo, transforms it, and places it in your project somewhere",
+  "description": "trieMake can fetch, build, and manage c++ dependencies",
   "version": "0.1.6",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
-    "name": "structuresound",
-    "email": "leif@structuresound.com"
+    "name": "Leif Shackelford",
+    "email": "leif@chroma.io"
   },
   "repository": {
     "type": "git",
@@ -41,13 +41,11 @@
     "tmake": "bin/tmake.js"
   },
   "dependencies": {
-    "archy": "^1.0.0",
     "bluebird": "^3.0.5",
     "boost-lib": "^0.11.0",
     "child-process-promise": "^1.1.0",
     "cmake-js": "^3.0.0",
     "coffee-script": "^1.10.0",
-    "commander": "^2.9.0",
     "cson": "^3.0.2",
     "dependency-graph": "^0.4.1",
     "gift": "^0.6.1",
@@ -57,8 +55,6 @@
     "nedb-promise": "^2.0.0",
     "ninja-build-gen": "^0.2.1",
     "node-gyp": "^3.1.0",
-    "npm": "^3.7.2",
-    "promise-streams": "^1.0.1",
     "request-promise": "^1.0.2",
     "shelljs": "^0.6.0",
     "source-map-support": "^0.4.0",

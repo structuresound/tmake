@@ -1,0 +1,42 @@
+name: "example_served"
+version: "0.0.1"
+target: "bin"
+build:
+  with: "cmake"
+  boost: libs: ["asio", "system"]
+deps: [
+  git: "datasift/served"
+  path:
+    project: "source"
+    install:
+      libraries: from: "source/lib"
+      headers: from: "source/src"
+  build:
+    with: "cmake" # with is optional if name is present as a key
+    cmake:
+      configure:
+        RE2_LIBRARY: "~/re2/libraries/libre2.a"
+        RE2_INCLUDE_DIR: "~/re2/include"
+        SERVED_BUILD_STATIC: "ON"
+        SERVED_BUILD_TESTS: "OFF"
+        SERVED_BUILD_SHARED: "OFF"
+    boost: libs: ["asio", "system"]
+  deps: [
+    git: "google/re2"
+    target: "static"
+    build:
+      with: "ninja"
+      sources: matching: ["re2/*.cc", "util/*.cc"]
+      linux: sources: matching: ["!util/threadwin.cc"]
+      mac: sources: matching: ["!util/threadwin.cc"]
+      cflags:
+        O3: 1
+        std: "c++11"
+        g: 1
+        pthread: 1
+        Wall: 1
+        Wextra: 1
+        "Wno-unused-parameter": 1
+        "Wno-missing-field-initializers": 1
+  ]
+]

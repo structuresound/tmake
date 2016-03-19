@@ -29,12 +29,14 @@ module.exports = (p) ->
       description: ["copy an #{c.y "example"} to the current directory","the default is a c++11 http server: #{c.y "served"}"]
     ls: packageCommand "list state of a #{c.y "package"} from the local #{p} database"
     path: packageCommand "list local directories for a #{c.y "package"} from the local #{p} database"
-    install: packageCommand description: "copy libs and headers to destination"
+    install: packageCommand "copy libs and headers to destination"
     all: packageCommand "fetch, update, build, install"
     fetch: packageCommand "git / get dependencies for all or #{c.y "package"}"
     configure: packageCommand "configure build system #{c.y "package"}"
     build: packageCommand "build this project or dependency #{c.y "package"}"
-    push: description: "upload the current config file to the #{p} package repository"
+    push: packageCommand "upload the current config file to the #{p} package repository"
+    link: packageCommand "link the current or specified #{c.y "package"} to your local package repository"
+    unlink: packageCommand "remove the current or specified #{c.y "package"} from your local package repository"
     clean: packageCommand "clean project, #{c.y "package"}, or 'all'"
     test: packageCommand "test this project or dependency #{c.y "package"}"
     help: description: "usage guide"
@@ -66,6 +68,7 @@ module.exports = (p) ->
 
   defaultPackage =
     name: "newProject"
+    version: "0.0.1"
     target: "bin"
     build:
       with: "cmake"

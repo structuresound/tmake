@@ -1,0 +1,16 @@
+name: "example_zlib"
+version: "0.0.1"
+target: "bin"
+build:
+  with: "cmake"
+deps: [
+  git: "madler/zlib"
+  build:
+    with: "ninja"
+    cFlags:
+      O: 3
+      Wall: 1
+      "Wwrite-strings": 1
+      "Wpointer-arith": 1
+      "Wconversion": 1
+]
