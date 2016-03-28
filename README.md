@@ -1,14 +1,23 @@
-# bbt [![Build Status](https://secure.travis-ci.org/leif/bbt.png?branch=master)](http://travis-ci.org/leif/bbt)
+# trieMake [![Build Status](https://secure.travis-ci.org/leif/tmake.png?branch=master)](http://travis-ci.org/leif/tmake)
 
-buildless build tool can:
+trieMake can:
 
-* pull dependencies from git
-* build dependencies with cmake, gyp, or make
+* manage c++ dependencies and build settings
+* use local or cloud dependency specification, pulls from git
+* build with cmake, gyp, or make
 * auto-generate a cmakefile for your main file
+
+## To Install
+```bash
+npm install -g tmake
+```
 
 ## REQUIREMENTS
 
 Trying to make this as automatic as possible
+
+depends on node and cmake to be pre-installed by user
+fetches ninja binary when needed
 
 * nodejs - https://nodejs.org/en/
   * it is built in node
@@ -32,15 +41,11 @@ maybe
 
 * docker build / cross-compile ability
 
-## To Install
-```bash
-npm install -g bbt
-```
 ## Run an example
 ```bash
-mkdir bbt-example && cd bbt-example
-bbt example served
-bbt
+mkdir tmake-example && cd tmake-example
+tmake example served
+tmake
 ./build/example_served &
 curl http://127.0.0.1:8080/hello
 ```

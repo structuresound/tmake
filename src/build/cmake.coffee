@@ -18,19 +18,17 @@ module.exports = (dep, argv) ->
         else if stdout then resolve stdout
         else if stderr then resolve stderr
 
-  configure = ->
+  configure = (ninjaPath) ->
     config = _.extend
       LIBRARY_OUTPUT_PATH: dep.d.install.libraries.from
     , dep.build.cmake?.configure
-    command = "cmake -G Ninja #{dep.d.project}"
+    command = "cmake -G Ninja -DCMAKE_MAKE_PROGRAM=#{ninjaPath} #{dep.d.project}"
     _.each config, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
           value = "#{dep.d.home}/#{value.slice(2)}"
       command += " -D#{key}=#{value}"
     run command
-
-  build = -> run "ninja"
 
   ###
   # CONFIG GEN
@@ -119,5 +117,13 @@ module.exports = (dep, argv) ->
     if argv.verbose then console.log colors.green('configure cmake with context:'), JSON.stringify context,0,2
     generateLists [header, boost, includeDirectories, sources, flags, target, link], context
 
-  configure: -> configure()
-  build: -> configure().then -> build()
+  configure: ->
+    ninja.getNinja()
+    .then (ninjaPath) ->
+      configure ninjaPath
+
+  build: ->
+    ninja.getNinja()
+    .then (ninjaPath) ->
+      configure ninjaPath
+      .then -> run ninjaPath
