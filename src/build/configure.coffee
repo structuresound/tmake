@@ -5,7 +5,7 @@ path = require('path')
 platform = require '../platform'
 colors = require ('chalk')
 
-module.exports = (dep, argv, db, graph, npmDir) ->
+module.exports = (dep, argv, db, graph) ->
   if dep.configure
     if typeof dep.configure == 'string'
       build = with: dep.configure
@@ -40,7 +40,9 @@ module.exports = (dep, argv, db, graph, npmDir) ->
   stdCxxFlags =
     O: 2
     std: "c++11"
-    stdlib: "libc++"
+
+  if platform.name() == 'mac'
+    stdCxxFlags.stdlib = "libc++"
 
   jsonToCFlags = (options) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
@@ -101,10 +103,10 @@ module.exports = (dep, argv, db, graph, npmDir) ->
       context =
         name: dep.name
         target: dep.target
-        npmDir: npmDir
+        npmDir: argv.npmDir
         boost: build.boost
-        cFlags: jsonToCFlags build.cFlags || stdCFlags
-        cxxFlags: jsonToCxxFlags build.cxxFlags || stdCxxFlags
+        cFlags: jsonToCFlags build.cFlags || build.cxxFlags || stdCFlags
+        cxxFlags: jsonToCxxFlags build.cxxFlags || build.cFlags || stdCxxFlags
         ldFlags: jsonToLDFlags build.ldFlags || {}
       globHeaders()
       .then (headers) ->

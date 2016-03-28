@@ -1,5 +1,3 @@
-`require('source-map-support').install()`
-coffee = require('coffee-script')
 _ = require('underscore')
 _p = require("bluebird")
 path = require('path')
@@ -7,17 +5,10 @@ request = require('request-promise')
 fs = require('./fs')
 require('./string')
 colors = require ('chalk')
-platform = require './platform'
 Datastore = require('nedb-promise')
 
-module.exports = (argv, binDir, npmDir) ->
-  pgname = "tmake"
+module.exports = (argv, config, cli) ->
   runDir = process.cwd()
-
-  argv.cachePath ?= "trie_modules"
-  argv.program ?= pgname
-  argv.userCache = "#{platform.homeDir()}/.#{pgname}"
-  if argv.v then argv.verbose ?= argv.v
 
   db = new Datastore
     filename: "#{runDir}/#{argv.cachePath}/.db"
@@ -32,28 +23,12 @@ module.exports = (argv, binDir, npmDir) ->
     autoload: true
 
   prompt = require('./prompt')(argv)
-  cli = require('./cli')(pgname)
   graph = require('./graph')(argv, db, runDir)
   cloud = require('./cloud')(argv, settings, prompt)
 
-  defaultConfig = 'package.cson'
-  configPath = runDir + '/' + (argv.config || defaultConfig)
-
-  init = ->
-    unless fs.existsSync(configPath)
-      cli.createPackage()
-      .then (config) ->
-        fs.writeFileSync defaultConfig, config
-    else
-      console.log "aborting init, this folder already has a package.cson file present"
-
-  clone = (dep) ->
-    return unless dep.git
-    require('./git')(dep, db)
-    .validate()
-
   BuildPhases =
     fetch: (dep) ->
+      clone = (dep) -> require('./git')(dep, db).validate()
       if dep.provider
         switch dep.provider
           when 'local' then console.log "copying", dep.name, 'from', dep.path
@@ -66,9 +41,9 @@ module.exports = (argv, binDir, npmDir) ->
     transform: (dep) ->
       if dep.transform then require('./transform')(dep, argv, db).execute()
     configure: (dep) ->
-      require('./build/configure')(dep, argv, db, graph, npmDir).execute()
+      require('./build/configure')(dep, argv, db, graph).execute()
     build: (dep) ->
-      configure = require('./build/configure')(dep, argv, db, graph, npmDir)
+      configure = require('./build/configure')(dep, argv, db, graph)
       require('./build/build')(dep, argv, db, configure).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
@@ -182,80 +157,58 @@ module.exports = (argv, binDir, npmDir) ->
       else _p.reject "link failed because build or test failed"
 
   run: ->
-    fs.getConfigAsync configPath
-    .then (config) ->
-      argv._[0] ?= 'all'
-      resolvedName = argv._[1] || config.name || graph.resolveDepName config
-      try
-        cli.parse argv
-      catch e
-        return console.log e
-      if config
-        switch argv._[0]
-          when 'clean'
-            if resolvedName == 'all'
-              db.find name: resolvedName
-              .then (deps) ->
-                _p.each deps, (dep) -> execute dep, ["clean"]
-              .then ->
-                fs.nuke path.join(runDir, argv.cachePath)
-                console.log 'so fresh'
-            else
-              db.findOne name: resolvedName
-              .then (dep) ->
-                if dep then execute dep, ["clean"]
-                else console.log 'didn\'t find dep for', resolvedName
-          when 'link'
-            db.findOne name: resolvedName
-            .then (dep) -> link dep || config
-          when 'unlink'
-            db.findOne name: resolvedName
-            .then (dep) -> unlink dep || config
-          when 'push'
-            db.findOne name: resolvedName
-            .then (dep) -> push dep || config
-          when 'test'
-            execute config, ["test"]
-          when 'fetch'
-            execute config, ["fetch"]
-          when 'transform'
-            execute config, ["fetch","transform"]
-          when 'configure'
-            execute config, ["fetch","transform","configure"]
-          when 'build'
-            execute config, ["build"]
-          when 'install'
-            execute config, ["install"]
-          when 'all'
-            execute config, ["fetch","transform","configure","build","install"]
-          when 'example'
-            console.log "there's already a project in this folder"
-          when 'path'
-            selector = {}
-            if argv._[1]
-              selector = name: argv._[1]
-              db.find selector
-              .then (deps) ->
-                console.log JSON.stringify _.map(deps, (dep) -> graph.resolvePaths dep),0,2
-          when 'ls'
-            selector = {}
-            repo = localRepo
-            if argv._[1] == 'project' then repo = db
-            else if argv._[1] then selector = name: argv._[1]
-            repo.find selector
-            .then (deps) -> console.log JSON.stringify deps,0,2
-          else console.log cli.manual()
-      else
-        switch argv._[0]
-          when 'init'
-            init()
-          when 'example'
-            example = argv._[1] || "served"
-            examplePath = path.join npmDir, "examples/#{example}"
-            targetFolder = argv._[2] || example
-            console.log colors.magenta "copy from #{example} to #{targetFolder}"
-            fs.src ["**/*"], cwd: examplePath
-            .pipe fs.dest path.join runDir, targetFolder
-          when 'help', 'man', 'manual' then console.log cli.manual()
-          else
-            console.log cli.hello()
+    resolvedName = argv._[1] || config.name || graph.resolveDepName config
+    switch argv._[0]
+      when 'clean'
+        if resolvedName == 'all'
+          db.find name: resolvedName
+          .then (deps) ->
+            _p.each deps, (dep) -> execute dep, ["clean"]
+          .then ->
+            fs.nuke path.join(runDir, argv.cachePath)
+            console.log 'so fresh'
+        else
+          db.findOne name: resolvedName
+          .then (dep) ->
+            if dep then execute dep, ["clean"]
+            else console.log colors.red 'didn\'t find dep for', resolvedName
+      when 'link'
+        db.findOne name: resolvedName
+        .then (dep) -> link dep || config
+      when 'unlink'
+        db.findOne name: resolvedName
+        .then (dep) -> unlink dep || config
+      when 'push'
+        db.findOne name: resolvedName
+        .then (dep) -> push dep || config
+      when 'test'
+        execute config, ["test"]
+      when 'fetch'
+        execute config, ["fetch"]
+      when 'transform'
+        execute config, ["fetch","transform"]
+      when 'configure'
+        execute config, ["fetch","transform","configure"]
+      when 'build'
+        execute config, ["build"]
+      when 'install'
+        execute config, ["install"]
+      when 'all'
+        execute config, ["fetch","transform","configure","build","install"]
+      when 'example', 'init'
+        console.log colors.red "there's already a #{argv.program} project file in this directory"
+      when 'path'
+        selector = {}
+        if argv._[1]
+          selector = name: argv._[1]
+          db.find selector
+          .then (deps) ->
+            console.log JSON.stringify _.map(deps, (dep) -> graph.resolvePaths dep),0,2
+      when 'ls'
+        selector = {}
+        repo = localRepo
+        if argv._[1] == 'project' then repo = db
+        else if argv._[1] then selector = name: argv._[1]
+        repo.find selector
+        .then (deps) -> console.log JSON.stringify deps,0,2
+      else console.log cli.manual()
