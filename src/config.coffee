@@ -36,13 +36,13 @@ module.exports = (argv, binDir, npmDir) ->
     fs.getConfigAsync configPath
     .then (config) ->
       argv._[0] ?= 'all'
-      try
-        cli.parse argv
-      catch e
-        return console.log e
       if config
-        tmake = require('./tmake')(argv, config, cli)
-        tmake.run()
+        try
+          cli.parse argv
+          tmake = require('./tmake')(argv, config, cli)
+          tmake.run()
+        catch e
+          console.log 'tmake error: ', e
       else
         switch argv._[0]
           when 'init'

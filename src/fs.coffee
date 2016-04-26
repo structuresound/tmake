@@ -126,7 +126,8 @@ module.exports = (->
             when '.json' then _p.resolve JSON.parse(data)
             else _p.reject 'unknown config type', configPath
       else
-        _p.reject "no json file present at #{path}"
+        console.log "no cson or json file present at #{path}"
+        _p.resolve undefined
 
   fs.readConfigSync = (configPath) ->
     if fs.existsSync(configPath)
@@ -136,7 +137,8 @@ module.exports = (->
         when '.json' then JSON.parse(data)
         else _p.reject 'unknown config ext'
     else
-      _p.reject "no json file present at #{path}"
+      console.log "no cson or json file present at #{path}"
+      _p.resolve undefined
 
   return fs
 )()
