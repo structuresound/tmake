@@ -34,21 +34,28 @@ module.exports = (dep, argv, db, graph) ->
 
   globDeps = -> graph.deps dep
 
+  parsePlatormFlags = (base) ->
+    clean = _.omit base, platform.keywords()
+    _.extend clean, base[platform.name()]
+
   stdCFlags =
     O: 2
+    linux:
+      pthread: 1
 
   stdCxxFlags =
     O: 2
     std: "c++11"
-
-  if platform.name() == 'mac'
-    stdCxxFlags.stdlib = "libc++"
+    mac:
+      stdlib: "libc++"
+    linux:
+      pthread: 1
 
   jsonToCFlags = (options) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
 
   jsonToCxxFlags = (options) ->
-    opt = _.copy options
+    opt = parsePlatormFlags options
     if opt.O
       switch opt.O
         when 3, "3" then options.O3 = true
@@ -69,7 +76,7 @@ module.exports = (dep, argv, db, graph) ->
     jsonToFlags opt
 
   jsonToLDFlags = (options) ->
-    opt = _.copy options
+    opt = parsePlatormFlags options
     jsonToFlags opt
 
   jsonToFlags = (json) ->
@@ -134,10 +141,10 @@ module.exports = (dep, argv, db, graph) ->
     path.join dep.d.project, buildFileNames[systemName]
 
   configureFor = (systemName) ->
-    dep.buildFile ?= buildFilePath systemName
+    dep.buildFile = buildFilePath systemName
     fs.existsAsync dep.buildFile
     .then (exists) ->
-      if (!exists || argv.force)
+      if (!exists || (argv.force && dep.generatedBuildFile))
         createContext()
         .then (context) ->
           switch systemName
@@ -160,7 +167,7 @@ module.exports = (dep, argv, db, graph) ->
               .then (Makefile) ->
                 fs.writeFileAsync dep.buildFile, JSON.stringify(Makefile, 0, 2)
         .then ->
-          db.update {name: dep.name}, {$set: {buildFile: dep.buildFile}}, {}
+          db.update {name: dep.name}, {$set: {buildFile: dep.buildFile, generatedBuildFile: dep.buildFile}}, {}
       else Promise.resolve dep.buildFile
 
   resolveBuildSystem: resolveBuildSystem

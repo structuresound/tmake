@@ -68,12 +68,14 @@ module.exports = (argv, config, cli) ->
     db.update {name: dep.name}, modifier, {}
     .then ->
       if !argv.force
-        if dep.buildFile
-          prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow dep.buildFile}?"
+        if dep.generatedBuildFile
+          prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow dep.generatedBuildFile}?"
           .then (approved) ->
             if approved
-              modifier = $unset: buildFile: true
-              fs.unlinkSync dep.buildFile
+              modifier = $unset:
+                buildFile: true
+                generatedBuildFile: true
+              fs.unlinkSync dep.generatedBuildFile
               db.update {name: dep.name}, modifier, {}
 
   recurDeps = (name, root) ->

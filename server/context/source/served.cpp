@@ -1,6 +1,15 @@
 #include <served/served.hpp>
+#include <mongo/something.h>
 
 using namespace std;
+
+void mongoInit(){
+  mongocxx::driver::client c{"mongo://example.com:27017"};
+  auto col = c[“testdb”][“testcol”];
+  for (auto doc : col.find({}) {
+      std::cout << bsoncxx::to_json(doc) << std::endl;
+   }
+}
 
 int main(int argc, char const* argv[]) {
     // Create a multiplexer for handling requests

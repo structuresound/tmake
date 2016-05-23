@@ -5,6 +5,35 @@ build:
   with: "cmake"
   boost: libs: ["asio", "system"]
 deps: [
+  git: "mongodb/mongo-cxx-driver"
+  build: with: "cmake"
+  cmake:
+    configure: {}
+  deps: [
+    git: "mongodb/mongo-c-driver"
+    build:
+      cmake: configure:
+        BSON_INCLUDE_DIR: "~/libbson/include"
+        BSON_LIBRARY: "~/libbson/libraries/libbson-static.1.0.a"
+    deps: [
+      git: "mongodb/libbson"
+      build:
+        with: "cmake"
+      path:
+        install:
+          headers: [
+            from: "source/src/bson"
+            to: "include/libbson-1.0"
+          ,
+            from: "source/src/yajl"
+            to: "include/libbson-1.0"
+          ,
+            from: "build/src/bson"
+            to: "include/libbson-1.0"
+          ]
+    ]
+  ]
+,
   git: "datasift/served"
   path:
     project: "source"
@@ -27,16 +56,20 @@ deps: [
     build:
       with: "ninja"
       sources: matching: ["re2/*.cc", "util/*.cc"]
-      linux: sources: matching: ["!util/threadwin.cc"]
-      mac: sources: matching: ["!util/threadwin.cc"]
-      cflags:
+      linux:
+        sources: matching: ["!util/threadwin.cc"]
+      mac:
+        sources: matching: ["!util/threadwin.cc"]
+      cFlags:
         O3: 1
         std: "c++11"
         g: 1
-        pthread: 1
         Wall: 1
         Wextra: 1
         "Wno-unused-parameter": 1
         "Wno-missing-field-initializers": 1
+        pthread: 1
+        mac:
+          stdlib: "libc++"
   ]
 ]

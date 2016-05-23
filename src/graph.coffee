@@ -13,18 +13,12 @@ deepObjectExtend = (target, source) ->
         target[prop] = source[prop]
   target
 
-_.copy = (input) ->
-  _.deepObjectExtend {}, input
+_.deepObjectExtend = (input, source) -> deepObjectExtend _.extend({}, source), input
+_.copy = (input) -> _.deepObjectExtend {}, input
 
-_.deepObjectExtend = (input, source) ->
-  target = _.extend {}, input
-  for prop of source
-    if source.hasOwnProperty(prop)
-      if target[prop] and typeof source[prop] == 'object'
-        deepObjectExtend target[prop], source[prop]
-      else
-        target[prop] = source[prop]
-  target
+arrayify = (val) ->
+  return val if Array.isArray val
+  [val]
 
 module.exports = (argv, db, runDir) ->
   that = {}
@@ -67,21 +61,22 @@ module.exports = (argv, db, runDir) ->
       d.source = path.join d.temp, pathOptions.source
     else
       d.source = path.join d.clone, pathOptions.source
-    d.project = path.join d.root, pathOptions.project
+    d.project = path.join d.root, pathOptions.project || pathOptions.clone
     d.include =
       dirs: _.map pathOptions.include.dirs, (relPath) -> path.join d.source, relPath
     d.build ?= path.join d.root, pathOptions.build
     # install
+
     d.install =
-      binaries:
-        from: path.join d.root, pathOptions.install.binaries.from
-        to: path.join d.root, pathOptions.install.binaries.to
-      headers:
-        from: path.join d.root, pathOptions.install.headers.from
-        to: path.join d.root, pathOptions.install.headers.to
-      libraries:
-        from: path.join d.root, pathOptions.install.libraries.from
-        to: path.join d.root, pathOptions.install.libraries.to
+      binaries: _.map arrayify(pathOptions.install.binaries), (ft) ->
+        from: path.join d.root, ft.from
+        to: path.join d.root, ft.to
+      headers: _.map arrayify(pathOptions.install.headers), (ft) ->
+        from: path.join d.root, ft.from
+        to: path.join d.root, ft.to
+      libraries: _.map arrayify(pathOptions.install.libraries), (ft) ->
+        from: path.join d.root, ft.from
+        to: path.join d.root, ft.to
 
     dep.d = d
     _p.resolve dep
@@ -117,6 +112,7 @@ module.exports = (argv, db, runDir) ->
       _p.each root.deps, (dep) ->
         that.resolveDep dep
         .then (resolved) ->
+          throw new Error "recursive dependency" if resolved.name == root.name
           that.graph resolved, graph
           .then ->
             console.log 'add dependency', resolved.name, ">>", root.name

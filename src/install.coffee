@@ -35,33 +35,36 @@ module.exports = (dep, argv, db) ->
 
   installBin = ->
     if _.contains ['bin'], dep.target
-      from = path.join(dep.d.install.binaries.from, dep.name)
-      to = path.join(dep.d.install.binaries.to, dep.name)
-      if argv.verbose then console.log colors.green '[ install bin ] from', from, 'to', to
-      sh.mv from, to
+      _.each dep.d.install.binaries, (ft) ->
+        from = path.join(ft.from, dep.name)
+        to = path.join(ft.to, dep.name)
+        if argv.verbose then console.log colors.green '[ install bin ] from', from, 'to', to
+        sh.mv from, to
     else _p.resolve('bin')
 
   installLibs = ->
     if _.contains ['static','dynamic'], dep.target
-      if argv.verbose then console.log colors.green '[ install libs ] from', dep.d.install.libraries.from, 'to', dep.d.install.libraries.to
       patterns = task.libraries?.matching || ['*.a']
       if dep.target == 'dynamic' then patterns = task.libraries.matching || ['*.dylib', '*.so', '*.dll']
-      copy patterns, dep.d.install.libraries.from, dep.d.install.libraries.to, true
-      .then (libPaths) ->
-        db.update name: dep.name,
-          $set: libs: libPaths
-        , {}
+      _p.each dep.d.install.libraries, (ft) ->
+        if argv.verbose then console.log colors.green '[ install libs ] from', ft.from, 'to', ft.to
+        copy patterns, ft.from, ft.to, true
+        .then (libPaths) ->
+          db.update name: dep.name,
+            $set: libs: libPaths
+          , {}
     else _p.resolve('libs')
 
   installHeaders = ->
     if _.contains ['static','dynamic'], dep.target
       patterns = task.headers?.matching || ["**/*.h", "**/*.hpp"]
-      if argv.verbose then console.log colors.green '[ install headers ] from', dep.d.install.headers.from, 'to', dep.d.install.headers.to
-      copy patterns, dep.d.install.headers.from, dep.d.install.headers.to, false
-      .then (headerPaths) ->
-        db.update name: dep.name,
-          $set: headers: headerPaths
-        , {}
+      _p.each dep.d.install.headers, (ft) ->
+        if argv.verbose then console.log colors.yellow '[ install headers ] from', ft.from, 'to', ft.to
+        copy patterns, ft.from, ft.to, false
+        .then (headerPaths) ->
+          db.update name: dep.name,
+            $set: headers: headerPaths
+          , {}
     else _p.resolve('headers')
 
   execute = ->
