@@ -6,20 +6,93 @@ build:
   boost: libs: ["asio", "system"]
 deps: [
   git: "mongodb/mongo-cxx-driver"
-  build: with: "cmake"
-  cmake:
-    configure: {}
+  path:
+    project: "source"
+  build:
+    cmake:
+      configure:
+        CMAKE_DISABLE_FIND_PACKAGE_PkgConfig: true
+        LIBBSON_DIR: "~/"
+        LIBMONGOC_DIR: "~/"
+        BSONCXX_POLY_USE_MNMLSTC: false
+        BSONCXX_POLY_USE_BOOST: true
   deps: [
     git: "mongodb/mongo-c-driver"
     build:
-      cmake: configure:
-        BSON_INCLUDE_DIR: "~/libbson/include"
-        BSON_LIBRARY: "~/libbson/libraries/libbson-static.1.0.a"
+      cmake:
+        configure:
+          BSON_INCLUDE_DIR: "~/include"
+          BSON_LIBRARY: "~/lib/libbson.a"
+    path:
+      project: "source"
+      install:
+        headers: [
+          from: "source/src/mongoc"
+          to: "include/libmongoc-1.0"
+        ,
+          from: "build/src/mongoc"
+          to: "include/libmongoc-1.0"
+        ]
     deps: [
       git: "mongodb/libbson"
+      version: '1.0.4'
+      create:
+        stdint:
+          path: 'src/bson/bson-stdint.h'
+          string: '#include <stdint.h>'
+      replace:
+        files:
+          matching: ['src/bson/bson-config.h.in', 'src/bson/bson-version.h.in']
+          inputs:
+            BSON_MAJOR_VERSION: 1
+            BSON_MINOR_VERSION: 0
+            BSON_MICRO_VERSION: 0
+            BSON_PRERELEASE_VERSION: 'rc0'
+            BSON_VERSION: '1.0.0'
+            BSON_BYTE_ORDER:
+              function: 'OS_ENDIANNESS'
+              map:
+                LE: 1234
+                BE: 4321
+            BSON_HAVE_STDBOOL_H: 1
+            BSON_OS: 1
+            BSON_HAVE_ATOMIC_32_ADD_AND_FETCH: 1
+            BSON_HAVE_ATOMIC_64_ADD_AND_FETCH: 1
+            BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES: 0
+            BSON_HAVE_CLOCK_GETTIME: 1
+            BSON_HAVE_STRNLEN: 1
+            BSON_HAVE_SNPRINTF: 1
+            BSON_NEEDS_SET_OUTPUT_FORMAT: 0
+            BSON_EXTRA_ALIGN: 1
+            BSON_HAVE_DECIMAL128: 0
+            win:
+              BSON_OS: 2
+            mac:
+              BSON_HAVE_TIMESPEC: 1
+          directive:
+            prepost: '@'
+          ext: '.h'
       build:
-        with: "cmake"
+        with: "ninja"
+        sources:
+          matching: [
+            'src/bson/**.c'
+            'src/yajl/**.c'
+          ]
+        cFlags:
+          DBSON_COMPILATION: 1
+          O3: 1
+          std: "c++11"
+          g: 1
+          Wall: 1
+          Wextra: 1
+          "Wno-unused-parameter": 1
+          "Wno-missing-field-initializers": 1
+          pthread: 1
+          mac:
+            stdlib: "libc++"
       path:
+        includeDirs: ['src', 'src/bson', 'src/yajl']
         install:
           headers: [
             from: "source/src/bson"
@@ -31,6 +104,11 @@ deps: [
             from: "build/src/bson"
             to: "include/libbson-1.0"
           ]
+          libraries: [
+            from: "source/build"
+            to: "lib"
+          ]
+        project: "source"
     ]
   ]
 ,
@@ -38,14 +116,16 @@ deps: [
   path:
     project: "source"
     install:
-      libraries: from: "source/lib"
-      headers: from: "source/src"
+      libraries:
+        from: "source/lib"
+      headers:
+        from: "source/src"
   build:
     with: "cmake" # with is optional if name is present as a key
     cmake:
       configure:
-        RE2_LIBRARY: "~/re2/libraries/libre2.a"
-        RE2_INCLUDE_DIR: "~/re2/include"
+        RE2_LIBRARY: "~/lib/libre2.a"
+        RE2_INCLUDE_DIR: "~/include"
         SERVED_BUILD_STATIC: "ON"
         SERVED_BUILD_TESTS: "OFF"
         SERVED_BUILD_SHARED: "OFF"
@@ -53,6 +133,11 @@ deps: [
   deps: [
     git: "google/re2"
     target: "static"
+    install:
+      libraries:
+        from: "source/lib"
+      headers:
+        from: "source/src"
     build:
       with: "ninja"
       sources: matching: ["re2/*.cc", "util/*.cc"]

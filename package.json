@@ -60,6 +60,7 @@
     "shelljs": "^0.6.0",
     "source-map-support": "^0.4.0",
     "splitargs": "0.0.5",
+    "task-replace": "^0.1.0",
     "underscore": "^1.8.3",
     "unzip": "^0.1.11",
     "unzip-response": "^1.0.0",

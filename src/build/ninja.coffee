@@ -90,11 +90,14 @@ module.exports = (dep, argv) ->
     _.each context.sources, (filePath) ->
       ext = path.extname filePath
       name = path.basename filePath, ext
-      linkNames.push 'build/' + name + '.o'
-      ninjaConfig.edge('build/' + name + '.o').from(filePath).using(getRule ext)
+      linkNames.push "build/#{name}.o"
+      ninjaConfig.edge("build/#{name}.o").from(filePath).using(getRule ext)
 
     linkInput = linkNames.join(" ")
-    ninjaConfig.edge('build/lib' + dep.name + '.a').from(linkInput).using("link")
+    libName = "lib#{dep.name}.a"
+    if dep.name.indexOf('lib') != -1
+      libName = "#{dep.name}.a"
+    ninjaConfig.edge("build/#{libName}").from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 
   generate: genBuildScript

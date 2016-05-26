@@ -55,7 +55,10 @@ module.exports = (->
       glob srcPattern, {cwd: cwd || process.cwd(), root: relative || process.cwd(), nonull: false}, (er, results) ->
         if er then reject er
         else if results
-          resolve _.map results, (file) -> path.relative(relative || '/', cwd + '/' + file)
+          resolve _.map results, (file) ->
+            filePath = cwd + '/' + file
+            if relative then path.relative(relative, filePath)
+            else filePath
         else reject 'no files found'
 
   fs.glob = (pattern_s, relative, cwd) ->

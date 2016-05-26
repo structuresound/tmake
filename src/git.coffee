@@ -5,6 +5,11 @@ fs = require('./fs')
 sh = require 'shelljs'
 colors = require ('chalk')
 
+findGit = ->
+  if not sh.which 'git'
+    sh.echo 'Sorry, this script requires git'
+    sh.exit 1
+
 module.exports = (dep, db) ->
   if typeof dep.git == 'string'
     config = url: "https://github.com/#{dep.git}.git"
@@ -36,7 +41,7 @@ module.exports = (dep, db) ->
         .catch reject
 
   validate: ->
-    db.findOne {name:dep.name}
+    db.findOne {name: dep.name}
     .then (module) ->
       if fs.existsSync(dep.d.clone)
         if module?.version == (dep.version || "master")
@@ -48,9 +53,7 @@ module.exports = (dep, db) ->
             clone()
       else
         clone()
+  macros:
+    GIT_TAG: dep.version
 
   findGit: findGit
-findGit = ->
-  if not sh.which 'git'
-    sh.echo 'Sorry, this script requires git'
-    sh.exit 1

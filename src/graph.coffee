@@ -7,18 +7,22 @@ colors = require ('chalk')
 deepObjectExtend = (target, source) ->
   for prop of source
     if source.hasOwnProperty(prop)
-      if target[prop] and typeof source[prop] == 'object'
+      if Array.isArray(source[prop])
+        target[prop] = source[prop]
+      else if target[prop] and typeof source[prop] == 'object'
         deepObjectExtend target[prop], source[prop]
       else
         target[prop] = source[prop]
+    else if target.hasOwnProperty(prop)
+      delete target[prop]
   target
 
-_.deepObjectExtend = (input, source) -> deepObjectExtend _.extend({}, source), input
-_.copy = (input) -> _.deepObjectExtend {}, input
+_.deepObjectExtend = (target, source) ->
+  deepObjectExtend _.extend({}, target), source
 
 arrayify = (val) ->
-  return val if Array.isArray val
-  [val]
+  if Array.isArray(val) then val
+  else [ val ]
 
 module.exports = (argv, db, runDir) ->
   that = {}
@@ -26,6 +30,8 @@ module.exports = (argv, db, runDir) ->
   _graph = new DepGraph()
 
   that.resolvePaths = (dep) ->
+    return _p.resolve dep if dep.d?.resolved
+
     defaultPathOptions =
       home: argv.cachePath
       source: ""
@@ -34,8 +40,7 @@ module.exports = (argv, db, runDir) ->
       clone: "source"
       temp: "transform"
       build: "build"
-      include:
-        dirs: [""]
+      includeDirs: ["source"]
       project: ""
       install:
         binaries:
@@ -46,9 +51,10 @@ module.exports = (argv, db, runDir) ->
           to: "include"
         libraries:
           from: "build"
-          to: "libraries"
+          to: "lib"
 
     pathOptions = _.deepObjectExtend defaultPathOptions, dep.path
+    # console.log JSON.stringify pathOptions, 0, 2
     d = _.extend {}, dep.d
     #console.log colors.yellow 'existing dirs ' + JSON.stringify dep.d
     # fetch
@@ -61,24 +67,33 @@ module.exports = (argv, db, runDir) ->
       d.source = path.join d.temp, pathOptions.source
     else
       d.source = path.join d.clone, pathOptions.source
-    d.project = path.join d.root, pathOptions.project || pathOptions.clone
-    d.include =
-      dirs: _.map pathOptions.include.dirs, (relPath) -> path.join d.source, relPath
+    d.project = path.join d.root, pathOptions.project || ""
+    # console.log colors.magenta d.project
+    d.includeDirs = _.map arrayify(pathOptions.includeDirs), (relPath) -> path.join d.source, relPath
     d.build ?= path.join d.root, pathOptions.build
     # install
 
     d.install =
       binaries: _.map arrayify(pathOptions.install.binaries), (ft) ->
         from: path.join d.root, ft.from
-        to: path.join d.root, ft.to
+        to: path.join d.home, (ft.to || defaultPathOptions.install.binaries.to)
       headers: _.map arrayify(pathOptions.install.headers), (ft) ->
         from: path.join d.root, ft.from
-        to: path.join d.root, ft.to
+        to: path.join d.home, (ft.to || defaultPathOptions.install.headers.to)
       libraries: _.map arrayify(pathOptions.install.libraries), (ft) ->
         from: path.join d.root, ft.from
-        to: path.join d.root, ft.to
+        to: path.join d.home, (ft.to || defaultPathOptions.install.libraries.to)
 
+    # if dep.name == 'libbson'
+    #   console.log colors.magenta JSON.stringify(pathOptions.install.headers, 0, 2)
+    #   console.log colors.magenta JSON.stringify(d.install, 0, 2)
+
+    d.resolved = true
     dep.d = d
+
+    # if dep.name == 'libbson'
+    #   console.log colors.green JSON.stringify(dep.d, 0, 2)
+
     _p.resolve dep
 
   that.resolveDep = (dep) ->

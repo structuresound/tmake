@@ -22,12 +22,14 @@ module.exports = (dep, argv, db) ->
 
   copy = (patterns, from, to, flatten) ->
     filePaths = []
-    fs.wait(vinyl.src(patterns, cwd: from)
-    .pipe(map (file, emit) ->
-      if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
+    fs.wait(vinyl.src(patterns,
+      cwd: from
+      followSymlinks: false
+    ).pipe(map (file, emit) ->
+      #if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
       if flatten then file.base = path.dirname file.path
       newPath = to + '/' + path.relative file.base, file.path
-      filePaths.push path.relative dep.d.root, newPath
+      filePaths.push path.relative dep.d.home, newPath
       emit(null, file)
     ).pipe(vinyl.dest to)
     ).then ->

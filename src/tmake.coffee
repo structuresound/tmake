@@ -209,7 +209,9 @@ module.exports = (argv, config, cli) ->
       when 'ls'
         selector = {}
         repo = localRepo
-        if argv._[1] == 'project' then repo = db
+        if argv._[1] == 'project'
+          repo = db
+          selector = name: argv._[2]
         else if argv._[1] then selector = name: argv._[1]
         repo.find selector
         .then (deps) -> console.log JSON.stringify deps,0,2

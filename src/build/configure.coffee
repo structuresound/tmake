@@ -4,8 +4,13 @@ fs = require '../fs'
 path = require('path')
 platform = require '../platform'
 colors = require ('chalk')
+sh = require('shelljs')
+replace = new (require('task-replace'))()
+check = require('../check')
 
 module.exports = (dep, argv, db, graph) ->
+  git = require('../git')(dep, db)
+
   if dep.configure
     if typeof dep.configure == 'string'
       build = with: dep.configure
@@ -16,6 +21,59 @@ module.exports = (dep, argv, db, graph) ->
       build = with: dep.build
     else
       build = dep.build || {}
+
+  createFiles = ->
+    if !dep.create then return Promise.resolve()
+    entries = cascadingPlatformArgs dep.create
+    iterable = _.map entries, (v) -> v
+    Promise.each iterable, (e) ->
+      filePath = path.join dep.d.source, e.path
+      if argv.verbose then console.log 'create file', filePath
+      fs.writeFileAsync filePath, e.string, encoding: 'utf8'
+
+  preprocessor = ->
+    if !dep.replace then return Promise.resolve()
+    repl = cascadingPlatformArgs dep.replace
+    iterable = _.map repl, (v) -> v
+    Promise.each iterable, (replEntry) ->
+      fs.glob replEntry.matching, undefined, dep.d.source
+      .then (files) ->
+        Promise.each files, (file) ->
+          if argv.verbose then console.log 'process file', file
+          processStringWithReplEntry file, replEntry
+
+  replaceMacro = (m) ->
+    if check(m, String)
+      platform.macros[m] || git.macros[m] || m
+    else if check(m, Object)
+      res = platform.macros[m.function] || git.macros[m.function]
+      if m.map then m.map[res]
+      else res
+    else m
+
+  replaceAll = (str, find, replace) ->
+    str.replace new RegExp(find, 'g'), replace
+
+  processStringWithReplEntry = (f, r) ->
+    stringFile = fs.readFileSync f, 'utf8'
+    inputs = cascadingPlatformArgs r.inputs
+    _.each inputs, (v, k) ->
+      if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
+      stringFile = replaceAll stringFile, k, replaceMacro(v)
+    format =
+      ext: path.extname f
+      name: path.basename f, path.extname f
+      dir: path.dirname f
+      base: path.basename f
+    if format.ext = '.in'
+      parts = f.split('.')
+      format.dir = path.dirname parts[0]
+      format.name = path.basename parts[0]
+      format.ext = parts.slice(1).join('.')
+    editedFormat = _.extend format, _.pick r, Object.keys(format)
+    editedFormat.base = format.name + format.ext
+    newPath = path.format editedFormat
+    fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
   reduceGlobs = (base, defaults) ->
     crossPlatform = build[base]?.matching || defaults
@@ -34,7 +92,7 @@ module.exports = (dep, argv, db, graph) ->
 
   globDeps = -> graph.deps dep
 
-  parsePlatormFlags = (base) ->
+  cascadingPlatformArgs = (base) ->
     clean = _.omit base, platform.keywords()
     _.extend clean, base[platform.name()]
 
@@ -55,7 +113,7 @@ module.exports = (dep, argv, db, graph) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
 
   jsonToCxxFlags = (options) ->
-    opt = parsePlatormFlags options
+    opt = cascadingPlatformArgs options
     if opt.O
       switch opt.O
         when 3, "3" then options.O3 = true
@@ -76,7 +134,7 @@ module.exports = (dep, argv, db, graph) ->
     jsonToFlags opt
 
   jsonToLDFlags = (options) ->
-    opt = parsePlatormFlags options
+    opt = cascadingPlatformArgs options
     jsonToFlags opt
 
   jsonToFlags = (json) ->
@@ -124,12 +182,16 @@ module.exports = (dep, argv, db, graph) ->
         globDeps()
       .then (depGraph) ->
         if depGraph.length
-          context.includeDirs = _.map depGraph, (subDep) -> subDep.d.install.headers.to
+          context.includeDirs = _.chain depGraph
+          .map depGraph, (subDep) -> _.map subDep.d.install.headers, (ft) -> ft.to
+          .flatten()
+          .value()
           context.libs = _.chain depGraph
           .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
           .flatten()
           .value()
-        context.includeDirs = _.union context.includeDirs, dep.d.include.dirs
+        context.includeDirs = _.union context.includeDirs, dep.d.includeDirs
+        console.log colors.yellow JSON.stringify context.includeDirs
         resolve context
 
   buildFilePath = (systemName) ->
@@ -173,8 +235,12 @@ module.exports = (dep, argv, db, graph) ->
   resolveBuildSystem: resolveBuildSystem
   getContext: -> createContext()
   execute: ->
-    if argv.verbose then console.log 'build configuration:', build
-    libsPattern = ['**/*.a']
-    if dep.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
-    if argv.verbose then console.log 'configure for:', resolveBuildSystem()
-    configureFor resolveBuildSystem()
+    createFiles()
+    .then ->
+      preprocessor()
+    .then ->
+      if argv.verbose then console.log 'build configuration:', build
+      libsPattern = ['**/*.a']
+      if dep.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
+      if argv.verbose then console.log 'configure for:', resolveBuildSystem()
+      configureFor resolveBuildSystem()
