@@ -94,9 +94,14 @@ module.exports = (dep, argv) ->
       ninjaConfig.edge("build/#{name}.o").from(filePath).using(getRule ext)
 
     linkInput = linkNames.join(" ")
-    libName = "lib#{dep.name}.a"
-    if dep.name.indexOf('lib') != -1
-      libName = "#{dep.name}.a"
+
+    libName = dep.build.outputFile
+
+    if dep.name.indexOf('lib') == -1
+      libName ?= "lib#{dep.name}.a"
+    else
+      libName ?= "#{dep.name}.a"
+
     ninjaConfig.edge("build/#{libName}").from(linkInput).using("link")
     ninjaConfig.saveToStream fileStream
 

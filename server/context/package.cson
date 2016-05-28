@@ -93,6 +93,7 @@ deps: [
             pthread: 1
           mac:
             stdlib: "libc++"
+        outputFile: "libbson-1.0.a"
       path:
         includeDirs: ['src', 'src/bson', 'src/yajl']
         install:

@@ -12,18 +12,14 @@ cascade = require('../cascade')
 module.exports = (dep, argv, db, graph) ->
   git = require('../git')(dep, db)
 
-  configure = dep.configure
+  configure = dep.configure || dep.build
+  build = dep.build || dep.configure
 
-  if dep.build
-    if typeof dep.build == 'string'
-      build = with: dep.build
-    else
-      build = dep.build || {}
-  else if configure
-    if typeof configure == 'string'
-      build = with: dep.configure
-    else
-      build = configure || {}
+  if build
+    if typeof build == 'string'
+      build = with: build
+  else
+    console.log "warning: no config or build step provided for #{dep.name}"
 
   createFiles = ->
     if !configure.create then return Promise.resolve()
