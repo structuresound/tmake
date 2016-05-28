@@ -7,24 +7,27 @@ colors = require ('chalk')
 sh = require('shelljs')
 replace = new (require('task-replace'))()
 check = require('../check')
+cascade = require('../cascade')
 
 module.exports = (dep, argv, db, graph) ->
   git = require('../git')(dep, db)
 
-  if dep.configure
-    if typeof dep.configure == 'string'
-      build = with: dep.configure
-    else
-      build = dep.configure || {}
-  else if dep.build
+  configure = dep.configure
+
+  if dep.build
     if typeof dep.build == 'string'
       build = with: dep.build
     else
       build = dep.build || {}
+  else if configure
+    if typeof configure == 'string'
+      build = with: dep.configure
+    else
+      build = configure || {}
 
   createFiles = ->
-    if !dep.create then return Promise.resolve()
-    entries = cascadingPlatformArgs dep.create
+    if !configure.create then return Promise.resolve()
+    entries = configure.create
     iterable = _.map entries, (v) -> v
     Promise.each iterable, (e) ->
       filePath = path.join dep.d.source, e.path
@@ -32,8 +35,8 @@ module.exports = (dep, argv, db, graph) ->
       fs.writeFileAsync filePath, e.string, encoding: 'utf8'
 
   preprocessor = ->
-    if !dep.replace then return Promise.resolve()
-    repl = cascadingPlatformArgs dep.replace
+    if !configure.replace then return Promise.resolve()
+    repl = configure.replace
     iterable = _.map repl, (v) -> v
     Promise.each iterable, (replEntry) ->
       fs.glob replEntry.matching, undefined, dep.d.source
@@ -56,7 +59,7 @@ module.exports = (dep, argv, db, graph) ->
 
   processStringWithReplEntry = (f, r) ->
     stringFile = fs.readFileSync f, 'utf8'
-    inputs = cascadingPlatformArgs r.inputs
+    inputs = r.inputs
     _.each inputs, (v, k) ->
       if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
       stringFile = replaceAll stringFile, k, replaceMacro(v)
@@ -75,26 +78,19 @@ module.exports = (dep, argv, db, graph) ->
     newPath = path.format editedFormat
     fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
-  reduceGlobs = (base, defaults) ->
-    crossPlatform = build[base]?.matching || defaults
-    if build[platform.name()]?[base]?.matching
-      _.union crossPlatform, build[platform.name()][base].matching
-    else crossPlatform
-
   globHeaders = ->
-    patterns = reduceGlobs 'headers', ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
+    patterns = build.headers?.matching || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
     fs.glob patterns, dep.d.project, dep.d.source
 
   globSources = ->
-    patterns = reduceGlobs 'sources', ['*.cpp', '*.cc', '*.c']
+    patterns = build.sources?.matching || ['*.cpp', '*.cc', '*.c']
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
   globDeps = -> graph.deps dep
 
   cascadingPlatformArgs = (base) ->
-    clean = _.omit base, platform.keywords()
-    _.extend clean, base[platform.name()]
+    cascade.deep base, platform.keywords(), [platform.name()]
 
   stdCFlags =
     O: 2

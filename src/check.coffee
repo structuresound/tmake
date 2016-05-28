@@ -6,6 +6,7 @@ _c = (val, type) ->
     when String, "String" then typeof val == 'string' && !isNumeric(val)
     when Number, "Number" then isNumeric val
     when Array, "Array" then Array.isArray val
+    when Function, "Function" then _.isFunction val
     when Object, "Object" then val != null and typeof val == 'object'
     when "Boolean" then typeof val == 'boolean'
     when undefined, "Undefined" then val == undefined

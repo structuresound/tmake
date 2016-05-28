@@ -7,6 +7,9 @@ require('./string')
 colors = require ('chalk')
 Datastore = require('nedb-promise')
 
+platform = require './platform'
+cascade = require('./cascade')
+
 module.exports = (argv, config, cli) ->
   runDir = process.cwd()
 
@@ -97,7 +100,8 @@ module.exports = (argv, config, cli) ->
       graph.resolveDep _.extend configFile, d: root: runDir
 
   execute = (config, steps) ->
-    resolveRoot config
+    runConfig = cascade.deep config, platform.keywords(), platform.selectors()
+    resolveRoot runConfig
     .then (root) ->
       graph.all root
     .then (deps) ->
