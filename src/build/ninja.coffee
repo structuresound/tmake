@@ -4,11 +4,12 @@ path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-platform = require '../platform'
 fs = require('../fs')
 colors = require ('chalk')
 
 module.exports = (dep, argv) ->
+  platform = require('../platform')(argv, dep)
+
   ninjaVersion = "1.6.0"
 
   ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
@@ -46,7 +47,7 @@ module.exports = (dep, argv) ->
     new Promise (resolve, reject) ->
       getNinja()
       .then (ninjaPath) ->
-        directory = path.dirname dep.buildFile
+        directory = path.dirname dep.cache.buildFile
         command = "#{ninjaPath} -C #{directory}"
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command

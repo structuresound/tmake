@@ -6,24 +6,26 @@ fs = require('./fs')
 require('./string')
 colors = require ('chalk')
 Datastore = require('nedb-promise')
-
-platform = require './platform'
 cascade = require('./cascade')
 
-module.exports = (argv, config, cli) ->
-  runDir = process.cwd()
+module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
+  platform = require('./platform')(argv, rawConfig)
+  runDir = argv.runDir || process.cwd()
 
-  db = new Datastore
-    filename: "#{runDir}/#{argv.cachePath}/.db"
-    autoload: true
+  unless db
+    db = new Datastore
+      filename: "#{runDir}/#{argv.cachePath}/.db"
+      autoload: true
 
-  localRepo = new Datastore
-    filename: "#{argv.userCache}/packages.db"
-    autoload: true
+  unless localRepo
+    localRepo = new Datastore
+      filename: "#{argv.userCache}/packages.db"
+      autoload: true
 
-  settings = new Datastore
-    filename: "#{argv.userCache}/cli.db"
-    autoload: true
+  unless settings
+    settings = new Datastore
+      filename: "#{argv.userCache}/cli.db"
+      autoload: true
 
   prompt = require('./prompt')(argv)
   graph = require('./graph')(argv, db, runDir)
@@ -31,7 +33,7 @@ module.exports = (argv, config, cli) ->
 
   BuildPhases =
     fetch: (dep) ->
-      clone = (dep) -> require('./git')(dep, db).validate()
+      clone = (dep) -> require('./git')(dep, db, argv).validate()
       if dep.provider
         switch dep.provider
           when 'local' then console.log "copying", dep.name, 'from', dep.path
@@ -46,8 +48,7 @@ module.exports = (argv, config, cli) ->
     configure: (dep) ->
       require('./build/configure')(dep, argv, db, graph).execute()
     build: (dep) ->
-      configure = require('./build/configure')(dep, argv, db, graph)
-      require('./build/build')(dep, argv, db, configure).execute()
+      require('./build/build')(dep, argv, db, graph).execute()
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
     test: (dep) -> _p.resolve "#{dep.name} is tested!"
@@ -62,12 +63,14 @@ module.exports = (argv, config, cli) ->
     fs.prune dep.d.root
     modifier =
       $unset:
-        libs: true
-        headers: true
-        sources: true
-        built: true
-        installed: true
-        configured: true
+        "cache.configured": true
+        "cache.built": true
+        "cache.installed": true
+        "cache.git.checkout": true
+        "cache.buildFile": true
+    preserve = ["_id", "cache", "name"]
+    _.each dep, (v,k) ->
+      unless _.contains preserve, k then modifier.$unset[k] = true
     db.update {name: dep.name}, modifier, {}
     .then ->
       if !argv.force
@@ -76,8 +79,7 @@ module.exports = (argv, config, cli) ->
           .then (approved) ->
             if approved
               modifier = $unset:
-                buildFile: true
-                generatedBuildFile: true
+                "cache.generatedBuildFile": true
               fs.unlinkSync dep.generatedBuildFile
               db.update {name: dep.name}, modifier, {}
 
@@ -95,24 +97,24 @@ module.exports = (argv, config, cli) ->
     if argv._[1]
       dep = recurDeps argv._[1], configFile
       if dep then graph.resolveDep dep
-      else throw "no dependency matching " + argv._[1]
+      else throw new Error "no dependency matching " + argv._[1]
     else
       graph.resolveDep _.extend configFile, d: root: runDir
 
-  execute = (config, steps) ->
-    runConfig = cascade.deep config, platform.keywords(), platform.selectors()
+  execute = (rawConfig, steps) ->
+    runConfig = cascade.deep rawConfig, platform.keywords(), platform.selectors(argv, rawConfig)
     resolveRoot runConfig
     .then (root) ->
       graph.all root
     .then (deps) ->
       unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
-      _p.each deps, (dep) -> processDep dep, steps
+      _p.map deps, (dep) -> processDep dep, steps
 
   processDep = (dep, steps) ->
-    console.log colors.magenta "<< #{dep.name} >>"
+    unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
     if (!dep.cached || argv._[0] == "clean" || argv.force)
-      _p.each steps, (step) ->
-        console.log colors.green ">> #{step} >>"
+      _p.map steps, (step) ->
+        unless argv.quiet then console.log colors.green ">> #{step} >>"
         process.chdir runDir
         BuildPhases[step](dep)
     else _p.resolve dep
@@ -133,17 +135,12 @@ module.exports = (argv, config, cli) ->
     .then ->
       db.findOne name: config.name
     .then (json) ->
-      if json.built
-        console.log colors.magenta "#{json.name} >> local repo"
-        doc = _.omit json, '_id', 'buildFile', 'built', 'installed'
+      if json.cache.built
+        unless argv.quiet then console.log colors.magenta "#{json.name} >> local repo"
+        doc = _.omit json, '_id', 'cache'
         if argv.verbose then console.log JSON.stringify doc,0,2
-        query = {name: doc.name, version: doc.version}
-        localRepo.findOne query
-        .then (existing) ->
-          if existing
-            localRepo.update query, {$set: doc}, {}
-          else
-            localRepo.insert doc
+        query = {name: doc.name, tag: doc.tag || "master"}
+        localRepo.update query, {$set: doc}, {upsert: true}
       else _p.reject "link failed because build or test failed"
 
   push = (config) ->
@@ -155,52 +152,67 @@ module.exports = (argv, config, cli) ->
     .then ->
       db.findOne name: config.name
     .then (json) ->
-      if json.built
+      if json.cache.built
         cloud.post json
         .then (res) ->
           if argv.v then console.log colors.magenta "<< #{JSON.stringify res,0,2}"
           _p.resolve res
       else _p.reject "link failed because build or test failed"
 
+  execute: execute
+  push: push
+  link: link
+  unlink: unlink
   run: ->
-    resolvedName = argv._[1] || config.name || graph.resolveDepName config
+    resolvedName = argv._[1] || rawConfig.name || graph.resolveDepName rawConfig
     switch argv._[0]
+      when 'rm'
+        db.remove name: resolvedName
+        .then ->
+          console.log "cleared cache for #{resolvedName}"
       when 'clean'
         if resolvedName == 'all'
           db.find name: resolvedName
           .then (deps) ->
-            _p.each deps, (dep) -> execute dep, ["clean"]
+            _p.each deps, (dep) -> cleanDep dep
           .then ->
             fs.nuke path.join(runDir, argv.cachePath)
             console.log 'so fresh'
         else
           db.findOne name: resolvedName
           .then (dep) ->
-            if dep then execute dep, ["clean"]
+            if dep
+              graph.resolveDep dep
+              .then (resolved) ->
+                cleanDep resolved
+              .then ->
+                db.findOne name: resolvedName
+                .then (cleaned) ->
+                  console.log JSON.stringify cleaned, 0, 2
             else console.log colors.red 'didn\'t find dep for', resolvedName
       when 'link'
         db.findOne name: resolvedName
-        .then (dep) -> link dep || config
+        .then (dep) -> link dep || rawConfig, argv.force
       when 'unlink'
         db.findOne name: resolvedName
-        .then (dep) -> unlink dep || config
+        .then (dep) -> unlink dep || rawConfig
       when 'push'
         db.findOne name: resolvedName
-        .then (dep) -> push dep || config
+        .then (dep) -> push dep || rawConfig
       when 'test'
-        execute config, ["test"]
+        execute rawConfig, ["test"]
       when 'fetch'
-        execute config, ["fetch"]
+        execute rawConfig, ["fetch"]
       when 'transform'
-        execute config, ["fetch","transform"]
+        execute rawConfig, ["fetch","transform"]
       when 'configure'
-        execute config, ["fetch","transform","configure"]
+        execute rawConfig, ["fetch","transform","configure"]
       when 'build'
-        execute config, ["build"]
+        execute rawConfig, ["build"]
       when 'install'
-        execute config, ["install"]
+        execute rawConfig, ["install"]
       when 'all'
-        execute config, ["fetch","transform","configure","build","install"]
+        execute rawConfig, ["fetch","transform","configure","build","install"]
       when 'example', 'init'
         console.log colors.red "there's already a #{argv.program} project file in this directory"
       when 'path'

@@ -38,6 +38,7 @@ module.exports = (p) ->
     link: packageCommand "link the current or specified #{c.y "package"} to your local package repository"
     unlink: packageCommand "remove the current or specified #{c.y "package"} from your local package repository"
     clean: packageCommand "clean project, #{c.y "package"}, or 'all'"
+    rm: packageCommand "remove file cache, #{c.y "package"}, or 'all'"
     test: packageCommand "test this project or dependency #{c.y "package"}"
     init: description: "create new tmake project file @ config.cson"
     help: description: "usage guide"

@@ -1,4 +1,3 @@
-`require('source-map-support').install()`
 _ = require('underscore')
 _p = require("bluebird")
 path = require('path')
@@ -6,10 +5,12 @@ request = require('request-promise')
 fs = require('./fs')
 require('./string')
 colors = require ('chalk')
-platform = require './platform'
+check = require './check'
 Datastore = require('nedb-promise')
 
 module.exports = (argv, binDir, npmDir) ->
+  platform = require('./platform')(argv)
+
   pgname = "tmake"
   runDir = process.cwd()
 
@@ -35,6 +36,7 @@ module.exports = (argv, binDir, npmDir) ->
   run: ->
     fs.getConfigAsync configPath
     .then (config) ->
+      throw config if check config, Error
       argv._[0] ?= 'all'
       if config
         try

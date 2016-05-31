@@ -9,12 +9,14 @@ manualRebuild = ->
         return reject(error) if error
         gyp.commands.build [], resolve
 
-module.exports = (task, dep, argv) ->
+module.exports = (dep, argv) ->
+  task = dep.build
+
   generate: (context) ->
-    Promise.resolve task.gyp ||
+    Promise.resolve
       includes: context.headers
       targets: [
-        target_name: task.name
+        target_name: task.outputFile
         type: 'static_library'
         sources: context.sources
         include_dirs: []

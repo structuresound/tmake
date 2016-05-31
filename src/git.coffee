@@ -2,7 +2,7 @@
 Promise = require("bluebird")
 git = require 'gift'
 fs = require('./fs')
-sh = require 'shelljs'
+sh = require('./sh')
 colors = require ('chalk')
 
 findGit = ->
@@ -10,14 +10,14 @@ findGit = ->
     sh.echo 'Sorry, this script requires git'
     sh.exit 1
 
-module.exports = (dep, db) ->
+module.exports = (dep, db, argv) ->
   if typeof dep.git == 'string'
-    config = url: "https://github.com/#{dep.git}.git"
+    config = repository: dep.git
   else
     config = dep.git || {}
 
-  metaPath = ->
-    dep.cacheDir + '/' + 'versions'
+  config.url = "https://github.com/#{config.repository}.git"
+  config.checkout = config.tag || config.branch || "master"
 
   remove = ->
     new Promise (resolve) ->
@@ -26,34 +26,45 @@ module.exports = (dep, db) ->
       resolve()
 
   clone = ->
+    return checkout() if (dep.cache?.git && !argv.force)
     console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, ->
+        dep.cache ?= git: checkout: "master"
+        dep.cache.git.checkout = "master"
         db.update
             name: dep.name
           ,
             $set:
-              version: (dep.version || "master")
-              name: dep.name
+              "cache.git.checkout": "master"
+              "tag": "master"
           ,
             upsert: true
-        .then resolve
+        .then ->
+          checkout()
+          .then resolve
         .catch reject
 
+  checkout = ->
+    return Promise.resolve() if (dep.cache?.git.checkout == config.checkout && !argv.force)
+    sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose
+    .then ->
+      db.update
+          name: dep.name
+        ,
+          $set: "cache.git.checkout": config.checkout
+        ,
+          {}
+
   validate: ->
-    db.findOne {name: dep.name}
-    .then (module) ->
-      if fs.existsSync(dep.d.clone)
-        if module?.version == (dep.version || "master")
-          console.log 'using ', dep.name, '@', dep.version || '*'
-          return Promise.resolve()
-        else
-          remove()
-          .then ->
-            clone()
+    if fs.existsSync(dep.d.clone)
+      if dep.cache?.git.checkout == config.checkout
+        console.log 'using ', dep.name, '@', config.checkout
+        return Promise.resolve()
       else
-        clone()
-  macros:
-    GIT_TAG: dep.version
+        return checkout()
+    else
+      return clone()
 
   findGit: findGit
+  checkout: checkout

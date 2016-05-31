@@ -7,8 +7,9 @@ _c = (val, type) ->
     when Number, "Number" then isNumeric val
     when Array, "Array" then Array.isArray val
     when Function, "Function" then _.isFunction val
-    when Object, "Object" then val != null and typeof val == 'object'
+    when Object, "Object" then val != null and typeof val == 'object' and !_c(val, Array) and !_c(val, Error)
     when "Boolean" then typeof val == 'boolean'
+    when Error, "Error" then val instanceof Error
     when undefined, "Undefined" then val == undefined
     else throw "checking unsupported type " + type
 

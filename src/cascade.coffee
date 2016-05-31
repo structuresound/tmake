@@ -166,6 +166,13 @@ flatten = (stack) ->
     _.extend flat, stack[level]
   flat
 
+matchesSelectors = (keywords, selector) ->
+  if selector.indexOf(' ') != -1
+    selectors = selector.split ' '
+    matches = _.intersection keywords, selectors
+    matches.length > 0
+  else _.contains keywords, selector
+
 deepSearch = (object, selectors, test) ->
   keys = keyPaths object
   stack = []
@@ -175,7 +182,7 @@ deepSearch = (object, selectors, test) ->
     unfiltered = key.split '.'
     valid = true
     _.each unfiltered, (kp) ->
-      if _.contains selectors, kp
+      if matchesSelectors selectors, kp
         if test 0, kp
           priority += 1
           filtered = filtered.replace "#{kp}.", ''
@@ -195,7 +202,7 @@ module.exports =
     test = testOrValidSelectors
     if testOrValidSelectors
       unless check testOrValidSelectors, Function
-        test = (val, key) -> _.contains testOrValidSelectors, key
+        test = (val, key) -> matchesSelectors testOrValidSelectors, key
     else test = -> true
     deepSearch(tree, selectors, test)
 
@@ -203,6 +210,8 @@ module.exports =
     test = testOrValidSelectors
     if testOrValidSelectors
       unless check testOrValidSelectors, Function
-        test = (val, key) -> _.contains testOrValidSelectors, key
+        test = (val, key) -> matchesSelectors testOrValidSelectors, key
     else test = -> true
     flatten shallowSearch(tree, selectors, test, [], 0)
+
+  matchesSelectors: matchesSelectors

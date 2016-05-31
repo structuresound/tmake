@@ -2,84 +2,79 @@ _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
 path = require('path')
-platform = require '../platform'
 colors = require ('chalk')
-sh = require('shelljs')
 replace = new (require('task-replace'))()
 check = require('../check')
 cascade = require('../cascade')
+sh = require('../sh')
+
 
 module.exports = (dep, argv, db, graph) ->
-  git = require('../git')(dep, db)
+  parse = require('../parse')(dep)
 
-  configure = dep.configure || dep.build
-  build = dep.build || dep.configure
+  settings = ['cFlags', 'sources', 'headers', 'outputFile']
+  commands =
+    any: (obj) -> commands.shell(obj)
+    ninja: -> commands.with 'ninja'
+    cmake: -> commands.with 'cmake'
+    make: -> commands.with 'make'
+    replace: (obj) ->
+      Promise.each parse.iterable(obj), (replEntry) ->
+        fs.glob parse.globArray(replEntry.matching, dep), undefined, dep.d.source
+        .then (files) ->
+          Promise.each files, (file) ->
+            if argv.verbose then console.log 'process file', file, replEntry
+            parse.replaceInFile file, replEntry, dep
 
-  if build
-    if typeof build == 'string'
-      build = with: build
-  else
-    console.log "warning: no config or build step provided for #{dep.name}"
+    shell: (obj) ->
+      Promise.each parse.iterable(obj), (c) ->
+        if check c, String then c = cmd: c
+        sh.Promise parse.configSetting(c.cmd), parse.pathSetting(c.cwd || dep.d.source, dep), !argv.quiet
 
-  createFiles = ->
-    if !configure.create then return Promise.resolve()
-    entries = configure.create
-    iterable = _.map entries, (v) -> v
-    Promise.each iterable, (e) ->
-      filePath = path.join dep.d.source, e.path
-      if argv.verbose then console.log 'create file', filePath
-      fs.writeFileAsync filePath, e.string, encoding: 'utf8'
+    create: (obj) ->
+      Promise.each parse.iterable(obj), (e) ->
+        filePath = path.join dep.d.source, e.path
+        if argv.verbose then console.log 'create file', filePath
+        fs.writeFileAsync filePath, e.string, encoding: 'utf8'
 
-  preprocessor = ->
-    if !configure.replace then return Promise.resolve()
-    repl = configure.replace
-    iterable = _.map repl, (v) -> v
-    Promise.each iterable, (replEntry) ->
-      fs.glob replEntry.matching, undefined, dep.d.source
-      .then (files) ->
-        Promise.each files, (file) ->
-          if argv.verbose then console.log 'process file', file
-          processStringWithReplEntry file, replEntry
+    with: (system) ->
+      if argv.verbose then console.log 'configure for:', system
+      configureFor system
 
-  replaceMacro = (m) ->
-    if check(m, String)
-      platform.macros[m] || git.macros[m] || m
-    else if check(m, Object)
-      res = platform.macros[m.function] || git.macros[m.function]
-      if m.map then m.map[res]
-      else res
-    else m
+    copy: (obj) ->
+      Promise.each parse.iterable(obj), (e) ->
+        console.log 'copy', e
+        copy e.matching, parse.pathSetting(e.from, dep), parse.pathSetting(e.to, dep), false
 
-  replaceAll = (str, find, replace) ->
-    str.replace new RegExp(find, 'g'), replace
+  platform = require('../platform')(argv, dep)
 
-  processStringWithReplEntry = (f, r) ->
-    stringFile = fs.readFileSync f, 'utf8'
-    inputs = r.inputs
-    _.each inputs, (v, k) ->
-      if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
-      stringFile = replaceAll stringFile, k, replaceMacro(v)
-    format =
-      ext: path.extname f
-      name: path.basename f, path.extname f
-      dir: path.dirname f
-      base: path.basename f
-    if format.ext = '.in'
-      parts = f.split('.')
-      format.dir = path.dirname parts[0]
-      format.name = path.basename parts[0]
-      format.ext = parts.slice(1).join('.')
-    editedFormat = _.extend format, _.pick r, Object.keys(format)
-    editedFormat.base = format.name + format.ext
-    newPath = path.format editedFormat
-    fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
+  _build = _.extend {}, _.pick(dep.build, Object.keys(commands))
+  configuration = _.extend _build, dep.configure
+
+  copy = (patterns, from, to, flatten) ->
+    filePaths = []
+    fs.wait(fs.src(patterns,
+      cwd: from
+      followSymlinks: false
+    ).pipe(fs.map (file, emit) ->
+      if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
+      if flatten then file.base = path.dirname file.path
+      newPath = to + '/' + path.relative file.base, file.path
+      filePaths.push path.relative dep.d.home, newPath
+      emit(null, file)
+    ).pipe(fs.dest to)
+    ).then ->
+      Promise.resolve filePaths
 
   globHeaders = ->
-    patterns = build.headers?.matching || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**']
-    fs.glob patterns, dep.d.project, dep.d.source
+    patterns = parse.globArray(configuration.headers?.matching || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**'], dep)
+    Promise.map dep.d.includeDirs, (path) ->
+      fs.glob patterns, dep.d.project, path
+    .then (stack) ->
+      Promise.resolve _.flatten stack
 
   globSources = ->
-    patterns = build.sources?.matching || ['*.cpp', '*.cc', '*.c']
+    patterns = parse.globArray(configuration.sources?.matching || ['*.cpp', '*.cc', '*.c'], dep)
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
@@ -138,33 +133,15 @@ module.exports = (dep, argv, db, graph) ->
         flags += " -#{key}"
     flags
 
-  resolveBuildSystem = ->
-    switch build.with
-      when "ninja" then "ninja"
-      when "cmake" then "cmake"
-      when "gyp" then "gyp"
-      when "make" then "make"
-      else
-        if build.ninja then "ninja"
-        else if build.cmake then "cmake"
-        else if build.gyp then "gyp"
-        else if build.make then "make"
-        else if fs.existsSync dep.d.project + '/build.ninja' then "ninja"
-        else if fs.existsSync dep.d.project + '/CMakeLists.txt' then "cmake"
-        else if fs.existsSync dep.d.project + '/binding.gyp' then "gyp"
-        else if fs.existsSync dep.d.project + '/Makefile' then "make"
-        else Promise.reject "can't find any meta-build scripts: i.e. CMakeLists.txt or binding.gyp"
-
   createContext = ->
     new Promise (resolve) ->
       context =
         name: dep.name
         target: dep.target
         npmDir: argv.npmDir
-        boost: build.boost
-        cFlags: jsonToCFlags build.cFlags || build.cxxFlags || stdCFlags
-        cxxFlags: jsonToCxxFlags build.cxxFlags || build.cFlags || stdCxxFlags
-        ldFlags: jsonToLDFlags build.ldFlags || {}
+        cFlags: jsonToCFlags configuration.cFlags || configuration.cxxFlags || stdCFlags
+        cxxFlags: jsonToCxxFlags configuration.cxxFlags || configuration.cFlags || stdCxxFlags
+        ldFlags: jsonToLDFlags configuration.ldFlags || {}
       globHeaders()
       .then (headers) ->
         context.headers = headers
@@ -174,10 +151,12 @@ module.exports = (dep, argv, db, graph) ->
         globDeps()
       .then (depGraph) ->
         if depGraph.length
-          context.includeDirs = _.chain depGraph
-          .map depGraph, (subDep) -> _.map subDep.d.install.headers, (ft) -> ft.to
+          includeDirs = _.chain depGraph
+          .map (subDep) -> _.map subDep.path.install.headers, (ft) -> ft.to
           .flatten()
+          .uniq()
           .value()
+          context.includeDirs = _.map includeDirs, (relativePath) -> path.join dep.d.home, relativePath
           context.libs = _.chain depGraph
           .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
           .flatten()
@@ -195,44 +174,42 @@ module.exports = (dep, argv, db, graph) ->
     path.join dep.d.project, buildFileNames[systemName]
 
   configureFor = (systemName) ->
-    dep.buildFile = buildFilePath systemName
-    fs.existsAsync dep.buildFile
+    dep.cache.buildFile = buildFilePath systemName
+    fs.existsAsync dep.cache.buildFile
     .then (exists) ->
-      if (!exists || (argv.force && dep.generatedBuildFile))
+      if (!exists || (argv.force && dep.cache.generatedBuildFile))
         createContext()
         .then (context) ->
           switch systemName
             when 'ninja'
-              file = fs.createWriteStream(dep.buildFile)
+              file = fs.createWriteStream(dep.cache.buildFile)
               require('./ninja')(dep,argv).generate context, file
               file.end()
               fs.wait file, true
             when 'cmake'
               require('./cmake')(dep, argv).generate context
               .then (CMakeLists) ->
-                fs.writeFileAsync dep.buildFile, CMakeLists
+                fs.writeFileAsync dep.cache.buildFile, CMakeLists
             when 'gyp'
-              require('./gyp')(build, dep, argv).generate context
+              require('./gyp')(configuration, dep, argv).generate context
               .then (binding) ->
-                if argv.verbose then console.log 'node-gyp:', dep.buildFile, JSON.stringify(binding, 0, 2)
-                fs.writeFileAsync dep.buildFile, JSON.stringify(binding, 0, 2)
+                if argv.verbose then console.log 'node-gyp:', dep.cache.buildFile, JSON.stringify(binding, 0, 2)
+                fs.writeFileAsync dep.cache.buildFile, JSON.stringify(binding, 0, 2)
             when 'make'
               require('./make')(context).generate context
               .then (Makefile) ->
-                fs.writeFileAsync dep.buildFile, JSON.stringify(Makefile, 0, 2)
+                fs.writeFileAsync dep.cache.buildFile, JSON.stringify(Makefile, 0, 2)
         .then ->
-          db.update {name: dep.name}, {$set: {buildFile: dep.buildFile, generatedBuildFile: dep.buildFile}}, {}
-      else Promise.resolve dep.buildFile
+          db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile, "cache.generatedBuildFile": dep.cache.buildFile}}, {}
+      else if exists
+        db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile}}, {}
+      else
+        Promise.resolve dep.cache.buildFile
 
-  resolveBuildSystem: resolveBuildSystem
   getContext: -> createContext()
+  commands: commands
   execute: ->
-    createFiles()
+    return Promise.resolve() if (dep.cache?.configured && !argv.force)
+    parse.iterate dep.configure, commands, settings
     .then ->
-      preprocessor()
-    .then ->
-      if argv.verbose then console.log 'build configuration:', build
-      libsPattern = ['**/*.a']
-      if dep.target == 'dynamic' then libsPattern = ['**/*.dylib', '**/*.so', '**/*.dll']
-      if argv.verbose then console.log 'configure for:', resolveBuildSystem()
-      configureFor resolveBuildSystem()
+      db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}

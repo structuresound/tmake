@@ -27,13 +27,15 @@
     "test": "grunt nodeunit"
   },
   "devDependencies": {
+    "chai": "^3.5.0",
     "eslint": "^2.2.0",
     "eslint-plugin-react": "^4.0.0",
     "grunt": "~0.4.5",
     "grunt-contrib-coffee": "^0.13.0",
     "grunt-contrib-jshint": "~0.6.4",
     "grunt-contrib-nodeunit": "~0.2.0",
-    "grunt-contrib-watch": "~0.5.3"
+    "grunt-contrib-watch": "~0.5.3",
+    "grunt-simple-mocha": "^0.4.1"
   },
   "Keywords": [],
   "preferGlobal": "true",
@@ -51,6 +53,7 @@
     "dependency-graph": "^0.4.1",
     "gift": "^0.6.1",
     "glob-all": "^3.0.1",
+    "interpolate": "^0.1.0",
     "map-stream": "0.0.6",
     "minimist": "^1.2.0",
     "nedb-promise": "^2.0.0",

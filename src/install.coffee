@@ -5,7 +5,7 @@ path = require('path')
 fs = require('./fs')
 sh = require "shelljs"
 colors = require ('chalk')
-map = require('map-stream')
+Promise = require 'bluebird'
 
 vinyl =
   dest: _vinyl.dest
@@ -17,17 +17,16 @@ vinyl =
     _vinyl.src patterns, opt
 
 module.exports = (dep, argv, db) ->
-
   task = dep.install || {}
 
-  copy = (patterns, from, to, flatten) ->
+  copy = (patterns, from, to, opt) ->
     filePaths = []
     fs.wait(vinyl.src(patterns,
       cwd: from
-      followSymlinks: false
-    ).pipe(map (file, emit) ->
+      followSymlinks: opt.followSymlinks
+    ).pipe(fs.map (file, emit) ->
       #if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
-      if flatten then file.base = path.dirname file.path
+      if opt.flatten then file.base = path.dirname file.path
       newPath = to + '/' + path.relative file.base, file.path
       filePaths.push path.relative dep.d.home, newPath
       emit(null, file)
@@ -46,30 +45,35 @@ module.exports = (dep, argv, db) ->
 
   installLibs = ->
     if _.contains ['static','dynamic'], dep.target
-      patterns = task.libraries?.matching || ['*.a']
-      if dep.target == 'dynamic' then patterns = task.libraries.matching || ['*.dylib', '*.so', '*.dll']
-      _p.each dep.d.install.libraries, (ft) ->
+      _p.map dep.d.install.libraries, (ft) ->
+        patterns = ft.matching || ['*.a']
+        if dep.target == 'dynamic' then patterns = ft.matching || ['*.dylib', '*.so', '*.dll']
         if argv.verbose then console.log colors.green '[ install libs ] from', ft.from, 'to', ft.to
-        copy patterns, ft.from, ft.to, true
-        .then (libPaths) ->
-          db.update name: dep.name,
-            $set: libs: libPaths
-          , {}
+        copy patterns, ft.from, ft.to,
+          flatten: true
+          followSymlinks: false
+      .then (libPaths) ->
+        db.update name: dep.name,
+          $set: libs: _.flatten libPaths
+        , {}
     else _p.resolve('libs')
 
   installHeaders = ->
     if _.contains ['static','dynamic'], dep.target
-      patterns = task.headers?.matching || ["**/*.h", "**/*.hpp"]
-      _p.each dep.d.install.headers, (ft) ->
-        if argv.verbose then console.log colors.yellow '[ install headers ] from', ft.from, 'to', ft.to
-        copy patterns, ft.from, ft.to, false
-        .then (headerPaths) ->
-          db.update name: dep.name,
-            $set: headers: headerPaths
-          , {}
+      _p.map dep.d.install.headers, (ft) ->
+        patterns = ft.matching || ["**/*.h", "**/*.hpp"]
+        if argv.verbose then console.log colors.yellow '[ install headers ] matching', patterns, '\nfrom', ft.from, '\nto', ft.to
+        copy patterns, ft.from, ft.to,
+          flatten: false
+          followSymlinks: true
+      .then (headerPaths) ->
+        db.update name: dep.name,
+          $set: headers: _.flatten headerPaths
+        , {}
     else _p.resolve('headers')
 
   execute = ->
+    return Promise.resolve() if (dep.cache.installed && !argv.force)
     installHeaders()
     .then ->
       installLibs()
@@ -78,6 +82,7 @@ module.exports = (dep, argv, db) ->
       installBin()
     .then ->
       if argv.verbose then console.log colors.green "installed"
-      db.update {name: dep.name}, {$set: {installed: true}}, {}
+      db.update {name: dep.name}, {$set: {"cache.installed": true}}, {}
 
   execute: execute
+  copy: copy

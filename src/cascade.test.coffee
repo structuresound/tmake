@@ -82,9 +82,16 @@ testBExpected = [
   build: with: "clang"
 ]
 
-
 exports['cascade'] =
   setUp: (done) -> done()
+  'matches selectors': (test) ->
+    test.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'x86 mac win'
+    test.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'ios'
+    test.done()
+  'doesnt match selectors': (test) ->
+    test.ok !cascade.matchesSelectors ['apple', 'bananna'], 'x86'
+    test.ok !cascade.matchesSelectors ['apple', 'bananna'], ['x86', 'ios']
+    test.done()
   'parse shallow': (test) ->
     for i of testASelectors
       test.deepEqual cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]

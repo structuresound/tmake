@@ -3,6 +3,7 @@ _ = require 'underscore'
 _p = require("bluebird")
 path = require('path')
 colors = require ('chalk')
+check = require './check'
 
 deepObjectExtend = (target, source) ->
   for prop of source
@@ -20,9 +21,6 @@ deepObjectExtend = (target, source) ->
 _.deepObjectExtend = (target, source) ->
   deepObjectExtend _.extend({}, target), source
 
-arrayify = (val) ->
-  if Array.isArray(val) then val
-  else [ val ]
 
 module.exports = (argv, db, runDir) ->
   that = {}
@@ -32,6 +30,16 @@ module.exports = (argv, db, runDir) ->
   that.resolvePaths = (dep) ->
     return _p.resolve dep if dep.d?.resolved
 
+    arrayify = (val) ->
+      if check(val, Array) then val
+      else [ val ]
+
+    pathArray = (val, root) ->
+      _.map arrayify(val), (v) -> fullPath v, root
+
+    fullPath = (p, root) ->
+      if p.startsWith('/') then p else path.join root, p
+
     defaultPathOptions =
       home: argv.cachePath
       source: ""
@@ -40,14 +48,14 @@ module.exports = (argv, db, runDir) ->
       clone: "source"
       temp: "transform"
       build: "build"
-      includeDirs: ["source"]
+      includeDirs: ""
       project: ""
       install:
         binaries:
           from: "build"
           to: ""
         headers:
-          from: "source"
+          from: "source/include"
           to: "include"
         libraries:
           from: "build"
@@ -69,30 +77,26 @@ module.exports = (argv, db, runDir) ->
       d.source = path.join d.clone, pathOptions.source
     d.project = path.join d.root, pathOptions.project || ""
     # console.log colors.magenta d.project
-    d.includeDirs = _.map arrayify(pathOptions.includeDirs), (relPath) -> path.join d.source, relPath
+    d.includeDirs = pathArray (pathOptions.includeDirs || "source/include"), d.root
     d.build ?= path.join d.root, pathOptions.build
     # install
 
     d.install =
       binaries: _.map arrayify(pathOptions.install.binaries), (ft) ->
+        matching: ft.matching
         from: path.join d.root, ft.from
         to: path.join d.home, (ft.to || defaultPathOptions.install.binaries.to)
       headers: _.map arrayify(pathOptions.install.headers), (ft) ->
+        matching: ft.matching
         from: path.join d.root, ft.from
         to: path.join d.home, (ft.to || defaultPathOptions.install.headers.to)
       libraries: _.map arrayify(pathOptions.install.libraries), (ft) ->
+        matching: ft.matching
         from: path.join d.root, ft.from
         to: path.join d.home, (ft.to || defaultPathOptions.install.libraries.to)
 
-    # if dep.name == 'libbson'
-    #   console.log colors.magenta JSON.stringify(pathOptions.install.headers, 0, 2)
-    #   console.log colors.magenta JSON.stringify(d.install, 0, 2)
-
     d.resolved = true
     dep.d = d
-
-    # if dep.name == 'libbson'
-    #   console.log colors.green JSON.stringify(dep.d, 0, 2)
 
     _p.resolve dep
 
@@ -117,8 +121,11 @@ module.exports = (argv, db, runDir) ->
   that.resolveDepName = (dep) ->
     if dep.name then return dep.name
     else if dep.git
-      if typeof dep.git == 'string' then dep.git.slice(dep.git.indexOf('/') + 1)
-      else
+      if check dep.git, String
+        dep.git.slice(dep.git.indexOf('/') + 1)
+      else if dep.git.repository
+        dep.git.repository.slice(dep.git.repository.indexOf('/') + 1)
+      else if dep.git.url
         lastPathComponent = dep.git?.url?.slice(dep.git?.url.lastIndexOf('/') + 1)
         lastPathComponent.slice 0, lastPathComponent.lastIndexOf '.'
 
