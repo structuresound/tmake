@@ -24,7 +24,7 @@ argv =
 conf =
   git: "structuresound/hello"
   configure:
-    run: "echo running shell configuration"
+    run: "echo running a shell command"
     with: "ninja"
   build:
     with: "ninja"
@@ -35,16 +35,35 @@ settingsDb = new Datastore()
 
 tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
 
+pit = (desc, fn) ->
+  it desc, (done) ->
+    fn.bind(this)()
+    .then -> done()
+    .catch (e) -> done(e)
+
+faker = timeout: -> true
+
+_tests = {}
+we = (desc, fn) -> _tests[desc] = fn
+
+test = -> _.each _tests, (v, k) ->
+  if v.test then pit k, v.test
+  else pit k, v
+
+run = -> _.each _tests, (v, k) ->
+  if v.run then v.run()
+  else
+    (v.thaw || v).bind(faker)()
+
 describe 'tmake', ->
   sh.mkdir '-p', argv.runDir
 
-  it 'can fetch a git repo', (done) ->
-    @timeout 5000
-    tmake.execute conf, [ "fetch" ]
-    .then ->
-      done()
+  we 'can fetch a git repo',
+    test: ->
+      @timeout 5000
+      tmake.execute conf, [ "fetch" ]
 
-  it 'can fetch from the project db', (done) ->
+  we 'can fetch from the project db', ->
     db.update
       name: "hello"
     ,
@@ -55,25 +74,22 @@ describe 'tmake', ->
       db.findOne name: "hello"
     .then (res) ->
       assert.equal res.something, "nice"
-      done()
 
-  it 'can configure a build', (done) ->
+  we 'can configure a build', ->
     tmake.execute conf, [ 'configure' ]
     .then (res) ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.configured
-      done()
 
-  it 'can build using ninja', (done) ->
+  we 'can build using ninja', ->
     tmake.execute conf, [ 'build' ]
     .then (res) ->
       db.findOne name: "hello"
     .then (dep) ->
-      assert.ok dep.cache.configured
-      done()
+      assert.ok dep.cache.built
 
-  it 'can push to the user local db', (done) ->
+  we 'can push to the user local db', ->
     @timeout 5000
     db.findOne name: "hello"
     .then (dep) ->
@@ -82,4 +98,5 @@ describe 'tmake', ->
       userDb.findOne name: "hello"
     .then (res) ->
       assert.equal res.name, "hello"
-      done()
+
+  test()

@@ -188,7 +188,7 @@ deps: [
       OPENSSL_VERSION: "1.0.2h"
       configure:
         "mac ios":
-          bignum: "sed -ie \"s/BIGNUM \*I,/BIGNUM \*i,/g\" crypto/rsa/rsa.h"
+          bignum: "sed -ie \"s/BIGNUM \\*I,/BIGNUM \\*i,/g\" crypto/rsa/rsa.h"
         mac:
           configure: "./Configure {{PLATFORM}} --openssldir=\"{{d.build}}/openssl-{{OPENSSL_VERSION}}-{{ARCH}}\""
           sed: "sed -ie \"s!^CFLAG=!CFLAG=-isysroot {{OSX_SDK}} -arch {{ARCH}} -mmacosx-version-min={{OSX_DEPLOYMENT_VERSION}} !\" \"Makefile\""

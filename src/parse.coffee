@@ -41,7 +41,7 @@ module.exports = (dep) ->
     if check confObject, String then confObject = [ confObject ]
     validCommands = []
     _.each confObject, (v, k) ->
-      if check k, Number then k = 'any'
+      if check k, Number then k = 'shell'
       else if _.contains ignore, k then return
       validCommands.push
         obj: v

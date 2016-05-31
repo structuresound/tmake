@@ -1,7 +1,6 @@
 _ = require('underscore')
 _p = require("bluebird")
 path = require('path')
-request = require('request-promise')
 fs = require('./fs')
 require('./string')
 colors = require ('chalk')
@@ -108,12 +107,12 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       graph.all root
     .then (deps) ->
       unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
-      _p.map deps, (dep) -> processDep dep, steps
+      _p.each deps, (dep) -> processDep dep, steps
 
   processDep = (dep, steps) ->
     unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
     if (!dep.cached || argv._[0] == "clean" || argv.force)
-      _p.map steps, (step) ->
+      _p.each steps, (step) ->
         unless argv.quiet then console.log colors.green ">> #{step} >>"
         process.chdir runDir
         BuildPhases[step](dep)

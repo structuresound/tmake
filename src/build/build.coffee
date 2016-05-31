@@ -1,12 +1,9 @@
-_ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
-colors = require ('chalk')
 check = require('../check')
 sh = require('../sh')
 
 module.exports = (dep, argv, db) ->
-  graph = require('../graph')(db)
   parse = require('../parse')(dep)
 
   settings = ['cFlags', 'sources', 'headers', 'outputFile']
@@ -28,7 +25,7 @@ module.exports = (dep, argv, db) ->
   buildWith = (system) ->
     runner = build: -> Promise.reject "build system not found"
     ensureBuildFolder()
-    fs.existsAsync dep.cache.buildFile
+    fs.existsAsync dep.cache?.buildFile
     .then (exists) ->
       if exists
         switch system
@@ -43,7 +40,7 @@ module.exports = (dep, argv, db) ->
       runner.build()
 
   execute: ->
-    return Promise.resolve() if (dep.cache.built && !argv.force)
+    return Promise.resolve() if (dep.cache?.built && !argv.force)
     parse.iterate dep.build, commands, settings
     .then ->
       db.update {name: dep.name}, {$set: {"cache.built": true}}, {}

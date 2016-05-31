@@ -17,7 +17,7 @@ module.exports = (dep, db, argv) ->
     config = dep.git || {}
 
   config.url = "https://github.com/#{config.repository}.git"
-  config.checkout = config.tag || config.branch || "master"
+  config.checkout = config.tag || config.branch || dep.tag || "master"
 
   remove = ->
     new Promise (resolve) ->
@@ -29,7 +29,8 @@ module.exports = (dep, db, argv) ->
     return checkout() if (dep.cache?.git && !argv.force)
     console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
-      git.clone config.url, dep.d.clone, ->
+      git.clone config.url, dep.d.clone, (err) ->
+        return reject err if err
         dep.cache ?= git: checkout: "master"
         dep.cache.git.checkout = "master"
         db.update
@@ -37,13 +38,13 @@ module.exports = (dep, db, argv) ->
           ,
             $set:
               "cache.git.checkout": "master"
-              "tag": "master"
+              "tag": config.checkout
           ,
             upsert: true
         .then ->
           checkout()
-          .then resolve
-        .catch reject
+          .then -> resolve()
+        .catch -> reject()
 
   checkout = ->
     return Promise.resolve() if (dep.cache?.git.checkout == config.checkout && !argv.force)

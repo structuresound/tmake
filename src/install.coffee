@@ -73,7 +73,7 @@ module.exports = (dep, argv, db) ->
     else _p.resolve('headers')
 
   execute = ->
-    return Promise.resolve() if (dep.cache.installed && !argv.force)
+    return Promise.resolve() if (dep.cache?.installed && !argv.force)
     installHeaders()
     .then ->
       installLibs()
