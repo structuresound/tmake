@@ -6,6 +6,7 @@ require('./string')
 colors = require ('chalk')
 Datastore = require('nedb-promise')
 cascade = require('./cascade')
+check = require('./check')
 
 module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
   platform = require('./platform')(argv, rawConfig)
@@ -30,6 +31,15 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
   graph = require('./graph')(argv, db, runDir)
   cloud = require('./cloud')(argv, settings, prompt)
 
+  allStrings = (o, fn) ->
+    rec = (o) ->
+      for k of o
+        if check o[k], String
+          o[k] = fn o[k]
+        else if check(o[k], Object) || check(o[k], Array)
+          rec o[k]
+    rec o
+
   BuildPhases =
     fetch: (dep) ->
       clone = (dep) -> require('./git')(dep, db, argv).validate()
@@ -51,6 +61,12 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     install: (dep) -> require('./install')(dep, argv, db).execute()
     clean: (dep) -> cleanDep dep
     test: (dep) -> _p.resolve "#{dep.name} is tested!"
+    parse: (dep) ->
+      parse = require('./parse')(dep, argv)
+      if argv._[2]
+        console.log colors.magenta parse.configSetting argv._[2]
+      allStrings dep, parse.configSetting
+      console.log colors.magenta JSON.stringify dep, 0, 2
 
   cleanDep = (dep) ->
     fs.nuke dep.d.build
@@ -101,11 +117,12 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       graph.resolveDep _.extend configFile, d: root: runDir
 
   execute = (rawConfig, steps) ->
-    runConfig = cascade.deep rawConfig, platform.keywords(), platform.selectors(argv, rawConfig)
+    runConfig = cascade.deep rawConfig, platform.keywords(), platform.selectors()
     resolveRoot runConfig
     .then (root) ->
       graph.all root
     .then (deps) ->
+      if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
       unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
       _p.each deps, (dep) -> processDep dep, steps
 
@@ -202,6 +219,8 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
         execute rawConfig, ["test"]
       when 'fetch'
         execute rawConfig, ["fetch"]
+      when 'parse'
+        execute rawConfig, ["parse"]
       when 'transform'
         execute rawConfig, ["fetch","transform"]
       when 'configure'

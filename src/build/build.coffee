@@ -4,7 +4,7 @@ check = require('../check')
 sh = require('../sh')
 
 module.exports = (dep, argv, db) ->
-  parse = require('../parse')(dep)
+  parse = require('../parse')(dep, argv)
 
   settings = ['cFlags', 'sources', 'headers', 'outputFile']
   commands =
@@ -23,7 +23,7 @@ module.exports = (dep, argv, db) ->
     unless fs.existsSync dep.d.build then fs.mkdirSync dep.d.build
 
   buildWith = (system) ->
-    runner = build: -> Promise.reject "build system not found"
+    runner = build: -> Promise.reject "build file not found for #{system} @ #{dep.cache?.buildFile}"
     ensureBuildFolder()
     fs.existsAsync dep.cache?.buildFile
     .then (exists) ->

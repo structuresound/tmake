@@ -59,6 +59,13 @@ setValueForKeyPath = (value, keyPath, current) ->
   else if (current != null and typeof current == 'object')
     current[lastKey] = value
 
+mergeValueAtKeypath = (value, keyPath, current) ->
+  existing = valueForKeyPath keyPath, current
+  merged = value
+  if check(value, Object) && check(existing, Object)
+    merged = _.extend existing, value
+  setValueForKeyPath merged, keyPath, current
+
 unsetKeyPath = (keyPath, obj) ->
   keys = keyPath.split('.')
   i = 0
@@ -190,11 +197,17 @@ deepSearch = (object, selectors, test) ->
         else valid = false
     if valid
       stack[priority] ?= {}
-      stack[priority][filtered] = valueForKeyPath key, object
+      val = valueForKeyPath key, object
+      # if stack[priority][filtered] && check val, Object
+      #   for k of val
+      #     stack[priority][filtered][k] = val[k]
+      # else
+      #console.log 'set', priority, filtered, val
+      stack[priority][filtered] = val
   flat = {}
-  _.each stack, (level) ->
-    _.each level, (v, k) ->
-      setValueForKeyPath v, k, flat
+  _.each stack, (priority) ->
+    _.each priority, (v, k) ->
+      mergeValueAtKeypath v, k, flat
   flat
 
 module.exports =

@@ -9,8 +9,8 @@ data =
     c: "d"
 
 testData = [
-  'number {{some.thing.nested}}'
-  'maybe {{name}}, {{name}} will help?'
+  'number {some.thing.nested}'
+  'maybe {name}, {name} will help?'
 ]
 
 expectData = [
@@ -18,9 +18,9 @@ expectData = [
   'maybe shallow man, shallow man will help?'
 ]
 
-describe 'interpolates', ->
+describe 'interpolate', ->
   it 'keypath', ->
     for i of testData
       assert.equal interpolate(testData[i], data), expectData[i]
   it 'object', ->
-    assert.deepEqual interpolate("{{object}}", data), data.object
+    assert.deepEqual interpolate("{object}", data), data.object

@@ -90,6 +90,7 @@ module.exports = (argv, db, runDir) ->
         matching: ft.matching
         from: path.join d.root, ft.from
         to: path.join d.home, (ft.to || defaultPathOptions.install.headers.to)
+        includeFrom: path.join d.home, (ft.includeFrom || ft.to || defaultPathOptions.install.headers.to)
       libraries: _.map arrayify(pathOptions.install.libraries), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from
@@ -103,6 +104,7 @@ module.exports = (argv, db, runDir) ->
   that.resolveDep = (dep) ->
     dep.name ?= that.resolveDepName dep
     dep.target ?= 'static'
+    dep.cache ?= {}
     db.findOne name: dep.name
     .then (result) ->
       merged = _.deepObjectExtend result || {}, dep

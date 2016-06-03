@@ -1,13 +1,13 @@
 _ = require 'underscore'
 path = require('path')
-
+colors = require ('chalk')
 check = require './check'
 interpolate = require('./interpolate')
 fs = require './fs'
 Promise = require 'bluebird'
 
-module.exports = (dep) ->
-  replaceMacro = require('./macro')(dep)
+module.exports = (dep, argv) ->
+  replaceMacro = require('./macro')(argv, dep)
 
   arrayify = (val) ->
     if check(val, Array) then val
@@ -29,7 +29,8 @@ module.exports = (dep) ->
     replaceMacro interpolate(val, dep)
 
   replaceAll = (str, find, replace) ->
-    str.replace new RegExp(find, 'g'), replace
+    escaped = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    str.replace new RegExp(escaped, 'g'), replace
 
   iterable = (val) ->
     if check(val, Array) then val
@@ -46,9 +47,16 @@ module.exports = (dep) ->
       validCommands.push
         obj: v
         key: k
-    Promise.map validCommands, (i) ->
+    Promise.each validCommands, (i) ->
       if commandObject[i.key] then commandObject[i.key](i.obj)
       else commandObject.any(i.obj)
+
+  printRepl = (r) ->
+    string = "\n"
+    _.each r.inputs, (v, k) ->
+      if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
+      string += "#{k} : #{configSetting(v)}\n"
+    string
 
   replaceInFile = (f, r) ->
     unless fs.existsSync f then throw new Error "no file at #{f}"
@@ -56,6 +64,7 @@ module.exports = (dep) ->
     inputs = r.inputs
     _.each inputs, (v, k) ->
       if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
+      unless argv.quiet then console.log colors.green "[ replace ] #{k}", colors.magenta ": #{configSetting v}"
       stringFile = replaceAll stringFile, k, configSetting(v)
     format =
       ext: path.extname f
@@ -74,6 +83,7 @@ module.exports = (dep) ->
     if fs.existsSync newPath
       existingString = fs.readFileSync newPath, 'utf8'
     if existingString != stringFile
+      console.log '!!! write to', newPath
       fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
   pathArray: pathArray
@@ -85,3 +95,4 @@ module.exports = (dep) ->
   interpolate: (s) -> interpolate s, dep
   iterable: iterable
   iterate: iterateConf
+  printRepl: printRepl

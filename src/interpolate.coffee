@@ -32,15 +32,15 @@ defaultLookup = (key, data) ->
     val
 
 _interpolate = (template, func) ->
-  commands = template.match(/{{[^}}\r\n]*}}/g)
+  commands = template.match(/{[^}\r\n]*}/g)
   if commands
     if commands[0].length == template.length
-      func commands[0].slice(2, -2)
+      func commands[0].slice(1, -1)
     else
       interpolated = template
       _.each commands, (c) ->
-        interpolated = interpolated.replace c, func c.slice(2, -2)
-      interpolated
+        interpolated = interpolated.replace c, func c.slice(1, -1)
+      _interpolate interpolated, func
   else template
 
 interpolate = (template, funcOrData, opts) ->

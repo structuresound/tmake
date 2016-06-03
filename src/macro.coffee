@@ -1,13 +1,13 @@
 _ = require 'underscore'
 path = require('path')
-
+colors = require ('chalk')
 check = require './check'
 interpolate = require('./interpolate')
 fs = require './fs'
 sh = require('./sh')
 
-module.exports = (macro) ->
-  platform = require('./platform')(undefined, macro)
+module.exports = (argv, macro) ->
+  platform = require('./platform')(argv, macro)
 
   cache = {}
 
@@ -17,7 +17,7 @@ module.exports = (macro) ->
       else if macro[m] then replaceMacro macro[m]
       else if platform.macro[m] then replaceMacro platform.macro[m]
       else
-        commands = m.match(/\${[^}\r\n]*}/g)
+        commands = m.match(/\$\([^\)\r\n]*\)/g)
         if commands
           interpolated = m
           _.each commands, (c) ->

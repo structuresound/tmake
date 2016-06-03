@@ -1,23 +1,5 @@
-###
-  ======== A Handy Little Nodeunit Reference ========
-  https://github.com/caolan/nodeunit
-
-  Test methods:
-    test.expect(numAssertions)
-    test.done()
-  Test assertions:
-    test.ok(value, [message])
-    test.equal(actual, expected, [message])
-    test.notEqual(actual, expected, [message])
-    test.deepEqual(actual, expected, [message])
-    test.notDeepEqual(actual, expected, [message])
-    test.strictEqual(actual, expected, [message])
-    test.notStrictEqual(actual, expected, [message])
-    test.throws(block, [error], [message])
-    test.doesNotThrow(block, [error], [message])
-    test.ifError(value)
-###
-
+check = require '../lib/check'
+assert = require('chai').assert
 cascade = require '../lib/cascade.js'
 
 selectors = ['win', 'mac', 'x64', 'x86']
@@ -52,10 +34,15 @@ testAExpected = [
 ]
 
 testObjB =
+  'mac ios':
+    flag: true
+  other: "setting"
   build:
     with: "error A"
-  mac:
-    build:
+    'mac ios':
+      sources:
+        matching: [ 'apple.c' ]
+    mac:
       with: "cmake"
   x64:
     build:
@@ -75,28 +62,33 @@ testBSelectors = [
 ]
 
 testBExpected = [
-  build: with: "ninja"
+  flag: true
+  other: "setting"
+  build:
+    with: "ninja"
+    sources: matching: [ 'apple.c' ]
 ,
   build: with: "error A"
+  other: "setting"
 ,
   build: with: "clang"
+  other: "setting"
 ]
 
-exports['cascade'] =
-  setUp: (done) -> done()
-  'matches selectors': (test) ->
-    test.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'x86 mac win'
-    test.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'ios'
-    test.done()
-  'doesnt match selectors': (test) ->
-    test.ok !cascade.matchesSelectors ['apple', 'bananna'], 'x86'
-    test.ok !cascade.matchesSelectors ['apple', 'bananna'], ['x86', 'ios']
-    test.done()
-  'parse shallow': (test) ->
+describe 'check', ->
+  it 'matches selectors', (done) ->
+    assert.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'x86 mac win'
+    assert.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'ios'
+    done()
+  it 'doesnt match selectors', (done) ->
+    assert.ok !cascade.matchesSelectors ['apple', 'bananna'], 'x86'
+    assert.ok !cascade.matchesSelectors ['apple', 'bananna'], ['x86', 'ios']
+    done()
+  it 'parse shallow', (done) ->
     for i of testASelectors
-      test.deepEqual cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]
-    test.done()
-  'parse deep': (test) ->
+      assert.deepEqual cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]
+    done()
+  it 'parse deep', (done) ->
     for i of testBSelectors
-      test.deepEqual cascade.deep(testObjB, selectors, testBSelectors[i]), testBExpected[i]
-    test.done()
+      assert.deepEqual cascade.deep(testObjB, selectors, testBSelectors[i]), testBExpected[i]
+    done()

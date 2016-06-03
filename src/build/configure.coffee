@@ -10,9 +10,8 @@ sh = require('../sh')
 
 
 module.exports = (dep, argv, db, graph) ->
-  parse = require('../parse')(dep)
+  parse = require('../parse')(dep, argv)
 
-  settings = ['cFlags', 'sources', 'headers', 'outputFile']
   commands =
     any: (obj) -> commands.shell(obj)
     ninja: -> commands.with 'ninja'
@@ -23,7 +22,6 @@ module.exports = (dep, argv, db, graph) ->
         fs.glob parse.globArray(replEntry.matching, dep), undefined, dep.d.source
         .then (files) ->
           Promise.each files, (file) ->
-            if argv.verbose then console.log 'process file', file, replEntry
             parse.replaceInFile file, replEntry, dep
 
     shell: (obj) ->
@@ -48,7 +46,9 @@ module.exports = (dep, argv, db, graph) ->
 
   platform = require('../platform')(argv, dep)
 
-  _build = _.extend {}, _.pick(dep.build, Object.keys(commands))
+  settings = ['cFlags', 'sources', 'headers', 'outputFile']
+  filter = [ 'with', 'ninja', 'cmake', 'make' ].concat settings
+  _build = _.pick(dep.build, filter)
   configuration = _.extend _build, dep.configure
 
   copy = (patterns, from, to, flatten) ->
@@ -151,18 +151,17 @@ module.exports = (dep, argv, db, graph) ->
         globDeps()
       .then (depGraph) ->
         if depGraph.length
-          includeDirs = _.chain depGraph
-          .map (subDep) -> _.map subDep.path.install.headers, (ft) -> ft.to
-          .flatten()
-          .uniq()
-          .value()
-          context.includeDirs = _.map includeDirs, (relativePath) -> path.join dep.d.home, relativePath
+          gather = []
+          _.each depGraph, (subDep) ->
+            _.each subDep.d.install.headers, (ft) ->
+              gather.push ft.includeFrom || ft.to
+          context.includeDirs = _.uniq gather
           context.libs = _.chain depGraph
           .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
           .flatten()
           .value()
         context.includeDirs = _.union context.includeDirs, dep.d.includeDirs
-        console.log colors.yellow JSON.stringify context.includeDirs
+        if argv.verbose then console.log colors.yellow JSON.stringify context.includeDirs, 0, 2
         resolve context
 
   buildFilePath = (systemName) ->
@@ -206,10 +205,22 @@ module.exports = (dep, argv, db, graph) ->
       else
         Promise.resolve dep.cache.buildFile
 
+  buildType = (obj) ->
+    return unless obj
+    if obj.with then obj.with
+    else if obj.ninja then 'ninja'
+    else if obj.cmake then 'cmake'
+    else if obj.make then 'make'
+
   getContext: -> createContext()
   commands: commands
   execute: ->
+    #console.log JSON.stringify configuration, 0, 2
     return Promise.resolve() if (dep.cache?.configured && !argv.force)
-    parse.iterate dep.configure, commands, settings
+    # unless buildType dep.configure
+    #   system = buildType dep.build
+    #   if system
+    #     dep.configure.with = system
+    parse.iterate configuration, commands, settings
     .then ->
       db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}

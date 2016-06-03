@@ -31,8 +31,7 @@ module.exports = (dep, db, argv) ->
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, (err) ->
         return reject err if err
-        dep.cache ?= git: checkout: "master"
-        dep.cache.git.checkout = "master"
+        dep.cache.git = checkout: "master"
         db.update
             name: dep.name
           ,
@@ -47,7 +46,7 @@ module.exports = (dep, db, argv) ->
         .catch -> reject()
 
   checkout = ->
-    return Promise.resolve() if (dep.cache?.git.checkout == config.checkout && !argv.force)
+    return Promise.resolve() if (dep.cache.git?.checkout == config.checkout && !argv.force)
     sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose
     .then ->
       db.update
@@ -59,7 +58,7 @@ module.exports = (dep, db, argv) ->
 
   validate: ->
     if fs.existsSync(dep.d.clone)
-      if dep.cache?.git.checkout == config.checkout
+      if dep.cache.git?.checkout == config.checkout
         console.log 'using ', dep.name, '@', config.checkout
         return Promise.resolve()
       else
