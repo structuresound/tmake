@@ -44,7 +44,7 @@ module.exports = (argv, db, runDir) ->
       home: argv.cachePath
       source: ""
       headers: ""
-      tests: "test"
+      test: "build_tests"
       clone: "source"
       temp: "transform"
       includeDirs: ""
@@ -104,7 +104,8 @@ module.exports = (argv, db, runDir) ->
   that.resolveDep = (dep) ->
     dep.name ?= that.resolveDepName dep
     dep.target ?= 'static'
-    dep.cache ?= {}
+    dep.test ?= {}
+    dep.cache ?= test: {}
     db.findOne name: dep.name
     .then (result) ->
       merged = _.deepObjectExtend result || {}, dep

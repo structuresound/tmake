@@ -9,9 +9,7 @@ cascade = require('../cascade')
 sh = require('../sh')
 
 
-module.exports = (dep, argv, db, graph) ->
-  parse = require('../parse')(dep, argv)
-
+module.exports = (dep, argv, db, graph, parse, configureTests) ->
   commands =
     any: (obj) -> commands.shell(obj)
     ninja: -> commands.with 'ninja'
@@ -45,10 +43,16 @@ module.exports = (dep, argv, db, graph) ->
         copy e.matching, parse.pathSetting(e.from, dep), parse.pathSetting(e.to, dep), false
 
   platform = require('../platform')(argv, dep)
-
   settings = ['cFlags', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'cmake', 'make' ].concat settings
+
   _build = _.pick(dep.build, filter)
+  _configuration = dep.configure
+
+  if configureTests
+    _build = _.pick(dep.test.build, filter)
+    _configuration = dep.test.configure
+
   configuration = _.extend _build, dep.configure
 
   copy = (patterns, from, to, flatten) ->
@@ -215,12 +219,7 @@ module.exports = (dep, argv, db, graph) ->
   getContext: -> createContext()
   commands: commands
   execute: ->
-    #console.log JSON.stringify configuration, 0, 2
     return Promise.resolve() if (dep.cache?.configured && !argv.force)
-    # unless buildType dep.configure
-    #   system = buildType dep.build
-    #   if system
-    #     dep.configure.with = system
     parse.iterate configuration, commands, settings
     .then ->
       db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}

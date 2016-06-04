@@ -40,33 +40,42 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
           rec o[k]
     rec o
 
-  BuildPhases =
-    fetch: (dep) ->
-      clone = (dep) -> require('./git')(dep, db, argv).validate()
-      if dep.provider
-        switch dep.provider
-          when 'local' then console.log "copying", dep.name, 'from', dep.path
-          when 'git' then clone(dep)
-          else
-            console.log "fetching", dep.provider, ':', dep.name, dep.version
-      else
-        if dep.git then clone(dep)
-
-    transform: (dep) ->
-      if dep.transform then require('./transform')(dep, argv, db).execute()
-    configure: (dep) ->
-      require('./build/configure')(dep, argv, db, graph).execute()
-    build: (dep) ->
-      require('./build/build')(dep, argv, db, graph).execute()
-    install: (dep) -> require('./install')(dep, argv, db).execute()
-    clean: (dep) -> cleanDep dep
-    test: (dep) -> _p.resolve "#{dep.name} is tested!"
-    parse: (dep) ->
-      parse = require('./parse')(dep, argv)
-      if argv._[2]
-        console.log colors.magenta parse.configSetting argv._[2]
-      allStrings dep, parse.configSetting
-      console.log colors.magenta JSON.stringify dep, 0, 2
+  buildPhase = (dep, phase) ->
+    parse = require('./parse')(dep, argv)
+    switch phase
+      when "fetch"
+        clone = -> require('./git')(dep, db, argv).validate()
+        if dep.provider
+          switch dep.provider
+            when 'source'
+              console.log "downloading source", dep.name, 'from', dep.source
+            when 'local' then console.log "copying", dep.name, 'from', dep.path
+            when 'git' then clone
+            else
+              console.log "fetching", dep.provider, ':', dep.name, dep.version
+        else
+          if dep.git then clone
+      when "transform"
+        if dep.transform then require('./transform')(dep, argv, db).execute()
+      when "configure"
+        require('./build/configure')(dep, argv, db, graph, parse).execute()
+      when "build"
+        require('./build/build')(dep, argv, db, parse, false).execute()
+      when "install"
+        require('./install')(dep, argv, db).execute()
+      when "clean"
+        cleanDep dep
+      when "test"
+        require('./build/configure')(dep, argv, db, graph, parse, true).execute()
+        .then ->
+          require('./build/build')(dep, argv, db, parse, true).execute()
+        .then ->
+          require('./test')(dep, argv, db).execute()
+      when "parse"
+        if argv._[2]
+          console.log colors.magenta parse.configSetting argv._[2]
+        allStrings dep, parse.configSetting
+        console.log colors.magenta JSON.stringify dep, 0, 2
 
   cleanDep = (dep) ->
     if fs.existsSync(dep.d.build)
@@ -123,18 +132,21 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     resolveRoot runConfig
     .then (root) ->
       graph.all root
-    .then (deps) ->
-      if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
-      unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
-      _p.each deps, (dep) -> processDep dep, steps
+      .then (deps) ->
+        if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
+        unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
+        if argv.nodeps
+          processDep root, steps
+        else
+          _p.each deps, (dep) -> processDep dep, steps
 
   processDep = (dep, steps) ->
     unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
     if (!dep.cached || argv._[0] == "clean" || argv.force)
-      _p.each steps, (step) ->
-        unless argv.quiet then console.log colors.green ">> #{step} >>"
+      _p.each steps, (phase) ->
+        unless argv.quiet then console.log colors.green ">> #{phase} >>"
         process.chdir runDir
-        BuildPhases[step](dep)
+        buildPhase dep, phase
     else _p.resolve dep
 
   unlink = (config) ->
