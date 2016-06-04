@@ -3,7 +3,6 @@ Promise = require 'bluebird'
 fs = require '../fs'
 path = require('path')
 colors = require ('chalk')
-replace = new (require('task-replace'))()
 check = require('../check')
 cascade = require('../cascade')
 sh = require('../sh')
