@@ -1,19 +1,26 @@
-# trieMake [![Build Status](https://secure.travis-ci.org/structuresound/tmake.png?branch=master)](http://travis-ci.org/structuresound/tmake)
+# TrieMake uses JSON to configure/build/test large c++ dependency trees [![Build Status](https://secure.travis-ci.org/structuresound/tmake.png?branch=master)](http://travis-ci.org/structuresound/tmake)
 
-## warning
+### warning
 
 This tool is currently experimental, and possibly not useful, examine at your own risk.
+check out (not my project) https://conan.io if you need c++ dependency management today
 
-check out (not my project) conan.io if you need c++ dependency management https://conan.io
+## 'it' can ->
 
-# TrieMake uses JSON to build and test large c++ dependency trees
-
-'it' can ->
-
-* use local or cloud dependency specification
-* pulls from git, or tarballs
-* configure with a build system, or use tmake's create / replace / macro tools
-* generate ninja files, or you can point to existing buildFiles with cmake, make, or gyp
+* fetch
+  * git branches or tarballs
+* configure
+  * create / replace / files ala autotools "config.h.in"
+  * generate ninja or cmake files
+  * or use directly those things i.e cmake --configure
+* build
+  * with ninja
+  * easily override all cFlags / cxxFlags
+* install
+  * automagically aggregates headers and libs, but can override for specific copying
+  * no 'make install' everything is stored locally, and dependencies include locally
+* test
+  * run tests -- not implemented yet
 
 ## To Install
 ```bash
@@ -36,7 +43,7 @@ fetches ninja binary when needed
 * some build tools i.e.
   * xcode on mac
   * build-essentials on linux
-  * visual studio something on mac
+  * this doesn't work yet on windows, but will some day
 
 ## roadmap / next
 
