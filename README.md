@@ -1,11 +1,19 @@
-# trieMake [![Build Status](https://secure.travis-ci.org/leif/tmake.png?branch=master)](http://travis-ci.org/leif/tmake)
+# trieMake [![Build Status](https://secure.travis-ci.org/structuresound/tmake.png?branch=master)](http://travis-ci.org/structuresound/tmake)
 
-trieMake can:
+## warning
 
-* manage c++ dependencies and build settings
-* use local or cloud dependency specification, pulls from git
-* build with cmake, gyp, or make
-* auto-generate a cmakefile for your main file
+This tool is currently experimental, and possibly not useful, examine at your own risk.
+
+check out (not my project) conan.io if you need c++ dependency management https://conan.io
+
+# TrieMake uses JSON to build and test large c++ dependency trees
+
+'it' can ->
+
+* use local or cloud dependency specification
+* pulls from git, or tarballs
+* configure with a build system, or use tmake's create / replace / macro tools
+* generate ninja files, or you can point to existing buildFiles with cmake, make, or gyp
 
 ## To Install
 ```bash
@@ -32,14 +40,7 @@ fetches ninja binary when needed
 
 ## roadmap / next
 
-this is a new project, it's barely functional. these things need to be done
-
-* get depconf server running
-* put some libs on it
-
-maybe
-
-* docker build / cross-compile ability
+currently working on getting central repo server built (with tmake / dogfood)
 
 ## Run an example
 ```bash
@@ -52,25 +53,21 @@ curl http://127.0.0.1:8080/hello
 
 ## What's the build file look like?
 
-this would package google's re2 library
+this would build google's libre2
 
 ```coffee
 git: "google/re2"
 build:
-  sources: ["re2/*.cc", "util/*.cc"]
-  linux: sources: ["!util/threadwin.cc"]
-  mac: sources: ["!util/threadwin.cc"]
   with: "ninja"
-  target: "static"
+  sources:
+    ["re2/*.cc", "util/*.cc"]
+  "linux mac":
+    sources: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
   cflags:
     O3: 1
     std: "c++11"
-    g: 1
-    pthread: 1
-    Wall: 1
-    Wextra: 1
-    "Wno-unused-parameter": 1
-    "Wno-missing-field-initializers": 1
+    linux:
+      pthread: 1
 ```
 
 ## Use a dependency
@@ -82,19 +79,22 @@ name: myProject
 sources: ["src/*.cpp"]
 build: with: "ninja"
 deps: [
-  db: "google/re2"
+  repo: "google/re2"
   build: cflags: linux: Wall: 0 #override something on our dep
 ]
 ```
 
 ## Reasons
 
+* npm for c++, easier said then done
 * native code can run fast, let's make it easy to share and build
 
-# standing on shoulders
+# some influences / projects that inform the code
 
-* structured tree as configuration file (json)
-* export to a fast build system (cmake -> ninja)
+* social c++ (biiCode + conan.io)
+* expressive configuration management (coffee / cson)
+* structured tree as configuration file (json, mongo query language)
+* export to a fast build system (cmake / ninja)
 * lint / test packages as part of the contribute process (cocoapods)
 * transform existing files using globs and streams (gulp / vinyl fs)
 * flat dependencies / shallow trees (npm)
@@ -103,11 +103,11 @@ deps: [
 ## philosophies
 
 * structured data, easy to override anything all the way up a dependency tree
-* overrides using css style selectors, swap object keys for classes
+* overrides using css style selectors, object keys = selectors
 * support other build tools
 * be embeddable in another project / build system
 * no globals, where possible - project folder is the universe
-* not a bitcoin miner, let's cache some things
+* cache all the way to .a files using hash of config file
 
 ## Contributing
 This tool is currently experimental, and possibly not useful, examine at your own risk.
