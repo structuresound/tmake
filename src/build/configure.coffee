@@ -67,14 +67,14 @@ module.exports = (dep, argv, db, graph) ->
       Promise.resolve filePaths
 
   globHeaders = ->
-    patterns = parse.globArray(configuration.headers?.matching || ['**/*.h','**/*.hpp', '!test/**', '!tests/**', '!build/**'], dep)
+    patterns = parse.globArray(configuration.headers?.matching || ['**/*.h','**/*.hpp', '**/*.ipp', '!test/**', '!tests/**', '!build/**'], dep)
     Promise.map dep.d.includeDirs, (path) ->
       fs.glob patterns, dep.d.project, path
     .then (stack) ->
       Promise.resolve _.flatten stack
 
   globSources = ->
-    patterns = parse.globArray(configuration.sources?.matching || ['*.cpp', '*.cc', '*.c'], dep)
+    patterns = parse.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
@@ -157,7 +157,7 @@ module.exports = (dep, argv, db, graph) ->
               gather.push ft.includeFrom || ft.to
           context.includeDirs = _.uniq gather
           context.libs = _.chain depGraph
-          .map (d) -> _.map d.libs, (lib) -> d.d.root + '/' + lib
+          .map (d) -> _.map d.libs, (lib) -> path.join(d.d.home, lib)
           .flatten()
           .value()
         context.includeDirs = _.union context.includeDirs, dep.d.includeDirs

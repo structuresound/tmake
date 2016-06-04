@@ -47,24 +47,25 @@ module.exports = (argv, db, runDir) ->
       tests: "test"
       clone: "source"
       temp: "transform"
-      build: "build"
       includeDirs: ""
       project: ""
-      install:
-        binaries:
-          from: "build"
-          to: ""
-        headers:
-          from: "source/include"
-          to: "include"
-        libraries:
-          from: "build"
-          to: "lib"
 
     pathOptions = _.deepObjectExtend defaultPathOptions, dep.path
-    # console.log JSON.stringify pathOptions, 0, 2
+
+    pathOptions.build ?= path.join pathOptions.project, "build"
+
+    pathOptions.install ?= {}
+    pathOptions.install.headers ?=
+      from: path.join pathOptions.clone, "include"
+
+    pathOptions.install.libraries ?=
+      from: pathOptions.build
+
+    pathOptions.install.binaries ?=
+      from: pathOptions.build
+
+    pathOptions.install.binaries.to ?= 'bin'
     d = _.extend {}, dep.d
-    #console.log colors.yellow 'existing dirs ' + JSON.stringify dep.d
     # fetch
     d.home ?= "#{runDir}/#{pathOptions.home}" # reference for build tools, should probably remove
     d.root ?= path.join d.home, dep.name # lowest level a package should have access to
@@ -79,22 +80,21 @@ module.exports = (argv, db, runDir) ->
     # console.log colors.magenta d.project
     d.includeDirs = pathArray (pathOptions.includeDirs || "source/include"), d.root
     d.build ?= path.join d.root, pathOptions.build
-    # install
 
     d.install =
       binaries: _.map arrayify(pathOptions.install.binaries), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from
-        to: path.join d.home, (ft.to || defaultPathOptions.install.binaries.to)
+        to: path.join d.home, (ft.to || 'bin')
       headers: _.map arrayify(pathOptions.install.headers), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from
-        to: path.join d.home, (ft.to || defaultPathOptions.install.headers.to)
-        includeFrom: path.join d.home, (ft.includeFrom || ft.to || defaultPathOptions.install.headers.to)
+        to: path.join d.home, (ft.to || 'include')
+        includeFrom: path.join d.home, (ft.includeFrom || ft.to || 'include')
       libraries: _.map arrayify(pathOptions.install.libraries), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from
-        to: path.join d.home, (ft.to || defaultPathOptions.install.libraries.to)
+        to: path.join d.home, (ft.to || 'lib')
 
     d.resolved = true
     dep.d = d

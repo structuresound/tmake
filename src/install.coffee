@@ -61,7 +61,7 @@ module.exports = (dep, argv, db) ->
   installHeaders = ->
     if _.contains ['static','dynamic'], dep.target
       _p.map dep.d.install.headers, (ft) ->
-        patterns = ft.matching || ["**/*.h", "**/*.hpp"]
+        patterns = ft.matching || ["**/*.h", "**/*.hpp", "**/*.ipp"]
         if argv.verbose then console.log colors.yellow '[ install headers ] matching', patterns, '\nfrom', ft.from, '\nto', ft.to
         copy patterns, ft.from, ft.to,
           flatten: false

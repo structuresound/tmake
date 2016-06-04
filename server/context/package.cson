@@ -1,25 +1,143 @@
 name: "example_served"
 target: "bin"
 build:
-  with: "ninja"
+  with: "cmake"
 deps: [
   git: "mongodb/mongo-cxx-driver"
   path:
     project: "source"
+    includeDirs: ['source/src']
+    install:
+      headers: [
+        from: 'source/src/bsoncxx'
+        to: 'include/bsoncxx'
+      ,
+        from: 'source/src/mongocxx'
+        to: 'include/mongocxx'
+      ]
+  configure:
+    create:
+      "bsoncxx/config/export":
+        path: 'src/bsoncxx/config/export.hpp'
+        string: """
+        #ifndef BSONCXX_API_H
+          #define BSONCXX_API_H
+          #define BSONCXX_API
+          #define BSONCXX_PRIVATE
+        #endif
+        """
+      "mongocxx/config/export":
+        path: 'src/mongocxx/config/export.hpp'
+        string: """
+        #ifndef MONGOCXX_API_H
+          #define MONGOCXX_API_H
+          #define MONGOCXX_API
+          #define MONGOCXX_PRIVATE
+        #endif
+        """
+    replace:
+      versions:
+        matching: [ 'src/bsoncxx/config/version.hpp.in', 'src/mongocxx/config/version.hpp.in' ]
+        inputs:
+          "BSONCXX_VERSION_MAJOR": "3"
+          "BSONCXX_VERSION_MINOR": "0"
+          "BSONCXX_VERSION_PATCH": "2"
+          "BSONCXX_VERSION_EXTRA": "-rc0-pre"
+          "MONGOCXX_VERSION_MAJOR": "3"
+          "MONGOCXX_VERSION_MINOR": "0"
+          "MONGOCXX_VERSION_PATCH": "2"
+          "MONGOCXX_VERSION_EXTRA": "-rc0-pre"
+        directive: prepost: '@'
+        ext: '.hpp'
+      config:
+        matching: [
+          'src/bsoncxx/config/config.hpp.in', 'src/bsoncxx/config/private/config.hpp.in'
+          'src/mongocxx/config/config.hpp.in', 'src/mongocxx/config/private/config.hpp.in'
+        ]
+        inputs:
+          "#cmakedefine BSONCXX_POLY_USE_STD_EXPERIMENTAL": "//#define BSONCXX_POLY_USE_STD_EXPERIMENTAL 0"
+          "#cmakedefine BSONCXX_POLY_USE_MNMLSTC": "//#define BSONCXX_POLY_USE_MNMLSTC 0"
+          "#cmakedefine BSONCXX_POLY_USE_SYSTEM_MNMLSTC": "//#define BSONCXX_POLY_USE_SYSTEM_MNMLSTC 0"
+          "#cmakedefine BSONCXX_POLY_USE_BOOST": "#define BSONCXX_POLY_USE_BOOST 1"
+          "@BSONCXX_INLINE_NAMESPACE@": "v3_0_2"
+          "@MONGOCXX_INLINE_NAMESPACE@": "v3_0_2"
+        ext: '.hpp'
   build:
-    cmake:
-      configure:
-        CMAKE_DISABLE_FIND_PACKAGE_PkgConfig: true
-        LIBBSON_DIR: "~/"
-        LIBMONGOC_DIR: "~/"
-        BSONCXX_POLY_USE_MNMLSTC: false
-        BSONCXX_POLY_USE_BOOST: true
+    with: "ninja"
+    sources: matching: ['src/bsoncxx/*.cpp', 'src/mongocxx/*.cpp']
+    cFlags:
+      O3: 1
+      std: "c++14"
   deps: [
+    git: "boostorg/core"
+  ,
+    git: "boostorg/assert"
+  ,
     git: "boostorg/asio"
-    path: install: headers: from: "source/include"
+    deps: [
+      git: "boostorg/date_time"
+      deps: [
+        git: "boostorg/range"
+      ,
+        git: "boostorg/iterator"
+      ,
+        git: "boostorg/detail"
+      ,
+        git: "boostorg/concept_check"
+      ,
+        git: "boostorg/lexical_cast"
+      ,
+        git: "boostorg/numeric_conversion"
+      ,
+        git: "boostorg/mpl"
+      ,
+        git: "boostorg/preprocessor"
+      ,
+        git: "boostorg/bind"
+      ,
+        git: "boostorg/container"
+      ,
+        git: "boostorg/math"
+      ,
+        git: "boostorg/regex"
+      ,
+        git: "boostorg/integer"
+      ,
+        git: "boostorg/array"
+      ,
+        git: "boostorg/tokenizer"
+      ,
+        git: "boostorg/io"
+      ,
+        git: "boostorg/algorithm"
+      ]
+    ]
   ,
     git: "boostorg/system"
-    path: install: headers: from: "source/include"
+    build:
+      with: "ninja"
+      outputFile: "libboost_system.a"
+    deps: [
+      git: "boostorg/predef"
+    ,
+      git: "boostorg/core"
+    ]
+  ,
+    git: "boostorg/utility"
+  ,
+    git: "boostorg/config"
+  ,
+    git: "boostorg/move"
+  ,
+    git: "boostorg/optional"
+  ,
+    git: "boostorg/static_assert"
+  ,
+    git: "boostorg/throw_exception"
+  ,
+    git: "boostorg/type_traits"
+  ,
+    git: "boostorg/smart_ptr"
   ,
     git: "mongodb/mongo-c-driver"
     configure:
@@ -241,27 +359,36 @@ deps: [
     with: "cmake" # with is optional if name is present as a key
     cmake:
       configure:
+        BOOST_ROOT: "~/include"
         RE2_LIBRARY: "~/lib/libre2.a"
-        RE2_INCLUDE_DIR: "~/include"
+        RE2_INCLUDE_DIR: "~/include/re2"
         SERVED_BUILD_STATIC: "ON"
         SERVED_BUILD_TESTS: "OFF"
         SERVED_BUILD_SHARED: "OFF"
-    boost: libs: ["asio", "system"]
   deps: [
+    git: "boostorg/asio"
+  ,
     git: "google/re2"
-    target: "static"
-    install:
-      libraries:
-        from: "source/lib"
-      headers:
-        from: "source/src"
+    path:
+      includeDirs: ["source"]
+      install:
+        headers: [
+          from: "source/re2"
+          to: "include/re2/re2"
+          includeFrom: "include/re2"
+        ,
+          from: "source/util"
+          to: "include/re2/util"
+          includeFrom: "include/re2"
+        ]
     build:
       with: "ninja"
-      sources: matching: ["re2/*.cc", "util/*.cc"]
-      linux:
-        sources: matching: ["!util/threadwin.cc"]
-      mac:
-        sources: matching: ["!util/threadwin.cc"]
+      sources:
+        matching: ["re2/*.cc", "util/*.cc"]
+        linux:
+          matching: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
+        mac:
+          matching: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
       cFlags:
         O3: 1
         std: "c++11"

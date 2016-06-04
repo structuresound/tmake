@@ -69,7 +69,8 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       console.log colors.magenta JSON.stringify dep, 0, 2
 
   cleanDep = (dep) ->
-    fs.nuke dep.d.build
+    if fs.existsSync(dep.d.build)
+      fs.nuke dep.d.build
     fs.nuke path.join dep.d.root, 'temp'
     _.each dep.libs, (libFile) ->
       if fs.existsSync(libFile) then fs.unlinkSync libFile
@@ -89,13 +90,14 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     db.update {name: dep.name}, modifier, {}
     .then ->
       if !argv.force
-        if dep.generatedBuildFile
-          prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow dep.generatedBuildFile}?"
+        generatedBuildFile = dep.cache.generatedBuildFile
+        if generatedBuildFile
+          prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"
           .then (approved) ->
             if approved
               modifier = $unset:
                 "cache.generatedBuildFile": true
-              fs.unlinkSync dep.generatedBuildFile
+              fs.unlinkSync generatedBuildFile
               db.update {name: dep.name}, modifier, {}
 
   recurDeps = (name, root) ->
