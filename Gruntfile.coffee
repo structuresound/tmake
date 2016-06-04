@@ -44,4 +44,5 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jshint'
   grunt.loadNpmTasks 'grunt-simple-mocha'
 
+  grunt.registerTask 'test', ['coffee', 'simplemocha']
   grunt.registerTask 'default', ['coffee', 'jshint', 'simplemocha', 'watch']
