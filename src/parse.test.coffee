@@ -18,6 +18,7 @@ depA =
   git: "hello/world"
   HELLO: "hello"
   WORLD: "world"
+  CC: "/usr/bin/gcc"
   BSON_BYTE_ORDER:
     macro: 'OS_ENDIANNESS'
     map:
@@ -71,5 +72,8 @@ describe 'parse', ->
       done()
 
   it 'executes shell commands', ->
-    assert.equal depA.OSX_SDK_VERSION, "$(xcrun --sdk macosx --show-sdk-version)"
-    assert.equal parse.configSetting(depA.configure.cmd), "./Configure 10.11 --openssldir=\"/tmp/openssl-1.0.1\""
+    if _.contains platform.selectors(), 'mac'
+      assert.equal depA.OSX_SDK_VERSION, "$(xcrun --sdk macosx --show-sdk-version)"
+      assert.equal parse.configSetting(depA.configure.cmd), "./Configure 10.11 --openssldir=\"/tmp/openssl-1.0.1\""
+    unless _.contains platform.selectors(), 'win'
+      assert.equal depA.CC, "$(which gcc)"
