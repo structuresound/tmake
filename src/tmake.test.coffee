@@ -37,16 +37,15 @@ tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
 
 describe 'tmake', ->
   sh.mkdir '-p', argv.runDir
+  @timeout 5000
 
   it 'can fetch a git repo', (done) ->
-    test: ->
-      @timeout 5000
-      tmake.execute conf, [ "fetch" ]
-      .then (res) ->
-        db.findOne name: "hello"
-      .then (dep) ->
-        assert.ok dep.cache.git.checkout
-        done()
+    tmake.execute conf, [ "fetch" ]
+    .then (res) ->
+      db.findOne name: "hello"
+    .then (dep) ->
+      assert.ok dep.cache.git.checkout
+      done()
 
   it 'can fetch from the project db', (done) ->
     db.update
