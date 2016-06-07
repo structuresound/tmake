@@ -180,7 +180,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     dep.cache.buildFile = buildFilePath systemName
     fs.existsAsync dep.cache.buildFile
     .then (exists) ->
-      if (!exists || (argv.force && dep.cache.generatedBuildFile))
+      if (!exists || (parse.force() && dep.cache.generatedBuildFile))
         createContext()
         .then (context) ->
           switch systemName
@@ -219,7 +219,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
   getContext: -> createContext()
   commands: commands
   execute: ->
-    return Promise.resolve() if (dep.cache?.configured && !argv.force)
+    return Promise.resolve() if (dep.cache?.configured && !parse.force())
     parse.iterate configuration, commands, settings
     .then ->
       db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}

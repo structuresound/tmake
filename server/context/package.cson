@@ -139,7 +139,9 @@ deps: [
   ,
     git: "boostorg/smart_ptr"
   ,
-    git: "mongodb/mongo-c-driver"
+    git:
+      repository: "mongodb/mongo-c-driver"
+      tag: "v0.8.1"
     configure:
       replace:
         files:
@@ -170,44 +172,42 @@ deps: [
           ext: '.h'
     build:
       with: "ninja"
-      sources:
-        matching: [
-          'src/mongoc/**.c'
-          '!src/mongoc/mongoc-rand-cng.c'
-          '!src/mmongoc/mongoc-stream-tls-secure-channel-private.c'
-          '!src/mongoc/mongoc-crypto-cng.c'
-          '!src/mongoc/mongoc-secure-channel.c'
-          '!src/mongoc/mongoc-secure-transport'
-          '!src/mongoc/mongoc-crypto-common-crypto'
-          '!src/mongoc/mongoc-rand-common-crypto'
-        ]
-      cFlags:
-        DMONGOC_COMPILATION: 1
-        D_GNU_SOURCE: 1
-        D_BSD_SOURCE: 1
-        O3: 1
-        std: "c++11"
-        g: 1
-        Wall: 1
-        Wextra: 1
-        "Wno-unused-parameter": 1
-        "Wno-missing-field-initializers": 1
-        linux:
-          pthread: 1
-        win:
-          "D_CRT_SECURE_NO_WARNINGS": true
-        mac:
-          stdlib: "libc++"
-          "Wno-deprecated-declarations": true
+      sources: matching: [ "src/*.c" ]
+      # sources:
+      #   matching: [
+      #     'src/mongoc/*.c'
+      #     '!src/mongoc/mongoc-rand-cng.c'
+      #     '!src/mmongoc/mongoc-stream-tls-secure-channel-private.c'
+      #     '!src/mongoc/mongoc-crypto-cng.c'
+      #     '!src/mongoc/mongoc-secure-channel.c'
+      #     '!src/mongoc/mongoc-secure-transport'
+      #     '!src/mongoc/mongoc-crypto-common-crypto'
+      #     '!src/mongoc/mongoc-rand-common-crypto'
+      #   ]
+      # cFlags:
+      #   DMONGOC_COMPILATION: 1
+      #   D_GNU_SOURCE: 1
+      #   D_BSD_SOURCE: 1
+      #   O3: 1
+      #   std: "c++11"
+      #   g: 1
+      #   Wall: 1
+      #   Wextra: 1
+      #   "Wno-unused-parameter": 1
+      #   "Wno-missing-field-initializers": 1
+      #   linux:
+      #     pthread: 1
+      #   win:
+      #     "D_CRT_SECURE_NO_WARNINGS": true
+      #   mac:
+      #     stdlib: "libc++"
+      #     "Wno-deprecated-declarations": true
       outputFile: "libmongoc-1.0.a"
     path:
       project: "source"
       install:
         headers: [
           from: "source/src/mongoc"
-          to: "include/libmongoc-1.0"
-        ,
-          from: "build/src/mongoc"
           to: "include/libmongoc-1.0"
         ]
     test:

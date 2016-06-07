@@ -10,7 +10,7 @@ findGit = ->
     sh.echo 'Sorry, this script requires git'
     sh.exit 1
 
-module.exports = (dep, db, argv) ->
+module.exports = (dep, db, argv, parse) ->
   if typeof dep.git == 'string'
     config = repository: dep.git
   else
@@ -20,7 +20,7 @@ module.exports = (dep, db, argv) ->
   config.checkout = config.tag || config.branch || dep.tag || "master"
 
   clone = ->
-    return checkout() if (dep.cache.git && !argv.force)
+    return checkout() if (dep.cache.git && !parse.force())
     fs.nuke dep.d.clone
     console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
@@ -43,7 +43,7 @@ module.exports = (dep, db, argv) ->
           reject e
 
   checkout = ->
-    if ((dep.cache.git.checkout == config.checkout) && !argv.force)
+    if ((dep.cache.git.checkout == config.checkout) && !parse.force())
       unless argv.quiet then console.log 'using ', dep.name, '@', config.checkout
       return Promise.resolve()
     sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose
@@ -56,7 +56,7 @@ module.exports = (dep, db, argv) ->
           {}
 
   validate: ->
-    if fs.existsSync(dep.d.clone) && !argv.force
+    if fs.existsSync(dep.d.clone) && !parse.force()
       checkout()
     else
       clone()

@@ -86,6 +86,8 @@ module.exports = (dep, argv) ->
       console.log '!!! write to', newPath
       fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
+  force: ->
+    argv.forceAll || (argv.force && (argv.force == dep.name))
   pathArray: pathArray
   globArray: globArray
   pathSetting: pathSetting

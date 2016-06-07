@@ -48,7 +48,7 @@ module.exports = (dep, argv, db, parse, buildTests) ->
       runner.build()
 
   execute: ->
-    return Promise.resolve() if ((!buildTests && dep.cache.built) || (buildTests && dep.cache.test.built)) && !argv.force
+    return Promise.resolve() if ((!buildTests && dep.cache.built) || (buildTests && dep.cache.test.built)) && !parse.force()
     return Promise.resolve() unless buildSettings
     parse.iterate buildSettings, commandBlock, ['cFlags', 'sources', 'headers', 'outputFile']
     .then ->

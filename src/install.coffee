@@ -16,7 +16,7 @@ vinyl =
       string
     _vinyl.src patterns, opt
 
-module.exports = (dep, argv, db) ->
+module.exports = (dep, argv, db, parse) ->
   task = dep.install || {}
 
   copy = (patterns, from, to, opt) ->
@@ -73,7 +73,7 @@ module.exports = (dep, argv, db) ->
     else _p.resolve('headers')
 
   execute = ->
-    return Promise.resolve() if (dep.cache?.installed && !argv.force)
+    return Promise.resolve() if (dep.cache?.installed && !parse.force())
     installHeaders()
     .then ->
       installLibs()

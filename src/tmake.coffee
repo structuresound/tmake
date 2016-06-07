@@ -47,7 +47,7 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
         if dep.source
           console.log "downloading source", dep.name, 'from', dep.source
         else if dep.git
-          require('./git')(dep, db, argv).validate()
+          require('./git')(dep, db, argv, parse).validate()
       when "transform"
         if dep.transform then require('./transform')(dep, argv, db).execute()
       when "configure"
@@ -55,7 +55,7 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       when "build"
         require('./build/build')(dep, argv, db, parse, false).execute()
       when "install"
-        require('./install')(dep, argv, db).execute()
+        require('./install')(dep, argv, db, parse).execute()
       when "clean"
         cleanDep dep
       when "test"
@@ -91,7 +91,8 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       unless _.contains preserve, k then modifier.$unset[k] = true
     db.update {name: dep.name}, modifier, {}
     .then ->
-      if !argv.force
+      parse = require('./parse')(dep, argv)
+      if !parse.force()
         generatedBuildFile = dep.cache.generatedBuildFile
         if generatedBuildFile
           prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"
@@ -135,7 +136,8 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
 
   processDep = (dep, steps) ->
     unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
-    if (!dep.cached || argv._[0] == "clean" || argv.force)
+    parse = require('./parse')(dep, argv)
+    if (!dep.cached || argv._[0] == "clean" || parse.force())
       _p.each steps, (phase) ->
         unless argv.quiet then console.log colors.green ">> #{phase} >>"
         process.chdir runDir
@@ -215,7 +217,7 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
             else console.log colors.red 'didn\'t find dep for', resolvedName
       when 'link'
         db.findOne name: resolvedName
-        .then (dep) -> link dep || rawConfig, argv.force
+        .then (dep) -> link dep || rawConfig
       when 'unlink'
         db.findOne name: resolvedName
         .then (dep) -> unlink dep || rawConfig

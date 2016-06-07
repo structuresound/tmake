@@ -15,7 +15,7 @@ argv =
   npmDir: npmDir
   pgname: "tmake"
   quiet: true
-  force: true
+  forceAll: true
   verbose: false
   yes: true
   _: [
@@ -78,7 +78,7 @@ describe 'tmake', ->
       done()
 
   it 'can push to the user local db', (done) ->
-    argv.force = false
+    argv.forceAll = false
     @timeout 5000
     db.findOne name: "hello"
     .then (dep) ->
