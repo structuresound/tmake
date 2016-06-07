@@ -44,17 +44,10 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     parse = require('./parse')(dep, argv)
     switch phase
       when "fetch"
-        clone = -> require('./git')(dep, db, argv).validate()
-        if dep.provider
-          switch dep.provider
-            when 'source'
-              console.log "downloading source", dep.name, 'from', dep.source
-            when 'local' then console.log "copying", dep.name, 'from', dep.path
-            when 'git' then clone
-            else
-              console.log "fetching", dep.provider, ':', dep.name, dep.version
-        else
-          if dep.git then clone
+        if dep.source
+          console.log "downloading source", dep.name, 'from', dep.source
+        else if dep.git
+          require('./git')(dep, db, argv).validate()
       when "transform"
         if dep.transform then require('./transform')(dep, argv, db).execute()
       when "configure"

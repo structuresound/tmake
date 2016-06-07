@@ -19,14 +19,9 @@ module.exports = (dep, db, argv) ->
   config.url = "https://github.com/#{config.repository}.git"
   config.checkout = config.tag || config.branch || dep.tag || "master"
 
-  remove = ->
-    new Promise (resolve) ->
-      if fs.existsSync dep.d.clone
-        fs.nuke dep.d.clone
-      resolve()
-
   clone = ->
-    return checkout() if (dep.cache?.git && !argv.force)
+    return checkout() if (dep.cache.git && !argv.force)
+    fs.nuke dep.d.clone
     console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, (err) ->
@@ -42,11 +37,15 @@ module.exports = (dep, db, argv) ->
             upsert: true
         .then ->
           checkout()
-          .then -> resolve()
-        .catch -> reject()
+        .then ->
+          resolve()
+        .catch (e) ->
+          reject e
 
   checkout = ->
-    return Promise.resolve() if (dep.cache.git?.checkout == config.checkout && !argv.force)
+    if ((dep.cache.git.checkout == config.checkout) && !argv.force)
+      unless argv.quiet then console.log 'using ', dep.name, '@', config.checkout
+      return Promise.resolve()
     sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose
     .then ->
       db.update
@@ -57,14 +56,10 @@ module.exports = (dep, db, argv) ->
           {}
 
   validate: ->
-    if fs.existsSync(dep.d.clone)
-      if dep.cache.git?.checkout == config.checkout
-        console.log 'using ', dep.name, '@', config.checkout
-        return Promise.resolve()
-      else
-        return checkout()
+    if fs.existsSync(dep.d.clone) && !argv.force
+      checkout()
     else
-      return clone()
+      clone()
 
   findGit: findGit
   checkout: checkout

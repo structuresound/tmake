@@ -15,6 +15,7 @@ argv =
   npmDir: npmDir
   pgname: "tmake"
   quiet: true
+  force: true
   verbose: false
   yes: true
   _: [
@@ -37,7 +38,7 @@ tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
 
 describe 'tmake', ->
   sh.mkdir '-p', argv.runDir
-  @timeout 5000
+  @timeout 10000
 
   it 'can fetch a git repo', (done) ->
     tmake.execute conf, [ "fetch" ]
@@ -47,18 +48,18 @@ describe 'tmake', ->
       assert.ok dep.cache.git.checkout
       done()
 
-  it 'can fetch from the project db', (done) ->
-    db.update
-      name: "hello"
-    ,
-      $set: something: "nice"
-    ,
-      upsert: true
-    .then ->
-      db.findOne name: "hello"
-    .then (res) ->
-      assert.equal res.something, "nice"
-      done()
+  # it 'can fetch from the project db', (done) ->
+  #   db.update
+  #     name: "hello"
+  #   ,
+  #     $set: something: "nice"
+  #   ,
+  #     upsert: true
+  #   .then ->
+  #     db.findOne name: "hello"
+  #   .then (res) ->
+  #     assert.equal res.something, "nice"
+  #     done()
 
   it 'can configure a build', (done) ->
     tmake.execute conf, [ 'configure' ]
@@ -77,6 +78,7 @@ describe 'tmake', ->
       done()
 
   it 'can push to the user local db', (done) ->
+    argv.force = false
     @timeout 5000
     db.findOne name: "hello"
     .then (dep) ->

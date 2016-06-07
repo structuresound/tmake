@@ -8,16 +8,17 @@ check = require('./check')
 
 module.exports = (->
   fs.nuke = (path) ->
-    files = []
-    if fs.existsSync(path)
-      files = fs.readdirSync(path)
-      files.forEach (file) ->
-        curPath = path + '/' + file
-        if fs.lstatSync(curPath).isDirectory()
-          fs.nuke curPath
-        else
-          fs.unlinkSync curPath
-      fs.rmdirSync path
+    if fs.existsSync path
+      files = []
+      if fs.existsSync(path)
+        files = fs.readdirSync(path)
+        files.forEach (file) ->
+          curPath = path + '/' + file
+          if fs.lstatSync(curPath).isDirectory()
+            fs.nuke curPath
+          else
+            fs.unlinkSync curPath
+        fs.rmdirSync path
 
   fs.prune = (path) ->
     files = []
