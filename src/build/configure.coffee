@@ -93,10 +93,11 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
 
   stdCxxFlags =
     O: 2
-    std: "c++11"
     mac:
+      std: "c++11"
       stdlib: "libc++"
     linux:
+      std: "c++0x"
       pthread: 1
 
   jsonToCFlags = (options) ->
