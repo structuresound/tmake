@@ -1,4 +1,6 @@
 /src
 /meteor
 /server
+/tests
+/test
 node_modules
