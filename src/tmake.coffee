@@ -44,10 +44,11 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     parse = require('./parse')(dep, argv)
     switch phase
       when "fetch"
+        git = require('./git')(dep, db, argv, parse)
         if dep.source
-          console.log "downloading source", dep.name, 'from', dep.source
-        else if dep.git
-          require('./git')(dep, db, argv, parse).validate()
+          git.getSource()
+        else
+          git.validate()
       when "transform"
         if dep.transform then require('./transform')(dep, argv, db).execute()
       when "configure"

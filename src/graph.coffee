@@ -50,6 +50,8 @@ module.exports = (argv, db, runDir) ->
       includeDirs: ""
       project: ""
 
+    if dep.git?.archive
+      defaultPathOptions.clone = "#{dep.name}-#{dep.git.archive}"
     pathOptions = _.deepObjectExtend defaultPathOptions, dep.path
 
     pathOptions.build ?= path.join pathOptions.project, "build"
@@ -85,7 +87,7 @@ module.exports = (argv, db, runDir) ->
       binaries: _.map arrayify(pathOptions.install.binaries), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from
-        to: path.join d.home, (ft.to || 'bin')
+        to: path.join d.root, (ft.to || 'bin')
       headers: _.map arrayify(pathOptions.install.headers), (ft) ->
         matching: ft.matching
         from: path.join d.root, ft.from

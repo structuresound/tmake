@@ -36,6 +36,7 @@ module.exports = (dep, argv, db, parse) ->
 
   installBin = ->
     if _.contains ['bin'], dep.target
+      sh.mkdir '-p', path.join argv.runDir, 'bin'
       _.each dep.d.install.binaries, (ft) ->
         from = path.join(ft.from, dep.name)
         to = path.join(ft.to, dep.name)

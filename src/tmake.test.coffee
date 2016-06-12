@@ -2,8 +2,10 @@ assert = require('chai').assert
 _ = require('underscore')
 _p = require("bluebird")
 path = require('path')
-sh = require('../lib/sh')
 Datastore = require('nedb-promise')
+
+sh = require('../lib/sh')
+fs = require('../lib/fs')
 
 npmDir = process.cwd()
 runDir = path.join process.cwd(), 'tests'
@@ -15,8 +17,8 @@ argv =
   npmDir: npmDir
   pgname: "tmake"
   quiet: true
-  forceAll: true
   verbose: false
+  test: true
   yes: true
   _: [
     'test'
@@ -24,45 +26,62 @@ argv =
 
 conf =
   git: "structuresound/hello"
-  configure:
-    run: "echo running a shell command"
-    with: "ninja"
+  target: "bin"
   build:
     with: "ninja"
+  deps: [
+    git:
+      repository: "google/googletest"
+      archive: "release-1.7.0"
+    build:
+      with: "cmake"
+    path:
+      project: "googletest-release-1.7.0"
+  ]
 
 db = new Datastore()
 userDb = new Datastore()
 settingsDb = new Datastore()
 
-tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
-
 describe 'tmake', ->
+  fs.nuke runDir
   sh.mkdir '-p', argv.runDir
-  @timeout 10000
+  @timeout 60000
+
+  tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
+
+  it 'can fetch a source tarball', (done) ->
+    argv._[0] = "fetch"
+    argv._[1] = "googletest"
+    tmake.run()
+    .then (res) ->
+      assert.ok fs.existsSync path.join argv.runDir, 'trie_modules/googletest'
+      done()
+
+  it 'can build google test', (done) ->
+    argv._[0] = "all"
+    argv._[1] = "googletest"
+    tmake.run()
+    .then ->
+      db.findOne name: "googletest"
+    .then (dep) ->
+      assert.ok dep.cache.installed
+      done()
 
   it 'can fetch a git repo', (done) ->
-    tmake.execute conf, [ "fetch" ]
+    argv._[0] = "fetch"
+    argv._[1] = ""
+    tmake.run()
     .then (res) ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.git.checkout
       done()
 
-  # it 'can fetch from the project db', (done) ->
-  #   db.update
-  #     name: "hello"
-  #   ,
-  #     $set: something: "nice"
-  #   ,
-  #     upsert: true
-  #   .then ->
-  #     db.findOne name: "hello"
-  #   .then (res) ->
-  #     assert.equal res.something, "nice"
-  #     done()
-
   it 'can configure a build', (done) ->
-    tmake.execute conf, [ 'configure' ]
+    argv._[0] = "configure"
+    argv._[1] = ""
+    tmake.run()
     .then (res) ->
       db.findOne name: "hello"
     .then (dep) ->
@@ -70,16 +89,23 @@ describe 'tmake', ->
       done()
 
   it 'can build using ninja', (done) ->
-    tmake.execute conf, [ 'build' ]
+    argv._[0] = "all"
+    argv._[1] = ""
+    tmake.run()
     .then (res) ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.built
       done()
 
+  it 'run the built binary', (done) ->
+    sh.Promise './hello', (path.join runDir, 'bin'), true
+    .then (res) ->
+      results = res.split('\n')
+      assert.equal results[results.length-2], 'Hello, world, from Visual C++!'
+      done()
+
   it 'can push to the user local db', (done) ->
-    argv.forceAll = false
-    @timeout 5000
     db.findOne name: "hello"
     .then (dep) ->
       tmake.link dep

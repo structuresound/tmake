@@ -7,7 +7,6 @@ check = require('../check')
 cascade = require('../cascade')
 sh = require('../sh')
 
-
 module.exports = (dep, argv, db, graph, parse, configureTests) ->
   commands =
     any: (obj) -> commands.shell(obj)
@@ -100,6 +99,13 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       std: "c++0x"
       pthread: 1
 
+  stdLdFlags =
+    # static: true
+    linux:
+      "lstdc++": 1
+    mac:
+      "lc++": 1
+
   jsonToCFlags = (options) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
 
@@ -145,7 +151,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         npmDir: argv.npmDir
         cFlags: jsonToCFlags configuration.cFlags || configuration.cxxFlags || stdCFlags
         cxxFlags: jsonToCxxFlags configuration.cxxFlags || configuration.cFlags || stdCxxFlags
-        ldFlags: jsonToLDFlags configuration.ldFlags || {}
+        ldFlags: jsonToLDFlags configuration.ldFlags || stdLdFlags
       globHeaders()
       .then (headers) ->
         context.headers = headers
@@ -164,6 +170,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
           .map (d) -> _.map d.libs, (lib) -> path.join(d.d.home, lib)
           .flatten()
           .value()
+          .reverse()
         context.includeDirs = _.union context.includeDirs, dep.d.includeDirs
         if argv.verbose then console.log colors.yellow JSON.stringify context.includeDirs, 0, 2
         resolve context

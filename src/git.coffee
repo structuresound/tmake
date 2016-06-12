@@ -4,6 +4,10 @@ git = require 'gift'
 fs = require('./fs')
 sh = require('./sh')
 colors = require ('chalk')
+unzip = require('unzip')
+tar = require('tar-fs')
+gunzip = require('gunzip-maybe')
+request = require('request-promise')
 
 findGit = ->
   if not sh.which 'git'
@@ -11,18 +15,54 @@ findGit = ->
     sh.exit 1
 
 module.exports = (dep, db, argv, parse) ->
+  config = dep.git || {}
   if typeof dep.git == 'string'
     config = repository: dep.git
-  else
-    config = dep.git || {}
 
-  config.url = "https://github.com/#{config.repository}.git"
-  config.checkout = config.tag || config.branch || dep.tag || "master"
+  if dep.source
+    config.url = dep.source
+  else
+    base = "https://github.com/#{config.repository}"
+    if config.archive
+      config.url = "#{base}/archive/#{config.archive}.tar.gz"
+      config.checkout = config.archive
+    else
+      config.url = "#{base}.git"
+      config.checkout = config.tag || config.branch || dep.tag || "master"
+
+  getSource = ->
+    unless argv.quiet then console.log colors.green 'fetch source from', config.url
+    unless argv.quiet then console.log colors.yellow 'to', dep.d.clone
+    fs.existsAsync dep.d.clone
+    .then (exists) ->
+      if exists && dep.cache.source == config.url && !parse.force()
+        if argv.verbose then console.log colors.yellow 'using cache'
+        Promise.resolve()
+      else
+        new Promise (resolve, reject) ->
+          finish = ->
+            db.update
+                name: dep.name
+              ,
+                $set:
+                  "cache.source": config.url
+              ,
+                upsert: true
+            .then (res) ->
+              if argv.verbose then console.log colors.magenta "inserted new record #{dep.name}"
+              resolve res
+          request config.url
+          .pipe gunzip()
+          .pipe tar.extract(dep.d.root)
+          .on 'finish', finish
+          .on 'close', finish
+          .on 'end', finish
+          .on 'error', reject
 
   clone = ->
-    return checkout() if (dep.cache.git && !parse.force())
+    return checkout() if (dep.cache.git && fs.existsSync(dep.d.clone) && !parse.force())
     fs.nuke dep.d.clone
-    console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
+    unless argv.quiet then console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
       git.clone config.url, dep.d.clone, (err) ->
         return reject err if err
@@ -57,9 +97,16 @@ module.exports = (dep, db, argv, parse) ->
 
   validate: ->
     if fs.existsSync(dep.d.clone) && !parse.force()
-      checkout()
+      if config.archive
+        Promise.resolve()
+      else
+        checkout()
     else
-      clone()
+      if config.archive
+        getSource()
+      else
+        clone()
 
   findGit: findGit
   checkout: checkout
+  getSource: getSource

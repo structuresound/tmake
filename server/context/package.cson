@@ -1,11 +1,12 @@
 name: "example_served"
 target: "bin"
 build:
-  with: "cmake"
+  with: "ninja"
 deps: [
-  git: "mongodb/mongo-cxx-driver"
+  git:
+    repository: "mongodb/mongo-cxx-driver"
+    tag: "r3.0.1"
   path:
-    project: "source"
     includeDirs: ['source/src']
     install:
       headers: [
@@ -64,10 +65,15 @@ deps: [
         ext: '.hpp'
   build:
     with: "ninja"
-    sources: matching: ['src/bsoncxx/*.cpp', 'src/mongocxx/*.cpp']
+    sources: matching: ['src/bsoncxx/**/*.cpp', '!src/bsoncxx/test/**', 'src/mongocxx/*.cpp', '!src/mongocxx/test/**']
     cFlags:
+      DBSON_CXX_DRIVER_COMPILING: 1
+      DMONGO_CXX_DRIVER_COMPILING: 1
+      DMONGOC_ENABLE_SSL: 1
+      DMONGOC_ENABLE_SSL_OPENSSL: 1
+      DMONGOC_HAVE_SSL: 1
       O3: 1
-      std: "c++14"
+      std: "c++11"
   deps: [
     git: "boostorg/core"
   ,
@@ -121,11 +127,11 @@ deps: [
       git: "boostorg/predef"
     ,
       git: "boostorg/core"
+    ,
+      git: "boostorg/config"
     ]
   ,
     git: "boostorg/utility"
-  ,
-    git: "boostorg/config"
   ,
     git: "boostorg/move"
   ,
@@ -141,17 +147,17 @@ deps: [
   ,
     git:
       repository: "mongodb/mongo-c-driver"
-      tag: "v0.8.1"
+      tag: "1.3.4"
     configure:
       replace:
         files:
           matching: ['src/mongoc/mongoc-config.h.in', 'src/mongoc/mongoc-version.h.in']
           inputs:
             MONGOC_MAJOR_VERSION: 1
-            MONGOC_MINOR_VERSION: 0
-            MONGOC_MICRO_VERSION: 0
+            MONGOC_MINOR_VERSION: 3
+            MONGOC_MICRO_VERSION: 4
             MONGOC_PRERELEASE_VERSION: 'rc0'
-            MONGOC_VERSION: '1.0.0'
+            MONGOC_VERSION: '1.3.4'
             MONGOC_ENABLE_CRYPTO: 1
             MONGOC_ENABLE_CRYPTO_CNG: 0
             MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO: 0
@@ -172,39 +178,37 @@ deps: [
           ext: '.h'
     build:
       with: "ninja"
-      sources: matching: [ "src/*.c" ]
-      # sources:
-      #   matching: [
-      #     'src/mongoc/*.c'
-      #     '!src/mongoc/mongoc-rand-cng.c'
-      #     '!src/mmongoc/mongoc-stream-tls-secure-channel-private.c'
-      #     '!src/mongoc/mongoc-crypto-cng.c'
-      #     '!src/mongoc/mongoc-secure-channel.c'
-      #     '!src/mongoc/mongoc-secure-transport'
-      #     '!src/mongoc/mongoc-crypto-common-crypto'
-      #     '!src/mongoc/mongoc-rand-common-crypto'
-      #   ]
-      # cFlags:
-      #   DMONGOC_COMPILATION: 1
-      #   D_GNU_SOURCE: 1
-      #   D_BSD_SOURCE: 1
-      #   O3: 1
-      #   std: "c++11"
-      #   g: 1
-      #   Wall: 1
-      #   Wextra: 1
-      #   "Wno-unused-parameter": 1
-      #   "Wno-missing-field-initializers": 1
-      #   linux:
-      #     pthread: 1
-      #   win:
-      #     "D_CRT_SECURE_NO_WARNINGS": true
-      #   mac:
-      #     stdlib: "libc++"
-      #     "Wno-deprecated-declarations": true
+      sources:
+        matching: [
+          'src/mongoc/*.c'
+          '!src/mongoc/mongoc-rand-cng.c'
+          '!src/mmongoc/mongoc-stream-tls-secure-channel-private.c'
+          '!src/mongoc/mongoc-crypto-cng.c'
+          '!src/mongoc/mongoc-secure-channel.c'
+          '!src/mongoc/mongoc-secure-transport'
+          '!src/mongoc/mongoc-crypto-common-crypto'
+          '!src/mongoc/mongoc-rand-common-crypto'
+        ]
+      cFlags:
+        DMONGOC_COMPILATION: 1
+        D_GNU_SOURCE: 1
+        D_BSD_SOURCE: 1
+        O3: 1
+        std: "c++11"
+        g: 1
+        Wall: 1
+        Wextra: 1
+        "Wno-unused-parameter": 1
+        "Wno-missing-field-initializers": 1
+        linux:
+          pthread: 1
+        win:
+          "D_CRT_SECURE_NO_WARNINGS": true
+        mac:
+          stdlib: "libc++"
+          "Wno-deprecated-declarations": true
       outputFile: "libmongoc-1.0.a"
     path:
-      project: "source"
       install:
         headers: [
           from: "source/src/mongoc"
@@ -213,7 +217,9 @@ deps: [
     test:
       build: with: "ninja"
     deps: [
-      git: "mongodb/libbson"
+      git:
+        repository: "mongodb/libbson"
+        tag: "1.3.4"
       configure:
         create:
           stdint:
@@ -224,8 +230,8 @@ deps: [
             matching: ['src/bson/bson-config.h.in', 'src/bson/bson-version.h.in']
             inputs:
               BSON_MAJOR_VERSION: 1
-              BSON_MINOR_VERSION: 0
-              BSON_MICRO_VERSION: 0
+              BSON_MINOR_VERSION: 3
+              BSON_MICRO_VERSION: 4
               BSON_PRERELEASE_VERSION: 'rc0'
               BSON_VERSION: '1.0.0'
               BSON_BYTE_ORDER:
@@ -285,11 +291,6 @@ deps: [
             from: "build/src/bson"
             to: "include/libbson-1.0"
           ]
-          libraries: [
-            from: "source/build"
-            to: "lib"
-          ]
-        project: "source"
     ,
       git:
         repository: "openssl/openssl"
@@ -341,8 +342,7 @@ deps: [
         install:
           headers:
             from: "source/include"
-            to: "include/openssl/openssl"
-            includeFrom: "include/openssl"
+            to: "include/openssl"
           libraries:
             from: "source"
             to: "lib"

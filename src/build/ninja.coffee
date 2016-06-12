@@ -68,7 +68,6 @@ module.exports = (dep, argv) ->
 
     cCommand = "#{cc} -MMD -MF $out.d #{context.cFlags} -c $in -o $out #{includeString}"
     cxxCommand = "#{cc} -MMD -MF $out.d #{context.cxxFlags} -c $in -o $out #{includeString}"
-    linkCommand = "ar rv $out $in #{context.ldFlags}"
 
     ninjaConfig
     .rule 'c'
@@ -82,28 +81,36 @@ module.exports = (dep, argv) ->
     .run cxxCommand
     .description cxxCommand
 
+    libName = dep.build.outputFile
+    linkCommand = "ar rv $out $in"
+
+    switch context.target
+      when 'static'
+        if dep.name.indexOf('lib') == -1
+          libName ?= "lib#{dep.name}.a"
+        else
+          libName ?= "#{dep.name}.a"
+        linkCommand = "ar rv $out $in -static"
+      when 'bin'
+        libName ?= "#{dep.name}"
+        staticLibs = ''
+        if context.libs then staticLibs = context.libs.join(' ')
+        linkCommand = "#{cc} -o $out $in #{staticLibs} #{context.ldFlags}"
+
     ninjaConfig
     .rule('link')
     .run linkCommand
     .description linkCommand
 
-    linkNames = []
-    _.each context.sources, (filePath) ->
+    linkNames = _.map context.sources, (filePath) ->
       ext = path.extname filePath
       name = path.basename filePath, ext
-      linkNames.push "build/#{name}.o"
       ninjaConfig.edge("build/#{name}.o").from(filePath).using(getRule ext)
+      "build/#{name}.o"
 
     linkInput = linkNames.join(" ")
-
-    libName = dep.build.outputFile
-
-    if dep.name.indexOf('lib') == -1
-      libName ?= "lib#{dep.name}.a"
-    else
-      libName ?= "#{dep.name}.a"
-
     ninjaConfig.edge("build/#{libName}").from(linkInput).using("link")
+
     ninjaConfig.saveToStream fileStream
 
   generate: genBuildScript
