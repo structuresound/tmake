@@ -1,7 +1,11 @@
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
 language: node_js
 node_js:
-  - '0.10'
+  - '4'
 before_script:
+  -
   - npm install -g grunt-cli
   - grunt coffee
 after_success:
