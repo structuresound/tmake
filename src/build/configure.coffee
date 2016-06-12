@@ -103,6 +103,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     # static: true
     linux:
       "lstdc++": 1
+      "lpthread": 1
     mac:
       "lc++": 1
 
