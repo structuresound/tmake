@@ -111,7 +111,7 @@ module.exports = (->
       if exists
         _p.resolve configPath
       else
-        base = path.dirname configPath
+        # base = path.dirname configPath
         prefix = path.basename configPath, path.extname configPath
         # console.log 'config not found at', configPath
         # console.log 'searching', prefix
@@ -139,10 +139,10 @@ module.exports = (->
       switch path.extname configPath
         when '.cson' then CSON.parse(data)
         when '.json' then JSON.parse(data)
-        else _p.reject 'unknown config ext'
+        else throw new Error 'unknown config ext'
     else
       console.log "no cson or json file present at #{path}"
-      _p.resolve undefined
+      {}
 
   return fs
 )()

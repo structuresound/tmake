@@ -1,12 +1,9 @@
-_ = require('underscore')
-_p = require("bluebird")
 path = require('path')
-request = require('request-promise')
 fs = require('./fs')
 require('./string')
 colors = require ('chalk')
 check = require './check'
-Datastore = require('nedb-promise')
+CSON = require('cson')
 
 module.exports = (argv, binDir, npmDir) ->
   platform = require('./platform')(argv)
@@ -29,7 +26,7 @@ module.exports = (argv, binDir, npmDir) ->
     unless fs.existsSync(configPath)
       cli.createPackage()
       .then (config) ->
-        fs.writeFileSync defaultConfig, config
+        fs.writeFileSync defaultConfig, CSON.stringify config
     else
       console.log "aborting init, this folder already has a package.cson file present"
 
@@ -43,8 +40,8 @@ module.exports = (argv, binDir, npmDir) ->
           cli.parse argv
           tmake = require('./tmake')(argv, config, cli)
           tmake.run()
-        catch e
-          console.log 'tmake error: ', e
+        catch error
+          console.log 'tmake error: ', error
       else
         switch argv._[0]
           when 'init'

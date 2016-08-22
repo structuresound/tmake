@@ -7,7 +7,8 @@ fs = require './fs'
 Promise = require 'bluebird'
 
 module.exports = (dep, argv) ->
-  replaceMacro = require('./macro')(argv, dep)
+  platform = require('./platform')(argv, dep)
+  replaceMacro = require('./macro')(dep, platform)
 
   arrayify = (val) ->
     if check(val, Array) then val

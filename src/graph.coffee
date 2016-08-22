@@ -2,8 +2,9 @@ DepGraph = require('dependency-graph').DepGraph
 _ = require 'underscore'
 _p = require("bluebird")
 path = require('path')
-colors = require ('chalk')
 check = require './check'
+fs = require('./fs')
+cascade = require('./cascade')
 
 deepObjectExtend = (target, source) ->
   for prop of source
@@ -21,8 +22,11 @@ deepObjectExtend = (target, source) ->
 _.deepObjectExtend = (target, source) ->
   deepObjectExtend _.extend({}, target), source
 
+module.exports = (argv, db, platform) ->
+  parsePath = (s) ->
+    if s.startsWith '/' then s
+    else path.join argv.runDir, s
 
-module.exports = (argv, db, runDir) ->
   that = {}
   cache = {}
   _graph = new DepGraph()
@@ -40,8 +44,13 @@ module.exports = (argv, db, runDir) ->
     fullPath = (p, root) ->
       if p.startsWith('/') then p else path.join root, p
 
+    # _.extend dep, fs.readConfigSync "#{argv.runDir}/#{argv.cachePath}/#{dep.name}/package.cson"
+    if dep.link
+      console.log "link settings #{parsePath dep.link}package.cson"
+      rawConfig = fs.readConfigSync "#{parsePath dep.link}package.cson"
+      _.extend dep, cascade.deep rawConfig, platform.keywords(), platform.selectors()
+
     defaultPathOptions =
-      home: argv.cachePath
       source: ""
       headers: ""
       test: "build_tests"
@@ -69,7 +78,7 @@ module.exports = (argv, db, runDir) ->
     pathOptions.install.binaries.to ?= 'bin'
     d = _.extend {}, dep.d
     # fetch
-    d.home ?= "#{runDir}/#{pathOptions.home}" # reference for build tools, should probably remove
+    d.home ?= "#{argv.runDir}/#{argv.cachePath}" # reference for build tools, should probably remove
     d.root ?= path.join d.home, dep.name # lowest level a package should have access to
     d.temp ?= path.join d.root, pathOptions.temp
     d.clone ?= path.join d.root, pathOptions.clone
@@ -111,7 +120,7 @@ module.exports = (argv, db, runDir) ->
     db.findOne name: dep.name
     .then (result) ->
       merged = _.deepObjectExtend result || {}, dep
-      entry = _.extend {}, merged
+      entry = _.clone merged
       if entry.deps
         entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
       delete entry.d
@@ -121,7 +130,6 @@ module.exports = (argv, db, runDir) ->
       else
         db.insert entry
         .then -> that.resolvePaths merged
-
 
   that.resolveDepName = (dep) ->
     if dep.name then return dep.name

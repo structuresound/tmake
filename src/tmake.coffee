@@ -8,9 +8,9 @@ Datastore = require('nedb-promise')
 cascade = require('./cascade')
 check = require('./check')
 
-module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
-  platform = require('./platform')(argv, rawConfig)
-  runDir = argv.runDir || process.cwd()
+module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
+  argv.runDir ?= process.cwd()
+  runDir = argv.runDir
 
   unless db
     db = new Datastore
@@ -28,11 +28,13 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       autoload: true
 
   prompt = require('./prompt')(argv)
-  graph = require('./graph')(argv, db, runDir)
+  platform = require('./platform')(argv, rootConfig)
+  graph = require('./graph')(argv, db, platform)
   cloud = require('./cloud')(argv, settings, prompt)
 
   allStrings = (o, fn) ->
     rec = (o) ->
+      # console.log 'parsing', o
       for k of o
         if check o[k], String
           o[k] = fn o[k]
@@ -44,11 +46,16 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     parse = require('./parse')(dep, argv)
     switch phase
       when "fetch"
-        git = require('./git')(dep, db, argv, parse)
-        if dep.source
-          git.getSource()
+        if dep.source || dep.git || dep.link
+          fetch = require('./fetch')(dep, db, argv, parse)
+          if dep.source
+            fetch.getSource()
+          else if dep.link
+            fetch.linkSource()
+          else
+            fetch.validate()
         else
-          git.validate()
+          _p.resolve()
       when "transform"
         if dep.transform then require('./transform')(dep, argv, db).execute()
       when "configure"
@@ -68,8 +75,9 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       when "parse"
         if argv._[2]
           console.log colors.magenta parse.configSetting argv._[2]
-        allStrings dep, parse.configSetting
-        console.log colors.magenta JSON.stringify dep, 0, 2
+        copy = _.clone dep
+        allStrings copy, parse.configSetting
+        console.log colors.magenta JSON.stringify copy, 0, 2
 
   cleanDep = (dep) ->
     if fs.existsSync(dep.d.build)
@@ -93,21 +101,20 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
     db.update {name: dep.name}, modifier, {}
     .then ->
       parse = require('./parse')(dep, argv)
-      if !parse.force()
-        generatedBuildFile = dep.cache.generatedBuildFile
-        if generatedBuildFile
-          prompt.ask colors.green "remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"
-          .then (approved) ->
-            if approved
-              modifier = $unset:
-                "cache.generatedBuildFile": true
-              fs.unlinkSync generatedBuildFile
-              db.update {name: dep.name}, modifier, {}
+      generatedBuildFile = dep.cache.generatedBuildFile
+      if generatedBuildFile
+        prompt.ask colors.green("remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"), 'y', parse.force()
+        .then (approved) ->
+          if approved
+            modifier = $unset:
+              "cache.generatedBuildFile": true
+            fs.unlinkSync generatedBuildFile
+            db.update {name: dep.name}, modifier, {}
 
   recurDeps = (name, root) ->
     if root?.name == name then return root
     found = undefined
-    _.each root.deps, (dep) ->
+    _.each root.deps || root.dependencies, (dep) ->
       unless found
         if dep.name == name then found = dep
         else if graph.resolveDepName(dep) == name then found = dep
@@ -170,7 +177,6 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
       else _p.reject "link failed because build or test failed"
 
   push = (config) ->
-    location = 'localhost'
     prompt.ask colors.green "push will do a clean, full build, test and if successful will upload to the #{colors.yellow "public repository"}\n#{colors.yellow "do that now?"} #{colors.gray "(yy = disable this warning)"}"
     .then (res) ->
       if res then execute config, ["fetch","transform","configure","build","install","test"]
@@ -190,7 +196,7 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
   link: link
   unlink: unlink
   run: ->
-    resolvedName = argv._[1] || rawConfig.name || graph.resolveDepName rawConfig
+    resolvedName = argv._[1] || rootConfig.name || graph.resolveDepName rootConfig
     switch argv._[0]
       when 'rm'
         db.remove name: resolvedName
@@ -218,29 +224,29 @@ module.exports = (argv, rawConfig, cli, db, localRepo, settings) ->
             else console.log colors.red 'didn\'t find dep for', resolvedName
       when 'link'
         db.findOne name: resolvedName
-        .then (dep) -> link dep || rawConfig
+        .then (dep) -> link dep || rootConfig
       when 'unlink'
         db.findOne name: resolvedName
-        .then (dep) -> unlink dep || rawConfig
+        .then (dep) -> unlink dep || rootConfig
       when 'push'
         db.findOne name: resolvedName
-        .then (dep) -> push dep || rawConfig
+        .then (dep) -> push dep || rootConfig
       when 'test'
-        execute rawConfig, ["test"]
+        execute rootConfig, ["test"]
       when 'fetch'
-        execute rawConfig, ["fetch"]
+        execute rootConfig, ["fetch"]
       when 'parse'
-        execute rawConfig, ["parse"]
+        execute rootConfig, ["parse"]
       when 'transform'
-        execute rawConfig, ["fetch","transform"]
+        execute rootConfig, ["fetch","transform"]
       when 'configure'
-        execute rawConfig, ["fetch","transform","configure"]
+        execute rootConfig, ["fetch","transform","configure"]
       when 'build'
-        execute rawConfig, ["build"]
+        execute rootConfig, ["build"]
       when 'install'
-        execute rawConfig, ["install"]
+        execute rootConfig, ["install"]
       when 'all'
-        execute rawConfig, ["fetch","transform","configure","build","install"]
+        execute rootConfig, ["fetch","transform","configure","build","install"]
       when 'example', 'init'
         console.log colors.red "there's already a #{argv.program} project file in this directory"
       when 'path'

@@ -90,7 +90,7 @@ module.exports = (dep, argv) ->
           libName ?= "lib#{dep.name}.a"
         else
           libName ?= "#{dep.name}.a"
-        linkCommand = "ar rv $out $in -static"
+        linkCommand = "ar rv $out $in"
       when 'bin'
         libName ?= "#{dep.name}"
         staticLibs = ''

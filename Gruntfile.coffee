@@ -37,7 +37,7 @@ module.exports = (grunt) ->
     watch:
       coffee:
         files: 'src/**/*.coffee'
-        tasks: [ 'coffee', 'jshint', 'simplemocha' ]
+        tasks: [ 'coffee', 'jshint' ]
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'

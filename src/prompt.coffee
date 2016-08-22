@@ -14,8 +14,8 @@ module.exports = (argv) ->
     that.prompt()
   that.onReceived = (text) -> console.log 'received data:', text, util.inspect(text)
   that.yes = argv.y || argv.yes
-  that.ask = (q, expect) ->
-    if that.yes then return Promise.resolve expect || 'y'
+  that.ask = (q, expect, skip) ->
+    if (that.yes || skip) then return Promise.resolve expect || 'y'
     new Promise (resolve) ->
       that.message = colors.yellow(q) + ': '
       that.onReceived = (data) ->
