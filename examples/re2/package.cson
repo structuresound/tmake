@@ -1,18 +1,34 @@
 name: "re2"
 version: "0.0.1"
 git: "google/re2"
+path:
+  includeDirs: ["source"]
+  install:
+    headers: [
+      from: "source/re2"
+      to: "include/re2/re2"
+      includeFrom: "include/re2"
+    ,
+      from: "source/util"
+      to: "include/re2/util"
+      includeFrom: "include/re2"
+    ]
 build:
-  with: "cmake"
-  sources: matching: ["re2/*.cc", "util/*.cc"]
-  linux: sources: matching: ["!util/threadwin.cc"]
-  mac: sources: matching: ["!util/threadwin.cc"]
-  target: "static"
-  cflags:
+  with: "ninja"
+  sources:
+    matching: ["re2/*.cc", "util/*.cc"]
+    linux:
+      matching: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
+    mac:
+      matching: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
+  cFlags:
     O3: 1
     std: "c++11"
     g: 1
-    pthread: 1
     Wall: 1
     Wextra: 1
     "Wno-unused-parameter": 1
     "Wno-missing-field-initializers": 1
+    pthread: 1
+    mac:
+      stdlib: "libc++"

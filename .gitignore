@@ -1,3 +1,10 @@
 /lib
 node_modules
 .DS_Store
+coverage/
+meteor/
+server/context/CMakeLists.txt
+server/context/bin/
+server/context/build/
+server/context/trie_modules/
+test/
