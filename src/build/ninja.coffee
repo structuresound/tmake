@@ -103,10 +103,19 @@ module.exports = (dep, argv) ->
     .description linkCommand
 
     linkNames = _.map context.sources, (filePath) ->
+      console.log 'process source file', filePath
+      dir = path.dirname filePath
+      relative = path.relative dep.p.clone, dir
+      console.log "relative from #{dep.p.clone} is #{relative}"
+      outBase = path.join "build/", relative
+
       ext = path.extname filePath
       name = path.basename filePath, ext
-      ninjaConfig.edge("build/#{name}.o").from(filePath).using(getRule ext)
-      "build/#{name}.o"
+
+      linkName = "#{outBase}/#{name}.o"
+      console.log 'add build file', linkName
+      ninjaConfig.edge(linkName).from(filePath).using(getRule ext)
+      linkName
 
     linkInput = linkNames.join(" ")
     ninjaConfig.edge("build/#{libName}").from(linkInput).using("link")

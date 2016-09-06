@@ -80,6 +80,11 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
+  linkNames = ->
+    patterns = parse.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
+    if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
+    fs.glob patterns, dep.d.source, dep.d.source
+
   globDeps = -> graph.deps dep
 
   cascadingPlatformArgs = (base) ->
@@ -159,6 +164,9 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         globSources()
       .then (sources) ->
         context.sources = sources
+        linkNames()
+      .then (linkNames) ->
+        context.linkNames = linkNames
         globDeps()
       .then (depGraph) ->
         if depGraph.length

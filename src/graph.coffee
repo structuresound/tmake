@@ -109,6 +109,7 @@ module.exports = (argv, db, platform) ->
 
     d.resolved = true
     dep.d = d
+    dep.p = pathOptions
 
     _p.resolve dep
 
