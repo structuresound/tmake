@@ -356,7 +356,7 @@ deps: [
             ]
           linux:
             configure: [
-              "./config --openssldir=\"{d.build}/openssl-{OPENSSL_VERSION}-{ARCH}\""
+              "./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir=\"{d.build}/openssl-{OPENSSL_VERSION}-{ARCH}\""
               "make depend"
             ]
           ios:

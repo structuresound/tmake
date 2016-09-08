@@ -4,6 +4,7 @@ colors = require ('chalk')
 sh = require('shelljs')
 
 sh.Promise = (command, cwd, verbose) ->
+  throw new Error 'no command' unless command
   if verbose then console.log colors.green("[ sh ] #{command}")
   new Promise (resolve, reject) ->
     sh.cd cwd

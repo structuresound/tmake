@@ -50,6 +50,6 @@ module.exports = (dep, argv, db, parse, buildTests) ->
   execute: ->
     return Promise.resolve() if ((!buildTests && dep.cache.built) || (buildTests && dep.cache.test.built)) && !parse.force()
     return Promise.resolve() unless buildSettings
-    parse.iterate buildSettings, commandBlock, ['cFlags', 'sources', 'headers', 'outputFile']
+    parse.iterate buildSettings, commandBlock, ['cFlags', 'ldFlags', 'sources', 'headers', 'outputFile']
     .then ->
       db.update {name: dep.name}, {$set: {"#{cachePath}": true}}, {}

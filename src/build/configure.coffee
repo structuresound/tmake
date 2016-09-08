@@ -140,14 +140,17 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     opt = cascadingPlatformArgs options
     jsonToFlags opt
 
-  jsonToFlags = (json) ->
+  _jsonToFlags = (prefix, json) ->
     flags = ""
     _.each json, (opt, key) ->
       if typeof opt == 'string'
-        flags += " -#{key}=#{opt}"
+        flags += " #{prefix}#{key}=#{opt}"
       else if opt
-        flags += " -#{key}"
+        flags += " #{prefix}#{key}"
     flags
+
+  jsonToFlags = (json) ->
+    _jsonToFlags '-', json
 
   createContext = ->
     new Promise (resolve) ->

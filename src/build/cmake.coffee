@@ -80,14 +80,14 @@ module.exports = (dep, argv) ->
     """
 
   flags = ->
-    ldFlags = ""
-    switch @target
-      when 'static'
-        ldFlags = "set(CMAKE_STATIC_LINKER_FLAGS \"${CMAKE_STATIC_LINKER_FLAGS} #{@ldFlags}\")"
-      when 'shared'
-        ldFlags = "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} #{@ldFlags}\")"
-      when 'bin'
-        ldFlags = "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} #{@ldFlags}\")"
+    # ldFlags = ""
+    # switch @target
+    #   when 'static'
+    #     ldFlags = "set(CMAKE_STATIC_LINKER_FLAGS \"${CMAKE_STATIC_LINKER_FLAGS} #{@ldFlags}\")"
+    #   when 'shared'
+    #     ldFlags = "set(CMAKE_SHARED_LINKER_FLAGS \"${CMAKE_SHARED_LINKER_FLAGS} #{@ldFlags}\")"
+    #   when 'bin'
+    #     ldFlags = "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} #{@ldFlags}\")"
     """\n
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cxxFlags}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} #{@cFlags}")
@@ -110,7 +110,7 @@ module.exports = (dep, argv) ->
     if @target == 'node' then libs += " ${CMAKE_JS_LIB}"
     if libs.length
       """\n
-      target_link_libraries(${PROJECT_NAME} #{libs})
+      target_link_libraries(${PROJECT_NAME} #{libs} #{@ldFlags})
       """
 
   generateLists = (funcs, context) ->
