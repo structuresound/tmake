@@ -41,7 +41,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         copy e.matching, parse.pathSetting(e.from, dep), parse.pathSetting(e.to, dep), false
 
   platform = require('../platform')(argv, dep)
-  settings = ['cFlags', 'sources', 'headers', 'outputFile']
+  settings = ['ldFlags', 'cFlags', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'cmake', 'make' ].concat settings
 
   _build = _.pick(dep.build, filter)
