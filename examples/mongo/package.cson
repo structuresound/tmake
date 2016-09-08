@@ -3,9 +3,8 @@ target: "bin"
 build:
   with: "cmake"
   linux:
-    ldFlags: [
-      dl: 1
-    ]
+    ldFlags:
+      ldl: 1
 deps: [
   git:
     repository: "mongodb/mongo-cxx-driver"
@@ -356,7 +355,7 @@ deps: [
             ]
           linux:
             configure: [
-              "./config zlib-dynamic --openssldir=\"{d.build}/openssl-{OPENSSL_VERSION}-{ARCH}\""
+              "./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir=\"{d.build}/openssl-{OPENSSL_VERSION}-{ARCH}\""
               "make depend"
             ]
           ios:

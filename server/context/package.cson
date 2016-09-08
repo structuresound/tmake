@@ -3,9 +3,8 @@ target: "bin"
 build:
   with: "cmake"
   linux:
-    ldFlags: [
-      dl: 1
-    ]
+    ldFlags:
+      ldl: 1
 deps: [
   git:
     repository: "mongodb/mongo-cxx-driver"
