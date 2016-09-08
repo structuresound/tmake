@@ -51,7 +51,7 @@ module.exports = (dep, argv) ->
     Promise.each validCommands, (i) ->
       if commandObject[i.key] then commandObject[i.key](i.obj)
       else
-        throw new Error 'failed to find command for', i.key
+        console.log colors.red 'failed to find command for', i.key
         commandObject.any(i.obj)
 
   printRepl = (r) ->
