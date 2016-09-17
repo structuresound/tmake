@@ -1,6 +1,5 @@
+###globals describe it###
 assert = require('chai').assert
-_ = require('underscore')
-_p = require("bluebird")
 path = require('path')
 Datastore = require('nedb-promise')
 
@@ -36,7 +35,7 @@ conf =
     build:
       with: "cmake"
     path:
-      project: "googletest-release-1.7.0"
+      project: "source"
   ]
 
 db = new Datastore()
@@ -54,8 +53,8 @@ describe 'tmake', ->
     argv._[0] = "fetch"
     argv._[1] = "googletest"
     tmake.run()
-    .then (res) ->
-      assert.ok fs.existsSync path.join argv.runDir, 'trie_modules/googletest'
+    .then ->
+      assert.ok fs.existsSync path.join argv.runDir, 'trie_modules/googletest/source'
       done()
 
   it 'can build google test', (done) ->
@@ -72,7 +71,7 @@ describe 'tmake', ->
     argv._[0] = "fetch"
     argv._[1] = ""
     tmake.run()
-    .then (res) ->
+    .then ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.git.checkout
@@ -82,7 +81,7 @@ describe 'tmake', ->
     argv._[0] = "configure"
     argv._[1] = ""
     tmake.run()
-    .then (res) ->
+    .then ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.configured
@@ -92,7 +91,7 @@ describe 'tmake', ->
     argv._[0] = "all"
     argv._[1] = ""
     tmake.run()
-    .then (res) ->
+    .then ->
       db.findOne name: "hello"
     .then (dep) ->
       assert.ok dep.cache.built
@@ -109,7 +108,7 @@ describe 'tmake', ->
     db.findOne name: "hello"
     .then (dep) ->
       tmake.link dep
-    .then (res) ->
+    .then ->
       userDb.findOne name: "hello"
     .then (res) ->
       assert.equal res.name, "hello"

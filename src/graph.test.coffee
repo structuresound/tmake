@@ -1,3 +1,4 @@
+###global it describe###
 assert = require('chai').assert
 path = require('path')
 
@@ -23,7 +24,7 @@ depB =
 
 describe 'graph', ->
   it 'source/include', (done) ->
-    parse = require('../lib/parse')(depA, argv)
+    # parse = require('../lib/parse')(depA, argv)
     graph.resolvePaths depA
     .then (resolved) ->
       assert.equal resolved.d.includeDirs[0], path.join(argv.runDir, "#{argv.cachePath}/#{depA.name}/source/include")

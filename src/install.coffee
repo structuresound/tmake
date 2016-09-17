@@ -8,6 +8,7 @@ colors = require ('chalk')
 Promise = require 'bluebird'
 
 vinyl =
+  symlink: _vinyl.symlink
   dest: _vinyl.dest
   src: (glob, opt) ->
     patterns = _.map glob, (string) ->
@@ -17,8 +18,6 @@ vinyl =
     _vinyl.src patterns, opt
 
 module.exports = (dep, argv, db, parse) ->
-  task = dep.install || {}
-
   copy = (patterns, from, to, opt) ->
     filePaths = []
     fs.wait(vinyl.src(patterns,
@@ -31,6 +30,21 @@ module.exports = (dep, argv, db, parse) ->
       filePaths.push path.relative dep.d.home, newPath
       emit(null, file)
     ).pipe(vinyl.dest to)
+    ).then ->
+      _p.resolve filePaths
+
+  symlink = (patterns, from, to, opt) ->
+    filePaths = []
+    fs.wait(vinyl.src(patterns,
+      cwd: from
+      followSymlinks: opt.followSymlinks
+    ).pipe(fs.map (file, emit) ->
+      #if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
+      if opt.flatten then file.base = path.dirname file.path
+      newPath = to + '/' + path.relative file.base, file.path
+      filePaths.push path.relative dep.d.home, newPath
+      emit(null, file)
+    ).pipe(vinyl.symlink to, relative: true)
     ).then ->
       _p.resolve filePaths
 
@@ -64,7 +78,7 @@ module.exports = (dep, argv, db, parse) ->
       _p.map dep.d.install.headers, (ft) ->
         patterns = ft.matching || ["**/*.h", "**/*.hpp", "**/*.ipp"]
         if argv.verbose then console.log colors.yellow '[ install headers ] matching', patterns, '\nfrom', ft.from, '\nto', ft.to
-        copy patterns, ft.from, ft.to,
+        symlink patterns, ft.from, ft.to,
           flatten: false
           followSymlinks: true
       .then (headerPaths) ->

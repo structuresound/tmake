@@ -59,8 +59,8 @@ module.exports = (argv, db, platform) ->
       includeDirs: ""
       project: ""
 
-    if dep.git?.archive
-      defaultPathOptions.clone = "#{dep.name}-#{dep.git.archive}"
+    # if dep.git?.archive
+    #   defaultPathOptions.clone = "#{dep.name}-#{dep.git.archive}"
     pathOptions = _.deepObjectExtend defaultPathOptions, dep.path
 
     pathOptions.build ?= path.join pathOptions.project, "build"

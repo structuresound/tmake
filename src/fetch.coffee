@@ -20,15 +20,12 @@ module.exports = (dep, db, argv, parse) ->
     if s.startsWith '/' then s
     else path.join argv.runDir, s
 
-  config = dep.git || {}
-  if typeof dep.git == 'string'
-    config = repository: dep.git
+  config = dep.git || dep.fetch || {}
 
-  if dep.link
-    config.url = parsePath dep.link
-  else if dep.source
-    config.url = dep.source
-  else
+  if argv.verbose then console.log colors.yellow JSON.stringify config, 0, 2
+  if dep.git
+    if typeof config == 'string'
+      config = repository: dep.git
     base = "https://github.com/#{config.repository}"
     if config.archive
       config.url = "#{base}/archive/#{config.archive}.tar.gz"
@@ -36,10 +33,16 @@ module.exports = (dep, db, argv, parse) ->
     else
       config.url = "#{base}.git"
       config.checkout = config.tag || config.branch || dep.tag || "master"
+  else if dep.link
+    config.url = parsePath dep.link
+  else if dep.fetch
+    if typeof config == 'string'
+      config = archive: dep.fetch
+    config.url = config.archive
 
   getSource = ->
-    unless argv.quiet then console.log colors.green 'fetch source from', config.url
-    unless argv.quiet then console.log colors.yellow 'to', dep.d.clone
+    unless argv.quiet then console.log colors.yellow 'fetch source from', config.url
+    unless argv.quiet then console.log colors.gray 'to', dep.d.clone
     fs.existsAsync dep.d.clone
     .then (exists) ->
       if exists && dep.cache.source == config.url && !parse.force()
@@ -48,6 +51,16 @@ module.exports = (dep, db, argv, parse) ->
       else
         new Promise (resolve, reject) ->
           finish = ->
+            if config.move
+              if argv.verbose then console.log colors.yellow "rename folder #{dep.d.root}/#{config.move.from} to #{config.move.to || dep.d.source}"
+              sh.mv "#{dep.d.root}/#{config.move.from}", config.move.to || dep.d.source
+            else
+              files = fs.readdirSync(dep.d.root)
+              files.forEach (file) ->
+                tarDirectory = "#{dep.d.root}/#{file}"
+                if fs.lstatSync(tarDirectory).isDirectory()
+                  if argv.verbose then console.log colors.yellow "auto rename folder #{tarDirectory} to #{dep.d.source}"
+                  sh.mv tarDirectory, dep.d.source
             db.update
                 name: dep.name
               ,
@@ -71,8 +84,7 @@ module.exports = (dep, db, argv, parse) ->
     unless argv.quiet then console.log colors.yellow 'to', dep.d.root
     fs.existsAsync dep.d.clone
     .then (exists) ->
-      if exists && dep.cache.source == config.url && !parse.force()
-        if argv.verbose then console.log colors.yellow 'using cache'
+      if exists
         Promise.resolve()
       else
         new Promise (resolve, reject) ->
@@ -81,8 +93,7 @@ module.exports = (dep, db, argv, parse) ->
             db.update
                 name: dep.name
               ,
-                $set:
-                  "cache.source": config.url
+                $set: "cache.source": config.url
               ,
                 upsert: true
             .then (res) ->

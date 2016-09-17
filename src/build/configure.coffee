@@ -41,7 +41,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         copy e.matching, parse.pathSetting(e.from, dep), parse.pathSetting(e.to, dep), false
 
   platform = require('../platform')(argv, dep)
-  settings = ['ldFlags', 'cFlags', 'sources', 'headers', 'outputFile']
+  settings = ['ldFlags', 'cFlags', 'cxxFlags', 'frameworks', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'cmake', 'make' ].concat settings
 
   _build = _.pick(dep.build, filter)
@@ -88,7 +88,8 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
   globDeps = -> graph.deps dep
 
   cascadingPlatformArgs = (base) ->
-    cascade.deep base, platform.keywords(), [platform.name()]
+    return unless base
+    cascade.deep _.clone(base), platform.keywords(), [platform.name()]
 
   stdCFlags =
     O: 2
@@ -104,6 +105,10 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       std: "c++0x"
       pthread: 1
 
+  stdFrameworks =
+    mac:
+      CoreFoundation: 1
+
   stdLdFlags =
     # static: true
     linux:
@@ -116,7 +121,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
 
   jsonToCxxFlags = (options) ->
-    opt = cascadingPlatformArgs options
+    opt = options
     if opt.O
       switch opt.O
         when 3, "3" then options.O3 = true
@@ -136,18 +141,29 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
 
     jsonToFlags opt
 
+  jsonToFrameworks = (options) ->
+    opt = cascadingPlatformArgs options
+    flags = []
+    for i of opt
+      if opt[i]
+        if fs.existsSync "/System/Library/Frameworks/#{i}.framework"
+          flags.push "/System/Library/Frameworks/#{i}.framework/#{i}"
+        else throw new Error "can't find framework #{i}.framework in /System/Library/Frameworks"
+    flags
+
   jsonToLDFlags = (options) ->
     opt = cascadingPlatformArgs options
     jsonToFlags opt
 
   _jsonToFlags = (prefix, json) ->
-    flags = ""
+    flags = []
     _.each json, (opt, key) ->
       if typeof opt == 'string'
-        flags += " #{prefix}#{key}=#{opt}"
+        flags.push "#{prefix}#{key}=#{opt}"
       else if opt
-        flags += " #{prefix}#{key}"
-    flags
+        flags.push "#{prefix}#{key}"
+    if flags.length then flags.join ' '
+    else ''
 
   jsonToFlags = (json) ->
     _jsonToFlags '-', json
@@ -158,8 +174,9 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         name: dep.name
         target: dep.target
         npmDir: argv.npmDir
-        cFlags: jsonToCFlags configuration.cFlags || configuration.cxxFlags || stdCFlags
-        cxxFlags: jsonToCxxFlags configuration.cxxFlags || configuration.cFlags || stdCxxFlags
+        frameworks: jsonToFrameworks configuration.frameworks || stdFrameworks
+        cFlags: jsonToCFlags _.extend cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)
+        cxxFlags: jsonToCxxFlags _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
         ldFlags: jsonToLDFlags configuration.ldFlags || stdLdFlags
       globHeaders()
       .then (headers) ->
@@ -173,17 +190,17 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         globDeps()
       .then (depGraph) ->
         if depGraph.length
-          gather = []
-          _.each depGraph, (subDep) ->
-            _.each subDep.d.install.headers, (ft) ->
-              gather.push ft.includeFrom || ft.to
-          context.includeDirs = _.uniq gather
+          # gather = []
+          # _.each depGraph, (subDep) ->
+          #   _.each subDep.d.install.headers, (ft) ->
+          #     gather.push ft.includeFrom || ft.to
+          # context.includeDirs = _.uniq gather
           context.libs = _.chain depGraph
           .map (d) -> _.map d.libs, (lib) -> path.join(d.d.home, lib)
           .flatten()
           .value()
           .reverse()
-        context.includeDirs = _.union context.includeDirs, dep.d.includeDirs
+        context.includeDirs = _.union ["#{dep.d.home}/include"], dep.d.includeDirs
         if argv.verbose then console.log colors.yellow JSON.stringify context.includeDirs, 0, 2
         resolve context
 

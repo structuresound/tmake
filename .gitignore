@@ -7,4 +7,5 @@ server/context/CMakeLists.txt
 server/context/bin/
 server/context/build/
 server/context/trie_modules/
+server/context/.idea
 test/

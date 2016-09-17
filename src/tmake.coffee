@@ -46,11 +46,9 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     parse = require('./parse')(dep, argv)
     switch phase
       when "fetch"
-        if dep.source || dep.git || dep.link
+        if dep.fetch || dep.git || dep.link
           fetch = require('./fetch')(dep, db, argv, parse)
-          if dep.source
-            fetch.getSource()
-          else if dep.link
+          if dep.link
             fetch.linkSource()
           else
             fetch.validate()
@@ -147,7 +145,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     parse = require('./parse')(dep, argv)
     if (!dep.cached || argv._[0] == "clean" || parse.force())
       _p.each steps, (phase) ->
-        unless argv.quiet then console.log colors.green ">> #{phase} >>"
+        if argv.verbose then console.log colors.gray ">> #{phase} >>"
         process.chdir runDir
         buildPhase dep, phase
     else _p.resolve dep
@@ -256,11 +254,11 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
           db.find selector
           .then (deps) ->
             console.log JSON.stringify _.map(deps, (dep) -> graph.resolvePaths dep),0,2
-      when 'ls'
+      when 'ls', 'list'
         selector = {}
-        repo = localRepo
-        if argv._[1] == 'project'
-          repo = db
+        repo = db
+        if argv._[1] == 'local'
+          repo = localRepo
           selector = name: argv._[2]
         else if argv._[1] then selector = name: argv._[1]
         repo.find selector

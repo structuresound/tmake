@@ -106,11 +106,12 @@ module.exports = (dep, argv) ->
 
   link = ->
     libs = cmakeArrayToQuotedList @libs
+    frameworks = cmakeArrayToQuotedList @frameworks
     if @boost then libs += " ${Boost_LIBRARIES}"
     if @target == 'node' then libs += " ${CMAKE_JS_LIB}"
     if libs.length
       """\n
-      target_link_libraries(${PROJECT_NAME} #{libs} #{@ldFlags})
+      target_link_libraries(${PROJECT_NAME} #{libs} #{frameworks} #{@ldFlags})
       """
 
   generateLists = (funcs, context) ->
