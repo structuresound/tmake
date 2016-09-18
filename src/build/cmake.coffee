@@ -1,6 +1,7 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
+arrayify = require '../arrayify'
 path = require('path')
 sh = require('shelljs')
 colors = require ('chalk')
@@ -94,8 +95,8 @@ module.exports = (dep, argv) ->
 
   assets = ->
     copy = ""
-    if @copy
-      _.each dep.d.install.assets, (ft) ->
+    if dep.build.cmake.copy
+      _.each arrayify(dep.build.cmake.copy), (ft) ->
         if fs.existsSync "#{dep.d.project}/#{ft.from}"
           copy += "\nfile(COPY ${CMAKE_CURRENT_SOURCE_DIR}/#{ft.from} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/#{ft.to})"
         else throw new Error "@CMake gen -> file doesn't exist @ #{dep.d.project}/#{ft.from}"

@@ -16,6 +16,20 @@ module.exports = (argv, conf) ->
     ios: "ios"
     android: "android"
 
+  validSelectors = [
+    # IDE's
+    "xcode"
+    "clion"
+    "msvs"
+    "vscode"
+    "codeblocks"
+    "appcode"
+    # Platforms
+    "cocoa"
+    "sdl"
+    "juce"
+  ]
+
   architectureNames =
     x86: "x86"
     x32: "x86"
@@ -28,8 +42,9 @@ module.exports = (argv, conf) ->
       x86: iosArches
       arm: iosArches
 
-  keywords = _.uniq(Object.keys(platformNames).concat(Object.keys(architectureNames)))
+  keywords = _.uniq(Object.keys(platformNames).concat(Object.keys(architectureNames)).concat(validSelectors))
 
+  argvSelectors = Object.keys _.pick argv, validSelectors
   targetPlatform = -> argv.platform || conf.platform || platformNames[os.platform()]
   targetArch = ->
     # architectures = cascade.deep architectureNames, Object.keys(platformNames), [ targetPlatform() ]
@@ -38,7 +53,8 @@ module.exports = (argv, conf) ->
   homeDir: -> process.env[if process.platform == 'win32' then 'USERPROFILE' else 'HOME']
   name: -> targetPlatform()
   keywords: -> keywords
-  selectors: -> [ targetPlatform(), process.arch ]
+  selectors: ->
+    [ targetPlatform(), process.arch ].concat(argvSelectors)
   j: -> os.cpus().length
   macro:
     OS_ENDIANNESS: os.endianness()

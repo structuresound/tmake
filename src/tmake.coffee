@@ -70,12 +70,6 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
           require('./build/build')(dep, argv, db, parse, true).execute()
         .then ->
           require('./test')(dep, argv, db).execute()
-      when "parse"
-        if argv._[2]
-          console.log colors.magenta parse.configSetting argv._[2]
-        copy = _.clone dep
-        allStrings copy, parse.configSetting
-        console.log colors.magenta JSON.stringify copy, 0, 2
 
   cleanDep = (dep) ->
     if fs.existsSync(dep.d.build)
@@ -233,8 +227,10 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
         execute rootConfig, ["test"]
       when 'fetch'
         execute rootConfig, ["fetch"]
-      when 'parse'
-        execute rootConfig, ["parse"]
+      when "parse"
+        # parse = require('./parse')(rootConfig, argv)
+        parsed = cascade.deep rootConfig, platform.keywords(), platform.selectors()
+        console.log colors.magenta JSON.stringify parsed, 0, 2
       when 'transform'
         execute rootConfig, ["fetch","transform"]
       when 'configure'

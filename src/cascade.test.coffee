@@ -1,8 +1,10 @@
-check = require '../lib/check'
+###globals describe it###
+
+expect = require('chai').expect
 assert = require('chai').assert
 cascade = require '../lib/cascade.js'
 
-selectors = ['win', 'mac', 'x64', 'x86']
+selectors = ['win', 'mac', 'x64', 'x86', 'clion']
 
 testAObject =
   useAccel: 0
@@ -49,6 +51,8 @@ testObjB =
       with: "error C"
       mac:
         with: "ninja"
+        clion:
+          with: "cmake"
   win:
     build:
       with:
@@ -57,6 +61,7 @@ testObjB =
 
 testBSelectors = [
   ['mac', 'x64']
+  ['mac', 'x64', 'clion']
   ['win']
   ['win', 'x64']
 ]
@@ -66,6 +71,12 @@ testBExpected = [
   other: "setting"
   build:
     with: "ninja"
+    sources: matching: [ 'apple.c' ]
+,
+  flag: true
+  other: "setting"
+  build:
+    with: "cmake"
     sources: matching: [ 'apple.c' ]
 ,
   build: with: "error A"
@@ -88,7 +99,6 @@ describe 'check', ->
     for i of testASelectors
       assert.deepEqual cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]
     done()
-  it 'parse deep', (done) ->
+  it 'parse deep', ->
     for i of testBSelectors
-      assert.deepEqual cascade.deep(testObjB, selectors, testBSelectors[i]), testBExpected[i]
-    done()
+      expect(cascade.deep(testObjB, selectors, testBSelectors[i])).to.deep.equal testBExpected[i]
