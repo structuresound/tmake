@@ -58,6 +58,20 @@ module.exports = (dep, argv, db, parse) ->
         sh.mv from, to
     else _p.resolve('bin')
 
+  installAssets = ->
+    if dep.d.install.assets
+      _p.map dep.d.install.assets, (ft) ->
+        patterns = ft.matching || ['**/*.*']
+        if argv.verbose then console.log colors.green '[ install assets ] from', ft.from, 'to', ft.to
+        copy patterns, ft.from, ft.to,
+          flatten: false
+          followSymlinks: true
+      .then (assetPaths) ->
+        db.update name: dep.name,
+          $set: assets: _.flatten assetPaths
+        , {}
+    else _p.resolve('assets')
+
   installLibs = ->
     if _.contains ['static','dynamic'], dep.target
       _p.map dep.d.install.libraries, (ft) ->
@@ -95,6 +109,8 @@ module.exports = (dep, argv, db, parse) ->
     .then ->
       if argv.verbose then console.log colors.green "libs"
       installBin()
+    .then ->
+      installAssets()
     .then ->
       if argv.verbose then console.log colors.green "installed"
       db.update {name: dep.name}, {$set: {"cache.installed": true}}, {}

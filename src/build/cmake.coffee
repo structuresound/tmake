@@ -93,6 +93,11 @@ module.exports = (dep, argv) ->
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} #{@cFlags}")
     """
 
+  assets = ->
+    """\n
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+    """
+
   target = ->
     switch @target
       when 'static'
@@ -124,7 +129,7 @@ module.exports = (dep, argv) ->
 
   generate: (context) ->
     if argv.verbose then console.log colors.green('configure cmake with context:'), JSON.stringify context,0,2
-    generateLists [header, boost, includeDirectories, sources, flags, target, link], context
+    generateLists [header, boost, includeDirectories, sources, flags, target, link, assets], context
 
   configure: ->
     ninja.getNinja()

@@ -107,6 +107,12 @@ module.exports = (argv, db, platform) ->
         from: path.join d.root, ft.from
         to: path.join d.home, (ft.to || 'lib')
 
+    if pathOptions.install.assets
+      d.install.assets = _.map arrayify(pathOptions.install.assets), (ft) ->
+        matching: ft.matching
+        from: path.join d.root, ft.from
+        to: path.join d.root, (ft.to || 'bin')
+
     d.resolved = true
     dep.d = d
     dep.p = pathOptions
