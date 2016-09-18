@@ -1,7 +1,6 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../fs'
-numCPUs = require('os').cpus().length
 path = require('path')
 sh = require('shelljs')
 colors = require ('chalk')
@@ -94,9 +93,13 @@ module.exports = (dep, argv) ->
     """
 
   assets = ->
-    """\n
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-    """
+    copy = ""
+    if @copy
+      _.each dep.d.install.assets, (ft) ->
+        if fs.existsSync "#{dep.d.project}/#{ft.from}"
+          copy += "\nfile(COPY ${CMAKE_CURRENT_SOURCE_DIR}/#{ft.from} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/#{ft.to})"
+        else throw new Error "@CMake gen -> file doesn't exist @ #{dep.d.project}/#{ft.from}"
+    copy
 
   target = ->
     switch @target

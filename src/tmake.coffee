@@ -151,7 +151,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     else _p.resolve dep
 
   unlink = (config) ->
-    query = {name: config.name, version: config.version}
+    query = {name: config.name, tag: config.tag || "master"}
     localRepo.findOne query
     .then (doc) ->
       if doc

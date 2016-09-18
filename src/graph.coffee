@@ -104,6 +104,26 @@ module.exports = (argv, db, platform) ->
 
     _p.resolve dep
 
+  that.resolveDep = (dep) ->
+    dep.name ?= that.resolveDepName dep
+    dep.target ?= 'static'
+    dep.cache ?= test: {}
+    db.findOne name: dep.name
+    .then (result) ->
+      merged = dep
+      if result
+        _.extend merged, _.pick result, ['cache', 'libs']
+      entry = _.clone merged
+      if entry.deps
+        entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
+      delete entry.d
+      if result
+        db.update {name: dep.name}, {$set: entry}
+        .then -> that.resolvePaths merged
+      else
+        db.insert entry
+        .then -> that.resolvePaths merged
+
   # that.resolveDep = (dep) ->
   #   dep.name ?= that.resolveDepName dep
   #   dep.target ?= 'static'
@@ -111,35 +131,19 @@ module.exports = (argv, db, platform) ->
   #   dep.cache ?= test: {}
   #   db.findOne name: dep.name
   #   .then (result) ->
-  #     merged = _.extend result || {}, dep
-  #     entry = _.clone merged
-  #     if entry.deps
-  #       entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
-  #     delete entry.d
   #     if result
-  #       db.update {name: dep.name}, {$set: entry}
-  #       .then -> that.resolvePaths merged
+  #       _.extend dep, _.pick result, ['cache', 'libs'] # READ FROM CACHE
+  #     cache = _.clone dep
+  #     if cache.deps
+  #       cache.deps = _.map cache.deps, (d) -> name: that.resolveDepName(d)
+  #     delete cache.d
+  #     delete cache.p
+  #     if result
+  #       db.update {name: cache.name}, {$set: cache}
+  #       .then -> that.resolvePaths dep
   #     else
-  #       db.insert entry
-  #       .then -> that.resolvePaths merged
-
-  that.resolveDep = (dep) ->
-    dep.name ?= that.resolveDepName dep
-    dep.target ?= 'static'
-    dep.test ?= {}
-    dep.cache ?= test: {}
-    db.findOne name: dep.name
-    .then (result) ->
-      cache = _.pick dep, ['cache', 'libs', 'name', 'deps', 'git'] # WRITE TO CACHE
-      if cache.deps
-        cache.deps = _.map cache.deps, (d) -> that.resolveDepName(d)
-      if result
-        _.extend dep, _.pick result, ['cache', 'libs', 'name'] # READ FROM CACHE
-        db.update {name: cache.name}, {$set: cache}
-        .then -> that.resolvePaths dep
-      else
-        db.insert cache
-        .then -> that.resolvePaths dep
+  #       db.insert cache
+  #       .then -> that.resolvePaths dep
 
   that.resolveDepName = (dep) ->
     if check dep, String then dep

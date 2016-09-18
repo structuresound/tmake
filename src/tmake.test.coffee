@@ -1,9 +1,8 @@
 ###globals describe it###
-assert = require('chai').assert
 expect = require('chai').expect
 path = require('path')
 Datastore = require('nedb-promise')
-
+check = require '../lib/check'
 sh = require('../lib/sh')
 fs = require('../lib/fs')
 
@@ -50,33 +49,31 @@ describe 'tmake', ->
 
   tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
 
-  it 'can fetch a source tarball', (done) ->
+  it 'can fetch a source tarball', ->
     argv._[0] = "fetch"
     argv._[1] = "googletest"
     tmake.run()
     .then ->
-      assert.ok fs.existsSync path.join argv.runDir, 'trie_modules/googletest/source'
-      done()
+      file = fs.existsSync path.join argv.runDir, 'trie_modules/googletest/source'
+      expect(file).to.equal(true)
 
-  it 'can build google test', (done) ->
+  it 'can build google test', ->
     argv._[0] = "all"
     argv._[1] = "googletest"
     tmake.run()
     .then ->
       db.findOne name: "googletest"
     .then (dep) ->
-      assert.ok dep.cache.installed
-      done()
+      expect(dep.cache.installed).to.equal(true)
 
-  it 'can fetch a git repo', (done) ->
+  it 'can fetch a git repo', ->
     argv._[0] = "fetch"
     argv._[1] = ""
     tmake.run()
     .then ->
       db.findOne name: "hello"
     .then (dep) ->
-      assert.ok dep.cache.git.checkout
-      done()
+      expect(dep.cache.git.checkout).to.be.a('string')
 
   it 'can configure a build', ->
     argv._[0] = "configure"
@@ -110,3 +107,12 @@ describe 'tmake', ->
       userDb.findOne name: "hello"
     .then (res) ->
       expect(res.name).to.equal "hello"
+
+  it 'can remove a link from the local db', ->
+    userDb.findOne name: "hello"
+    .then (dep) ->
+      tmake.unlink dep
+    .then ->
+      userDb.findOne name: "hello"
+    .then (dep) ->
+      expect(dep).to.not.be.ok

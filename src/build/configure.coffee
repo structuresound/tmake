@@ -47,7 +47,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
   _build = _.pick(dep.build, filter)
   _configuration = dep.configure
 
-  if configureTests
+  if configureTests && dep.test
     _build = _.pick(dep.test.build, filter)
     _configuration = dep.test.configure
 
