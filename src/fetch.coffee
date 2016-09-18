@@ -124,7 +124,7 @@ module.exports = (dep, db, argv, parse) ->
           reject e
 
   checkout = ->
-    if ((dep.cache.git.checkout == config.checkout) && !parse.force())
+    if ((dep.cache.git?.checkout == config.checkout) && !parse.force())
       unless argv.quiet then console.log 'using ', dep.name, '@', config.checkout
       return Promise.resolve()
     sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose

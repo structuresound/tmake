@@ -1,5 +1,6 @@
 ###globals describe it###
 assert = require('chai').assert
+expect = require('chai').expect
 path = require('path')
 Datastore = require('nedb-promise')
 
@@ -77,39 +78,35 @@ describe 'tmake', ->
       assert.ok dep.cache.git.checkout
       done()
 
-  it 'can configure a build', (done) ->
+  it 'can configure a build', ->
     argv._[0] = "configure"
     argv._[1] = ""
     tmake.run()
     .then ->
       db.findOne name: "hello"
     .then (dep) ->
-      assert.ok dep.cache.configured
-      done()
+      expect(dep.cache.configured).to.equal(true)
 
-  it 'can build using ninja', (done) ->
+  it 'can build using ninja', ->
     argv._[0] = "all"
     argv._[1] = ""
     tmake.run()
     .then ->
       db.findOne name: "hello"
     .then (dep) ->
-      assert.ok dep.cache.built
-      done()
+      expect(dep.cache.built).to.equal(true)
 
-  it 'run the built binary', (done) ->
+  it 'run the built binary', ->
     sh.Promise './hello', (path.join runDir, 'bin'), true
     .then (res) ->
       results = res.split('\n')
-      assert.equal results[results.length-2], 'Hello, world, from Visual C++!'
-      done()
+      expect(results[results.length-2]).to.equal 'Hello, world, from Visual C++!'
 
-  it 'can push to the user local db', (done) ->
+  it 'can push to the user local db', ->
     db.findOne name: "hello"
     .then (dep) ->
       tmake.link dep
     .then ->
       userDb.findOne name: "hello"
     .then (res) ->
-      assert.equal res.name, "hello"
-      done()
+      expect(res.name).to.equal "hello"

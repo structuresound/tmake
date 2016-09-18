@@ -109,19 +109,19 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
             fs.unlinkSync generatedBuildFile
             db.update {name: dep.name}, modifier, {}
 
-  recurDeps = (name, root) ->
+  findDepNamed = (name, root) ->
     if root?.name == name then return root
     found = undefined
     _.each root.deps || root.dependencies, (dep) ->
       unless found
         if dep.name == name then found = dep
         else if graph.resolveDepName(dep) == name then found = dep
-        else found = recurDeps name, dep
+        else found = findDepNamed name, dep
     found
 
   resolveRoot = (configFile) ->
     if argv._[1]
-      dep = recurDeps argv._[1], configFile
+      dep = findDepNamed argv._[1], configFile
       if dep then graph.resolveDep dep
       else throw new Error "no dependency matching " + argv._[1]
     else

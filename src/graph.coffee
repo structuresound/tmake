@@ -6,24 +6,9 @@ check = require './check'
 fs = require('./fs')
 cascade = require('./cascade')
 
-deepObjectExtend = (target, source) ->
-  for prop of source
-    if source.hasOwnProperty(prop)
-      if Array.isArray(source[prop])
-        target[prop] = source[prop]
-      else if target[prop] and typeof source[prop] == 'object'
-        deepObjectExtend target[prop], source[prop]
-      else
-        target[prop] = source[prop]
-    else if target.hasOwnProperty(prop)
-      delete target[prop]
-  target
-
-_.deepObjectExtend = (target, source) ->
-  deepObjectExtend _.extend({}, target), source
-
 module.exports = (argv, db, platform) ->
   parsePath = (s) ->
+    throw new Error "#{s} is not a string" unless check s, String
     if s.startsWith '/' then s
     else path.join argv.runDir, s
 
@@ -61,7 +46,7 @@ module.exports = (argv, db, platform) ->
 
     # if dep.git?.archive
     #   defaultPathOptions.clone = "#{dep.name}-#{dep.git.archive}"
-    pathOptions = _.deepObjectExtend defaultPathOptions, dep.path
+    pathOptions = _.extend defaultPathOptions, dep.path
 
     pathOptions.build ?= path.join pathOptions.project, "build"
 
@@ -119,6 +104,25 @@ module.exports = (argv, db, platform) ->
 
     _p.resolve dep
 
+  # that.resolveDep = (dep) ->
+  #   dep.name ?= that.resolveDepName dep
+  #   dep.target ?= 'static'
+  #   dep.test ?= {}
+  #   dep.cache ?= test: {}
+  #   db.findOne name: dep.name
+  #   .then (result) ->
+  #     merged = _.extend result || {}, dep
+  #     entry = _.clone merged
+  #     if entry.deps
+  #       entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
+  #     delete entry.d
+  #     if result
+  #       db.update {name: dep.name}, {$set: entry}
+  #       .then -> that.resolvePaths merged
+  #     else
+  #       db.insert entry
+  #       .then -> that.resolvePaths merged
+
   that.resolveDep = (dep) ->
     dep.name ?= that.resolveDepName dep
     dep.target ?= 'static'
@@ -126,20 +130,20 @@ module.exports = (argv, db, platform) ->
     dep.cache ?= test: {}
     db.findOne name: dep.name
     .then (result) ->
-      merged = _.deepObjectExtend result || {}, dep
-      entry = _.clone merged
-      if entry.deps
-        entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
-      delete entry.d
+      cache = _.pick dep, ['cache', 'libs', 'name', 'deps', 'git'] # WRITE TO CACHE
+      if cache.deps
+        cache.deps = _.map cache.deps, (d) -> that.resolveDepName(d)
       if result
-        db.update {name: dep.name}, {$set: entry}
-        .then -> that.resolvePaths merged
+        _.extend dep, _.pick result, ['cache', 'libs', 'name'] # READ FROM CACHE
+        db.update {name: cache.name}, {$set: cache}
+        .then -> that.resolvePaths dep
       else
-        db.insert entry
-        .then -> that.resolvePaths merged
+        db.insert cache
+        .then -> that.resolvePaths dep
 
   that.resolveDepName = (dep) ->
-    if dep.name then return dep.name
+    if check dep, String then dep
+    else if check dep.name, String then dep.name
     else if dep.git
       if check dep.git, String
         dep.git.slice(dep.git.indexOf('/') + 1)
@@ -157,7 +161,7 @@ module.exports = (argv, db, platform) ->
           throw new Error "recursive dependency" if resolved.name == root.name
           that.graph resolved, graph
           .then ->
-            console.log 'add dependency', resolved.name, ">>", root.name
+            if argv.verbose then console.log 'add dependency', resolved.name, ">>", root.name
             graph.addDependency root.name, resolved.name
     else
       _p.resolve()
