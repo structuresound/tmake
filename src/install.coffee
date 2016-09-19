@@ -5,7 +5,6 @@ path = require('path')
 fs = require('./fs')
 sh = require "shelljs"
 colors = require ('chalk')
-Promise = require 'bluebird'
 
 vinyl =
   symlink: _vinyl.symlink
@@ -17,7 +16,7 @@ vinyl =
       string
     _vinyl.src patterns, opt
 
-module.exports = (dep, argv, db, parse) ->
+module.exports = (dep, argv, db) ->
   copy = (patterns, from, to, opt) ->
     filePaths = []
     fs.wait(vinyl.src(patterns,
@@ -78,7 +77,7 @@ module.exports = (dep, argv, db, parse) ->
         patterns = ft.matching || ['*.a']
         if dep.target == 'dynamic' then patterns = ft.matching || ['*.dylib', '*.so', '*.dll']
         if argv.verbose then console.log colors.green '[ install libs ] from', ft.from, 'to', ft.to
-        copy patterns, ft.from, ft.to,
+        symlink patterns, ft.from, ft.to,
           flatten: true
           followSymlinks: false
       .then (libPaths) ->
@@ -102,7 +101,7 @@ module.exports = (dep, argv, db, parse) ->
     else _p.resolve('headers')
 
   execute = ->
-    return Promise.resolve() if (dep.cache?.installed && !parse.force())
+    #return Promise.resolve() if (dep.cache?.installed && !parse.force())
     installHeaders()
     .then ->
       installLibs()

@@ -95,7 +95,7 @@ module.exports = (dep, argv) ->
 
   assets = ->
     copy = ""
-    if dep.build.cmake.copy
+    if dep.build.cmake?.copy
       _.each arrayify(dep.build.cmake.copy), (ft) ->
         if fs.existsSync "#{dep.d.project}/#{ft.from}"
           copy += "\nfile(COPY ${CMAKE_CURRENT_SOURCE_DIR}/#{ft.from} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/#{ft.to})"
