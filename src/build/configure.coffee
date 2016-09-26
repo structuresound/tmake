@@ -94,7 +94,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
   stdCFlags =
     O: 2
     linux:
-      pthread: 1
+      pthread: true
 
   stdCxxFlags =
     O: 2
@@ -103,19 +103,19 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       stdlib: "libc++"
     linux:
       std: "c++0x"
-      pthread: 1
+      pthread: true
 
   stdFrameworks =
     mac:
-      CoreFoundation: 1
+      CoreFoundation: true
 
   stdLdFlags =
     # static: true
     linux:
-      "lstdc++": 1
-      "lpthread": 1
+      "lstdc++": true
+      "lpthread": true
     mac:
-      "lc++": 1
+      "lc++": true
 
   jsonToCFlags = (options) ->
     jsonToCxxFlags _.omit options, ['std','stdlib']
@@ -155,13 +155,17 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     opt = cascadingPlatformArgs options
     jsonToFlags opt
 
+  isNumeric = (n) ->
+    !isNaN(parseFloat(n)) and isFinite(n)
+
   _jsonToFlags = (prefix, json) ->
     flags = []
     _.each json, (opt, key) ->
-      if typeof opt == 'string'
-        flags.push "#{prefix}#{key}=#{opt}"
-      else if opt
-        flags.push "#{prefix}#{key}"
+      if opt
+        if (typeof opt == 'string') || isNumeric(opt)
+          flags.push "#{prefix}#{key}=#{opt}"
+        else
+          flags.push "#{prefix}#{key}"
     if flags.length then flags.join ' '
     else ''
 
