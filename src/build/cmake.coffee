@@ -89,8 +89,8 @@ module.exports = (dep, argv) ->
     #   when 'bin'
     #     ldFlags = "set(CMAKE_EXE_LINKER_FLAGS \"${CMAKE_EXE_LINKER_FLAGS} #{@ldFlags}\")"
     """\n
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cxxFlags}")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} #{@cFlags}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} #{@cxxFlags.join(' ')}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} #{@cFlags.join(' ')}")
     """
 
   assets = ->
@@ -120,7 +120,7 @@ module.exports = (dep, argv) ->
     if @target == 'node' then libs += " ${CMAKE_JS_LIB}"
     if libs.length
       """\n
-      target_link_libraries(${PROJECT_NAME} #{libs} #{frameworks} #{@ldFlags})
+      target_link_libraries(${PROJECT_NAME} #{libs} #{frameworks} #{@ldFlags.join(' ')})
       """
 
   generateLists = (funcs, context) ->

@@ -21,6 +21,13 @@ module.exports = (grunt) ->
         src: ['**/*.test.coffee']
         dest: 'test/'
         ext: '.js'
+    copy: js: files: [
+      expand: true
+      cwd: "#{__dirname}/src/"
+      src: [ "**/*.js" ]
+      dest: 'lib/'
+      filter: 'isFile'
+    ]
     simplemocha:
       options:
         globals: ['expect']
@@ -37,12 +44,13 @@ module.exports = (grunt) ->
     watch:
       coffee:
         files: 'src/**/*.coffee'
-        tasks: [ 'coffee', 'jshint' ]
+        tasks: [ 'coffee', 'copy' ]
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
   grunt.loadNpmTasks 'grunt-simple-mocha'
+  grunt.loadNpmTasks 'grunt-contrib-copy'
 
   grunt.registerTask 'test', ['coffee', 'simplemocha']
-  grunt.registerTask 'default', ['coffee', 'jshint', 'simplemocha', 'watch']
+  grunt.registerTask 'default', ['coffee', 'copy', 'simplemocha', 'watch']

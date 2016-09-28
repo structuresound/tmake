@@ -19,10 +19,10 @@ module.exports = (dep, argv) ->
         target_name: task.outputFile
         type: 'static_library'
         sources: context.sources
-        include_dirs: []
-        libraries: []
+        include_dirs: context.includeDirs
+        libraries: context.libs
         dependencies: []
-        cflags: task.cflags || [
+        cflags: context.cflags || [
           '-fPIC',
           '-Wall',
           '-Wno-c++11-extensions',

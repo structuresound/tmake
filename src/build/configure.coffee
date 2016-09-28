@@ -13,6 +13,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     ninja: -> commands.with 'ninja'
     cmake: -> commands.with 'cmake'
     make: -> commands.with 'make'
+    xcode: -> commands.with 'xcode'
     replace: (obj) ->
       Promise.each parse.iterable(obj), (replEntry) ->
         fs.glob parse.globArray(replEntry.matching, dep), undefined, dep.d.source
@@ -42,7 +43,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
 
   platform = require('../platform')(argv, dep)
   settings = ['ldFlags', 'cFlags', 'cxxFlags', 'frameworks', 'sources', 'headers', 'outputFile']
-  filter = [ 'with', 'ninja', 'cmake', 'make' ].concat settings
+  filter = [ 'with', 'ninja', 'xcode', 'cmake', 'make' ].concat settings
 
   _build = _.pick(dep.build, filter)
   _configuration = dep.configure
@@ -91,6 +92,8 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     return unless base
     cascade.deep _.clone(base), platform.keywords(), [platform.name()]
 
+  flags = require './flags'
+
   stdCFlags =
     O: 2
     linux:
@@ -117,71 +120,22 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     mac:
       "lc++": true
 
-  jsonToCFlags = (options) ->
-    jsonToCxxFlags _.omit options, ['std','stdlib']
-
-  jsonToCxxFlags = (options) ->
-    opt = options
-    if opt.O
-      switch opt.O
-        when 3, "3" then options.O3 = true
-        when 2, "2" then options.O2 = true
-        when 1, "1" then options.O1 = true
-        when 0, "0" then options.O0 = true
-        when "s" then options.Os = true
-      delete opt.O
-    if options.O3
-      delete opt.O2
-    if opt.O3 or opt.O2
-      delete opt.O1
-    if opt.O3 or opt.O2 or opt.O1
-      delete options.Os
-    if opt.O3 or opt.O2 or opt.O1 or opt.Os
-      delete opt.O0
-
-    jsonToFlags opt
-
-  jsonToFrameworks = (options) ->
-    opt = cascadingPlatformArgs options
-    flags = []
-    for i of opt
-      if opt[i]
-        if fs.existsSync "/System/Library/Frameworks/#{i}.framework"
-          flags.push "/System/Library/Frameworks/#{i}.framework/#{i}"
-        else throw new Error "can't find framework #{i}.framework in /System/Library/Frameworks"
-    flags
-
-  jsonToLDFlags = (options) ->
-    opt = cascadingPlatformArgs options
-    jsonToFlags opt
-
-  isNumeric = (n) ->
-    !isNaN(parseFloat(n)) and isFinite(n)
-
-  _jsonToFlags = (prefix, json) ->
-    flags = []
-    _.each json, (opt, key) ->
-      if opt
-        if (typeof opt == 'string') || isNumeric(opt)
-          flags.push "#{prefix}#{key}=#{opt}"
-        else
-          flags.push "#{prefix}#{key}"
-    if flags.length then flags.join ' '
-    else ''
-
-  jsonToFlags = (json) ->
-    _jsonToFlags '-', json
-
   createContext = ->
     new Promise (resolve) ->
+      raw =
+        frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
+        cFlags: _.extend cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)
+        cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
+        ldFlags: cascadingPlatformArgs(configuration.ldFlags || stdLdFlags)
       context =
         name: dep.name
         target: dep.target
         npmDir: argv.npmDir
-        frameworks: jsonToFrameworks configuration.frameworks || stdFrameworks
-        cFlags: jsonToCFlags _.extend cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)
-        cxxFlags: jsonToCxxFlags _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
-        ldFlags: jsonToLDFlags configuration.ldFlags || stdLdFlags
+        raw: raw
+        frameworks: flags.parseFrameworks raw.frameworks
+        cFlags: flags.parseC raw.cFlags
+        cxxFlags: flags.parseCXX raw.cxxFlags
+        ldFlags: flags.parseLD raw.ldFlags
       globHeaders()
       .then (headers) ->
         context.headers = headers
@@ -214,6 +168,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       cmake: 'CMakeLists.txt'
       gyp: 'binding.gyp'
       make: 'Makefile'
+      xcode: "#{dep.name}.xcodeproj"
     path.join dep.d.project, buildFileNames[systemName]
 
   configureFor = (systemName) ->
@@ -242,6 +197,8 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
               require('./make')(context).generate context
               .then (Makefile) ->
                 fs.writeFileAsync dep.cache.buildFile, JSON.stringify(Makefile, 0, 2)
+            when 'xcode'
+              require('./xcode')(dep,argv).generate context
         .then ->
           db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile, "cache.generatedBuildFile": dep.cache.buildFile}}, {}
       else if exists
@@ -255,6 +212,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     else if obj.ninja then 'ninja'
     else if obj.cmake then 'cmake'
     else if obj.make then 'make'
+    else if obj.xcode then 'xcode'
 
   getContext: -> createContext()
   commands: commands

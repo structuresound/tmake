@@ -15,6 +15,7 @@ module.exports = (argv, binDir, npmDir) ->
   argv.program ?= pgname
   argv.userCache ?= "#{platform.homeDir()}/.#{pgname}"
   argv.npmDir ?= npmDir
+  argv.binDir ?= binDir
   if argv.v then argv.verbose ?= argv.v
 
   cli = require('./cli')(pgname)

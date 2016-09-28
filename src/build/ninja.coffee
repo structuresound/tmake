@@ -66,8 +66,8 @@ module.exports = (dep, argv) ->
 
     cc = context.compiler or "gcc"
 
-    cCommand = "#{cc} -MMD -MF $out.d #{context.cFlags} -c $in -o $out #{includeString}"
-    cxxCommand = "#{cc} -MMD -MF $out.d #{context.cxxFlags} -c $in -o $out #{includeString}"
+    cCommand = "#{cc} -MMD -MF $out.d #{context.cFlags.join(' ')} -c $in -o $out #{includeString}"
+    cxxCommand = "#{cc} -MMD -MF $out.d #{context.cxxFlags.join(' ')} -c $in -o $out #{includeString}"
 
     ninjaConfig
     .rule 'c'
@@ -95,7 +95,7 @@ module.exports = (dep, argv) ->
         libName ?= "#{dep.name}"
         staticLibs = ''
         if context.libs then staticLibs = context.libs.join(' ')
-        linkCommand = "#{cc} -o $out $in #{staticLibs} #{context.ldFlags}"
+        linkCommand = "#{cc} -o $out $in #{staticLibs} #{context.ldFlags.join(' ')}"
 
     ninjaConfig
     .rule('link')

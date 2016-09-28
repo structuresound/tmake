@@ -2,7 +2,6 @@
 expect = require('chai').expect
 path = require('path')
 Datastore = require('nedb-promise')
-check = require '../lib/check'
 sh = require('../lib/sh')
 fs = require('../lib/fs')
 
@@ -24,10 +23,13 @@ argv =
   ]
 
 conf =
+  name: 'hello'
   git: "structuresound/hello"
   target: "bin"
   build:
     with: "ninja"
+    xcode:
+      with: "xcode"
   deps: [
     git:
       repository: "google/googletest"
@@ -57,7 +59,7 @@ describe 'tmake', ->
       file = fs.existsSync path.join argv.runDir, 'trie_modules/googletest/source'
       expect(file).to.equal(true)
 
-  it 'can build google test', ->
+  it 'can build an existing cmake project', ->
     argv._[0] = "all"
     argv._[1] = "googletest"
     tmake.run()
@@ -71,48 +73,61 @@ describe 'tmake', ->
     argv._[1] = ""
     tmake.run()
     .then ->
-      db.findOne name: "hello"
+      db.findOne name: conf.name
     .then (dep) ->
       expect(dep.cache.git.checkout).to.be.a('string')
 
-  it 'can configure a build', ->
+  it 'can configure a ninja build', ->
     argv._[0] = "configure"
     argv._[1] = ""
     tmake.run()
     .then ->
-      db.findOne name: "hello"
+      db.findOne name: conf.name
     .then (dep) ->
       expect(dep.cache.configured).to.equal(true)
 
-  it 'can build using ninja', ->
-    argv._[0] = "all"
-    argv._[1] = ""
+  it 'can build configure an xcode project', ->
+    argv._[0] = "configure"
+    argv.xcode = true
+    argv.force = conf.name
     tmake.run()
     .then ->
-      db.findOne name: "hello"
+      argv.xcode = false
+      argv.force = false
+      file = fs.existsSync path.join argv.runDir, 'hello.xcproject'
+      expect(file).to.equal(true)
+
+  it 'can build using ninja', ->
+    argv._[0] = "build"
+    argv._[1] = ""
+    argv.force = conf.name
+    tmake.run()
+    .then ->
+      argv.force = false
+      db.findOne name: conf.name
     .then (dep) ->
       expect(dep.cache.built).to.equal(true)
 
   it 'run the built binary', ->
-    sh.Promise './hello', (path.join runDir, 'bin'), true
+    sh.Promise "./#{conf.name}", (path.join runDir, 'bin'), true
     .then (res) ->
       results = res.split('\n')
       expect(results[results.length-2]).to.equal 'Hello, world, from Visual C++!'
 
   it 'can push to the user local db', ->
-    db.findOne name: "hello"
+    db.findOne name: conf.name
     .then (dep) ->
       tmake.link dep
     .then ->
-      userDb.findOne name: "hello"
+      userDb.findOne name: conf.name
     .then (res) ->
-      expect(res.name).to.equal "hello"
+      expect(res.name).to.equal conf.name
 
   it 'can remove a link from the local db', ->
-    userDb.findOne name: "hello"
+    userDb.findOne name: conf.name
     .then (dep) ->
       tmake.unlink dep
     .then ->
-      userDb.findOne name: "hello"
+      userDb.findOne name: conf.name
     .then (dep) ->
       expect(dep).to.not.be.ok

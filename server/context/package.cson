@@ -1,8 +1,10 @@
 name: "tmake_server"
 target: "bin"
 build:
-  with: "cmake"
+  mac:
+    with: "xcode"
   linux:
+    with: "cmake"
     ldFlags:
       ldl: 1
 deps: [

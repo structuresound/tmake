@@ -15,7 +15,7 @@ using bsoncxx::builder::stream::open_array;
 using bsoncxx::builder::stream::close_array;
 using bsoncxx::builder::stream::finalize;
 
-int insertTest() {
+void insertTest() {
   mongocxx::instance inst{};
   mongocxx::client conn{mongocxx::uri{}};
 
@@ -62,7 +62,7 @@ using bsoncxx::builder::stream::finalize;
 
 using namespace std;
 
-int queryTest() {
+void queryTest() {
   mongocxx::instance inst{};
   mongocxx::client conn{mongocxx::uri{}};
 

@@ -101,3 +101,4 @@ module.exports = (dep, argv) ->
   iterable: iterable
   iterate: iterateConf
   printRepl: printRepl
+  replaceAll: replaceAll

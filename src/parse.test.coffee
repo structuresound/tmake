@@ -1,17 +1,11 @@
+###globals describe it###
 assert = require('chai').assert
-colors = require ('chalk')
 _ = require 'underscore'
+colors = require ('chalk')
 
 argv =
   runDir: process.cwd()
   cachePath: "trie_modules"
-
-graph = require('../lib/graph.js')(argv, undefined, argv.runDir)
-path = require('path')
-cascade = require('../lib/cascade')
-
-data =
-  pathArgument: "hello"
 
 depA =
   name: "assert"
@@ -40,6 +34,7 @@ depA =
 describe 'parse', ->
   platform = require('../lib/platform')(argv, depA)
   assert.ok _.contains platform.selectors(), platform.name()
+  cascade = require '../lib/cascade.js'
 
   depA = cascade.deep depA, platform.keywords(), platform.selectors()
   parse = require('../lib/parse')(depA, argv)
@@ -75,6 +70,7 @@ describe 'parse', ->
     if _.contains platform.selectors(), 'mac'
       assert.equal depA.OSX_SDK_VERSION, "$(xcrun --sdk macosx --show-sdk-version)"
       OSX_SDK_VERSION = parse.configSetting(depA.OSX_SDK_VERSION)
+      console.log colors.magenta "OSX_SDK_VERSION = #{OSX_SDK_VERSION}"
       assert.equal parse.configSetting(depA.configure.cmd), "./Configure #{OSX_SDK_VERSION} --openssldir=\"/tmp/openssl-1.0.1\""
     unless _.contains platform.selectors(), 'win'
       assert.equal parse.configSetting("$(which gcc)"), depA.CC

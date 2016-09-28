@@ -100,7 +100,14 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
           if approved
             modifier = $unset:
               "cache.generatedBuildFile": true
-            fs.unlinkSync generatedBuildFile
+            try
+              if fs.existsSync dep.cache.generatedBuildFile
+                if fs.lstatSync(dep.cache.generatedBuildFile).isDirectory()
+                  fs.nuke dep.cache.generatedBuildFile
+                else
+                  fs.unlinkSync generatedBuildFile
+            catch err
+              console.log colors.yellow err.message || err
             db.update {name: dep.name}, modifier, {}
 
   findDepNamed = (name, root) ->

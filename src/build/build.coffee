@@ -20,6 +20,7 @@ module.exports = (dep, argv, db, parse, buildTests) ->
     ninja: -> commandBlock.with 'ninja'
     cmake: -> commandBlock.with 'cmake'
     make: -> commandBlock.with 'make'
+    xcode: -> commandBlock.with 'xcode'
     shell: (obj) ->
       Promise.each parse.iterable(obj), (c) ->
         if check c, String then c = cmd: c
@@ -45,6 +46,8 @@ module.exports = (dep, argv, db, parse, buildTests) ->
             runner = require('./gyp')(dep, argv)
           when 'make'
             runner = require('./make')(dep, argv)
+          when 'xcode'
+            runner = require('./xcode')(dep,argv)
       runner.build()
 
   execute: ->

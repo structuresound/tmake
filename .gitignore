@@ -8,5 +8,7 @@ server/context/bin/
 server/context/build/
 server/context/trie_modules/
 server/context/.idea
+server/context/tmake_server.xcodeproj
+server/context/Info.plist
 test
 tests
