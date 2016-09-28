@@ -78,7 +78,7 @@ describe 'tmake', ->
     .then ->
       db.findOne name: conf.name
     .then (dep) ->
-      expect(dep.cache.git.checkout).to.be.a('string')
+      expect(dep.cache.git.checkout).to.equal("master")
 
   it 'can configure a ninja build', ->
     argv._[0] = "configure"
@@ -98,11 +98,11 @@ describe 'tmake', ->
       .then ->
         argv.xcode = false
         argv.force = false
-        file = fs.existsSync path.join argv.runDir, 'hello.xcproject'
+        file = fs.existsSync path.join argv.runDir, "#{conf.name}.xcproject/project.pbxproj"
         expect(file).to.equal(true)
 
   it 'can build using ninja', ->
-    argv._[0] = "build"
+    argv._[0] = "all"
     argv._[1] = ""
     argv.force = conf.name
     tmake.run()
