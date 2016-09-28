@@ -4,6 +4,7 @@ path = require('path')
 Datastore = require('nedb-promise')
 sh = require('../lib/sh')
 fs = require('../lib/fs')
+_ = require('underscore')
 
 npmDir = process.cwd()
 runDir = path.join process.cwd(), 'tests'
@@ -44,12 +45,14 @@ db = new Datastore()
 userDb = new Datastore()
 settingsDb = new Datastore()
 
+
 describe 'tmake', ->
   fs.nuke runDir
   sh.mkdir '-p', argv.runDir
   @timeout 60000
 
   tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
+  platform = require('../lib/platform')(argv, conf)
 
   it 'can fetch a source tarball', ->
     argv._[0] = "fetch"
@@ -86,16 +89,17 @@ describe 'tmake', ->
     .then (dep) ->
       expect(dep.cache.configured).to.equal(true)
 
-  it 'can build configure an xcode project', ->
-    argv._[0] = "configure"
-    argv.xcode = true
-    argv.force = conf.name
-    tmake.run()
-    .then ->
-      argv.xcode = false
-      argv.force = false
-      file = fs.existsSync path.join argv.runDir, 'hello.xcproject'
-      expect(file).to.equal(true)
+  if _.contains platform.selectors(), 'mac'
+    it 'can build configure an xcode project', ->
+      argv._[0] = "configure"
+      argv.xcode = true
+      argv.force = conf.name
+      tmake.run()
+      .then ->
+        argv.xcode = false
+        argv.force = false
+        file = fs.existsSync path.join argv.runDir, 'hello.xcproject'
+        expect(file).to.equal(true)
 
   it 'can build using ninja', ->
     argv._[0] = "build"
