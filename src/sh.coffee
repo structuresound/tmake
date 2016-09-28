@@ -9,7 +9,7 @@ sh.Promise = (command, cwd, verbose) ->
   new Promise (resolve, reject) ->
     sh.cd cwd
     sh.exec command, (code, stdout, stderr) ->
-      if code then reject "#{command} exited with code " + code + "\n" + command
+      if code then reject new Error "#{command} exited with code " + code + "\n" + command
       else if stdout then resolve stdout
       else if stderr then resolve stderr
       else resolve()

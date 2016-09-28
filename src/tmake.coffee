@@ -54,8 +54,6 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
             fetch.validate()
         else
           _p.resolve()
-      when "transform"
-        if dep.transform then require('./transform')(dep, argv, db).execute()
       when "configure"
         require('./build/configure')(dep, argv, db, graph, parse).execute()
       when "build"
@@ -162,7 +160,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
   link = (config) ->
     prompt.ask colors.green "link will do a full build, test and if successful will link to the local db @ #{argv.userCache}\n#{colors.yellow "do that now?"} #{colors.gray "(yy = disable this warning)"}"
     .then (res) ->
-      if res then execute config, ["fetch","transform","configure","build","install","test"]
+      if res then execute config, ["fetch","configure","build","install","test"]
       else _p.reject 'user abort'
     .then ->
       db.findOne name: config.name
@@ -178,7 +176,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
   push = (config) ->
     prompt.ask colors.green "push will do a clean, full build, test and if successful will upload to the #{colors.yellow "public repository"}\n#{colors.yellow "do that now?"} #{colors.gray "(yy = disable this warning)"}"
     .then (res) ->
-      if res then execute config, ["fetch","transform","configure","build","install","test"]
+      if res then execute config, ["fetch","configure","build","install","test"]
       else _p.reject 'user abort'
     .then ->
       db.findOne name: config.name
@@ -238,16 +236,14 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
         # parse = require('./parse')(rootConfig, argv)
         parsed = cascade.deep rootConfig, platform.keywords(), platform.selectors()
         console.log colors.magenta JSON.stringify parsed, 0, 2
-      when 'transform'
-        execute rootConfig, ["fetch","transform"]
       when 'configure'
-        execute rootConfig, ["fetch","transform","configure"]
+        execute rootConfig, ["fetch","configure"]
       when 'build'
         execute rootConfig, ["build"]
       when 'install'
         execute rootConfig, ["install"]
       when 'all'
-        execute rootConfig, ["fetch","transform","configure","build","install"]
+        execute rootConfig, ["fetch","configure","build","install"]
       when 'example', 'init'
         console.log colors.red "there's already a #{argv.program} project file in this directory"
       when 'path'

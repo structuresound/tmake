@@ -55,6 +55,7 @@ describe 'tmake', ->
   platform = require('../lib/platform')(argv, conf)
 
   it 'can fetch a source tarball', ->
+    @slow 1000
     argv._[0] = "fetch"
     argv._[1] = "googletest"
     tmake.run()
@@ -63,17 +64,18 @@ describe 'tmake', ->
       expect(file).to.equal(true)
 
   it 'can build an existing cmake project', ->
+    @slow 5000
     argv._[0] = "all"
     argv._[1] = "googletest"
     tmake.run()
     .then ->
-      db.findOne name: "googletest"
-    .then (dep) ->
-      expect(dep.cache.installed).to.equal(true)
+      file = fs.existsSync path.join argv.runDir, 'trie_modules/lib/libgtest.a'
+      expect(file).to.equal(true)
 
   it 'can fetch a git repo', ->
+    @slow 2000
     argv._[0] = "fetch"
-    argv._[1] = ""
+    argv._[1] = conf.name
     tmake.run()
     .then ->
       db.findOne name: conf.name
@@ -82,15 +84,16 @@ describe 'tmake', ->
 
   it 'can configure a ninja build', ->
     argv._[0] = "configure"
-    argv._[1] = ""
+    argv._[1] = conf.name
     tmake.run()
     .then ->
-      db.findOne name: conf.name
-    .then (dep) ->
-      expect(dep.cache.configured).to.equal(true)
+      file = fs.existsSync path.join argv.runDir, 'build.ninja'
+      expect(file).to.equal(true)
 
-  if _.contains platform.selectors(), 'mac'
-    it 'can build configure an xcode project', ->
+  it 'can build configure an xcode project', ->
+    unless _.contains platform.selectors(), 'mac'
+      @skip()
+    else
       argv._[0] = "configure"
       argv.xcode = true
       argv.force = conf.name

@@ -1,6 +1,6 @@
 ###global it describe###
-assert = require('chai').assert
 path = require('path')
+expect = require('chai').expect
 
 argv =
   runDir: path.join process.cwd(), 'tests'
@@ -23,18 +23,16 @@ depB =
     ]
 
 describe 'graph', ->
-  it 'source/include', (done) ->
+  it 'source/include', ->
     # parse = require('../lib/parse')(depA, argv)
     graph.resolvePaths depA
     .then (resolved) ->
-      assert.equal resolved.d.includeDirs[0], path.join(argv.runDir, "#{argv.cachePath}/#{depA.name}/source/include")
-      done()
+      expect(resolved.d.includeDirs[0]).to.equal path.join(argv.runDir, "#{argv.cachePath}/#{depA.name}/source/include")
 
-  it 'dynamic includeDirs', (done) ->
+  it 'dynamic includeDirs', ->
     graph.resolvePaths depB
     .then (resolved) ->
-      assert.deepEqual resolved.d.includeDirs, [
+      expect(resolved.d.includeDirs).to.deep.equal [
         path.join(argv.runDir, "#{argv.cachePath}/#{depB.name}/testIncludeDir")
         path.join(argv.runDir, "#{argv.cachePath}/#{depB.name}/another")
       ]
-      done()

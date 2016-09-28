@@ -1,5 +1,6 @@
 ###globals describe it###
 assert = require('chai').assert
+expect = require('chai').expect
 _ = require 'underscore'
 colors = require ('chalk')
 
@@ -56,15 +57,14 @@ describe 'parse', ->
   it 'replaces and maps', ->
     assert.equal parse.configSetting("{BSON_BYTE_ORDER}"), 1234
 
-  it 'iterates a command object', (done) ->
+  it 'iterates a command object', ->
     commandObject =
       echo: -> return 7
 
     keywords = ['keyword', 'with', 'cmd']
     parse.iterate(depA.configure, commandObject, keywords)
     .then (res) ->
-      assert.ok res
-      done()
+      expect(res[0].obj).to.equal('echo apple world')
 
   it 'resolves shell commands to variables', ->
     if _.contains platform.selectors(), 'mac'
