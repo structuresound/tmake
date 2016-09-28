@@ -1,7 +1,7 @@
 {
   "name": "tmake",
   "description": "trieMake can fetch, build, and manage c++ dependencies",
-  "version": "0.2.18",
+  "version": "0.2.19",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "Leif Shackelford",
@@ -61,6 +61,7 @@
     "nedb-promise": "^2.0.0",
     "ninja-build-gen": "^0.2.1",
     "node-gyp": "^3.1.0",
+    "path": "^0.12.7",
     "request-promise": "^1.0.2",
     "shelljs": "^0.6.0",
     "source-map-support": "^0.4.0",

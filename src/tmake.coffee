@@ -132,7 +132,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     .then (root) ->
       graph.all root
       .then (deps) ->
-        if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
+        #if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
         unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
         if argv.nodeps
           processDep root, steps

@@ -54,7 +54,7 @@ module.exports = (dep, argv) ->
           else if stdout then resolve stdout
           else if stderr then resolve stderr
 
-  genBuildScript = (context, fileStream) ->
+  genBuildScript = (context, fileName) ->
     if argv.verbose then console.log colors.green('configure ninja with context:'), context
     getRule = (ext) ->
       switch ext
@@ -118,7 +118,7 @@ module.exports = (dep, argv) ->
     linkInput = linkNames.join(" ")
     ninjaConfig.edge("build/#{libName}").from(linkInput).using("link")
 
-    ninjaConfig.saveToStream fileStream
+    ninjaConfig.save fileName
 
   generate: genBuildScript
   build: build

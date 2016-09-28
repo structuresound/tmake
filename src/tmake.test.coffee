@@ -8,22 +8,22 @@ _ = require('underscore')
 
 npmDir = process.cwd()
 runDir = path.join process.cwd(), 'tests'
+binDir = path.join process.cwd(), 'bin'
 
-argv =
+argv = ->
   runDir: runDir
+  binDir: binDir
   userCache: path.join runDir, '/fake_cache'
   cachePath: "trie_modules"
   npmDir: npmDir
   pgname: "tmake"
-  quiet: true
-  verbose: false
+  quiet: false
+  verbose: true
   test: true
   yes: true
-  _: [
-    'test'
-  ]
+  _: []
 
-conf =
+conf = ->
   name: 'hello'
   git: "structuresound/hello"
   target: "bin"
@@ -45,96 +45,86 @@ db = new Datastore()
 userDb = new Datastore()
 settingsDb = new Datastore()
 
+test = (args) ->
+  _args = _.extend argv(), args
+  _runner = require('../lib/tmake')(_args, conf(), undefined, db, userDb, settingsDb)
+  _runner.run()
 
 describe 'tmake', ->
   fs.nuke runDir
-  sh.mkdir '-p', argv.runDir
+  sh.mkdir '-p', runDir
   @timeout 60000
-
-  tmake = require('../lib/tmake')(argv, conf, undefined, db, userDb, settingsDb)
-  platform = require('../lib/platform')(argv, conf)
+  _tmake = require('../lib/tmake')(argv(), conf(), undefined, db, userDb, settingsDb)
 
   it 'can fetch a source tarball', ->
     @slow 1000
-    argv._[0] = "fetch"
-    argv._[1] = "googletest"
-    tmake.run()
+    test _: ["fetch", "googletest"]
     .then ->
-      file = fs.existsSync path.join argv.runDir, 'trie_modules/googletest/source'
+      file = fs.existsSync path.join runDir, 'trie_modules/googletest/source'
       expect(file).to.equal(true)
 
   it 'can build an existing cmake project', ->
     @slow 5000
-    argv._[0] = "all"
-    argv._[1] = "googletest"
-    tmake.run()
+    test _: ["all", "googletest"]
     .then ->
-      file = fs.existsSync path.join argv.runDir, 'trie_modules/lib/libgtest.a'
+      file = fs.existsSync path.join runDir, 'trie_modules/lib/libgtest.a'
       expect(file).to.equal(true)
 
   it 'can fetch a git repo', ->
     @slow 2000
-    argv._[0] = "fetch"
-    argv._[1] = conf.name
-    tmake.run()
+    test _: ["fetch"]
     .then ->
-      db.findOne name: conf.name
+      db.findOne name: conf().name
     .then (dep) ->
       expect(dep.cache.git.checkout).to.equal("master")
 
   it 'can configure a ninja build', ->
-    argv._[0] = "configure"
-    argv._[1] = conf.name
-    tmake.run()
+    test _: ["configure"]
     .then ->
-      file = fs.existsSync path.join argv.runDir, 'build.ninja'
+      file = fs.existsSync path.join runDir, 'build.ninja'
       expect(file).to.equal(true)
 
-  it 'can build configure an xcode project', ->
-    unless _.contains platform.selectors(), 'mac'
-      @skip()
-    else
-      argv._[0] = "configure"
-      argv.xcode = true
-      argv.force = conf.name
-      tmake.run()
-      .then ->
-        argv.xcode = false
-        argv.force = false
-        file = fs.existsSync path.join argv.runDir, "#{conf.name}.xcproject/project.pbxproj"
-        expect(file).to.equal(true)
+  # it 'can build configure an xcode project', ->
+  #   args =
+  #     _: ["configure"]
+  #     xcode: true
+  #     force: conf().name
+  #   platform = require('../lib/platform')(argv(), conf())
+  #   unless _.contains platform.selectors(), 'mac'
+  #     @skip()
+  #   else
+  #     test args
+  #     .then ->
+  #       file = fs.existsSync path.join runDir, "#{conf().name}.xcodeproj/project.pbxproj"
+  #       expect(file).to.equal(true)
 
   it 'can build using ninja', ->
-    argv._[0] = "all"
-    argv._[1] = ""
-    argv.force = conf.name
-    tmake.run()
+    test _: ["all"]
     .then ->
-      argv.force = false
-      db.findOne name: conf.name
+      db.findOne name: conf().name
     .then (dep) ->
       expect(dep.cache.built).to.equal(true)
 
   it 'run the built binary', ->
-    sh.Promise "./#{conf.name}", (path.join runDir, 'bin'), true
+    sh.Promise "./#{conf().name}", (path.join runDir, 'bin'), true
     .then (res) ->
       results = res.split('\n')
       expect(results[results.length-2]).to.equal 'Hello, world, from Visual C++!'
 
   it 'can push to the user local db', ->
-    db.findOne name: conf.name
+    db.findOne name: conf().name
     .then (dep) ->
-      tmake.link dep
+      _tmake.link dep
     .then ->
-      userDb.findOne name: conf.name
+      userDb.findOne name: conf().name
     .then (res) ->
-      expect(res.name).to.equal conf.name
+      expect(res.name).to.equal conf().name
 
   it 'can remove a link from the local db', ->
-    userDb.findOne name: conf.name
+    userDb.findOne name: conf().name
     .then (dep) ->
-      tmake.unlink dep
+      _tmake.unlink dep
     .then ->
-      userDb.findOne name: conf.name
+      userDb.findOne name: conf().name
     .then (dep) ->
       expect(dep).to.not.be.ok

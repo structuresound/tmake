@@ -88,7 +88,7 @@ module.exports = (dep, argv) ->
               conf.buildSettings.LIBRARY_SEARCH_PATHS = _.map conf.buildSettings.LIBRARY_SEARCH_PATHS, (path) ->
                 path.replace "$(TARGET_NAME)/", ""
 
-        console.log JSON.stringify xcProj.hash,0,2
+        # console.log JSON.stringify xcProj.hash,0,2
         fs.writeFileSync pbxPath, xcProj.writeSync()
         res()
 

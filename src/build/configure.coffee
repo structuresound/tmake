@@ -124,7 +124,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     new Promise (resolve) ->
       raw =
         frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
-        cFlags: _.extend cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)
+        cFlags: _.extend(cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
         cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
         ldFlags: cascadingPlatformArgs(configuration.ldFlags || stdLdFlags)
       context =
@@ -180,10 +180,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
         .then (context) ->
           switch systemName
             when 'ninja'
-              file = fs.createWriteStream(dep.cache.buildFile)
-              require('./ninja')(dep,argv).generate context, file
-              file.end()
-              fs.wait file, true
+              require('./ninja')(dep,argv).generate context, dep.cache.buildFile
             when 'cmake'
               require('./cmake')(dep, argv).generate context
               .then (CMakeLists) ->

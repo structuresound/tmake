@@ -23,6 +23,8 @@ depA =
     OSX_SDK_VERSION: "$(xcrun --sdk macosx --show-sdk-version)"
     OPENSSL_VERSION: "1.0.1"
   configure:
+    linux:
+      echo: 'echo linux world'
     win:
       echo: 'echo win world'
     'mac ios':
@@ -64,7 +66,10 @@ describe 'parse', ->
     keywords = ['keyword', 'with', 'cmd']
     parse.iterate(depA.configure, commandObject, keywords)
     .then (res) ->
-      expect(res[0].obj).to.equal('echo apple world')
+      if _.contains platform.selectors(), 'mac'
+        expect(res[0].obj).to.equal('echo apple world')
+      if _.contains platform.selectors(), 'linux'
+        expect(res[0].obj).to.equal('echo linux world')
 
   it 'resolves shell commands to variables', ->
     if _.contains platform.selectors(), 'mac'

@@ -48,8 +48,7 @@ _jsonToFlags = (prefix, json) ->
         flags.push "#{prefix}#{key}=#{opt}"
       else
         flags.push "#{prefix}#{key}"
-  if flags.length then flags
-  else undefined
+  flags
 
 jsonToFlags = (json) ->
   _jsonToFlags '-', json
