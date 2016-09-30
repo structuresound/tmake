@@ -1,10 +1,10 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require '../fs'
+fs = require '../util/fs'
 colors = require ('chalk')
 sh = require('shelljs')
 
-module.exports = (dep, argv) ->
+module.exports = (argv, dep) ->
   run = (command) ->
     command = "docker run -it --rm --name my-running-script -v \"$PWD\":/usr/src/app -w /usr/src/app node:4 node your-daemon-or-script.js"
     if argv.verbose then console.log("run cmake command: ", command)

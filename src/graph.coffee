@@ -2,11 +2,11 @@ DepGraph = require('dependency-graph').DepGraph
 _ = require 'underscore'
 _p = require("bluebird")
 path = require('path')
-check = require './check'
-fs = require('./fs')
-cascade = require('./cascade')
+check = require './util/check'
+fs = require('./util/fs')
+cascade = require('./dsl/cascade')
 
-module.exports = (argv, db, platform) ->
+module.exports = (argv, dep, platform, db) ->
   parsePath = (s) ->
     throw new Error "#{s} is not a string" unless check s, String
     if s.startsWith '/' then s
@@ -104,9 +104,12 @@ module.exports = (argv, db, platform) ->
 
     _p.resolve dep
 
-  that.resolveDep = (dep) ->
+  that.resolveDep = (dep, parent) ->
     dep.name ?= that.resolveDepName dep
     dep.target ?= 'static'
+    if parent
+      if parent.platform
+        dep.platform = parent.platform
     dep.cache ?= test: {}
     db.findOne name: dep.name
     .then (result) ->
@@ -124,27 +127,6 @@ module.exports = (argv, db, platform) ->
         db.insert entry
         .then -> that.resolvePaths merged
 
-  # that.resolveDep = (dep) ->
-  #   dep.name ?= that.resolveDepName dep
-  #   dep.target ?= 'static'
-  #   dep.test ?= {}
-  #   dep.cache ?= test: {}
-  #   db.findOne name: dep.name
-  #   .then (result) ->
-  #     if result
-  #       _.extend dep, _.pick result, ['cache', 'libs'] # READ FROM CACHE
-  #     cache = _.clone dep
-  #     if cache.deps
-  #       cache.deps = _.map cache.deps, (d) -> name: that.resolveDepName(d)
-  #     delete cache.d
-  #     delete cache.p
-  #     if result
-  #       db.update {name: cache.name}, {$set: cache}
-  #       .then -> that.resolvePaths dep
-  #     else
-  #       db.insert cache
-  #       .then -> that.resolvePaths dep
-
   that.resolveDepName = (dep) ->
     if check dep, String then dep
     else if check dep.name, String then dep.name
@@ -160,7 +142,7 @@ module.exports = (argv, db, platform) ->
   resolveDeps = (root, graph) ->
     if root.deps
       _p.each root.deps, (dep) ->
-        that.resolveDep dep
+        that.resolveDep dep, root
         .then (resolved) ->
           throw new Error "recursive dependency" if resolved.name == root.name
           that.graph resolved, graph

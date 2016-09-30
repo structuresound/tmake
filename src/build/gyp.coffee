@@ -9,7 +9,7 @@ manualRebuild = ->
         return reject(error) if error
         gyp.commands.build [], resolve
 
-module.exports = (dep, argv) ->
+module.exports = (argv, dep) ->
   task = dep.build
 
   generate: (context) ->

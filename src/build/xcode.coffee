@@ -4,10 +4,10 @@ path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require('../fs')
+fs = require('../util/fs')
 colors = require ('chalk')
 tmp = require('temporary')
-_parse = require('../parse')
+
 whichAsync = Promise.promisify require('which')
 createGroup = require './pbxproj/createGroup'
 # addFileToProject = require './pbxproj/addFileToProject'
@@ -37,42 +37,42 @@ executeCommand = (command) ->
       else if stdout then resolve stdout
       else if stderr then resolve stderr
 
-module.exports = (dep, argv) ->
-  parse = _parse(dep,argv)
+module.exports = (argv, dep, platform) ->
   generate = (context) ->
     new Promise (res, rej) ->
       if argv.verbose then console.log colors.green('configure xcode project with context:'), context
       pbxPath = path.join dep.cache.buildFile, 'project.pbxproj'
       unless fs.existsSync pbxPath
-        templatePath = path.join(argv.binDir, 'assets/xcode_template.pbxproj')
+        templatePath = path.join(argv.binDir, "assets/#{platform.name()}.pbxproj")
         unless fs.existsSync templatePath then throw new Error "no file @ #{templatePath}"
         pbxProj = fs.readFileSync templatePath, 'utf8'
-        pbxProj = parse.replaceAll pbxProj, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
-        pbxProj = parse.replaceAll pbxProj, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
-        pbxProj = parse.replaceAll pbxProj, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
+        pbxProj = platform.replaceAll pbxProj, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
+        pbxProj = platform.replaceAll pbxProj, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
+        pbxProj = platform.replaceAll pbxProj, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
         sh.mkdir '-p', dep.cache.buildFile
         fs.writeFileSync pbxPath, pbxProj, 'utf8'
         unless argv.quiet then console.log "wrote xc project @ #{pbxPath}"
       infoPath = path.join dep.d.project, 'Info.plist'
       unless fs.existsSync infoPath
-        templatePath = path.join(argv.binDir, 'assets/xcode_Info.plist')
+        templatePath = path.join(argv.binDir, "assets/#{platform.name()}_Info.plist")
         unless fs.existsSync templatePath then throw new Error "no file @ #{templatePath}"
         info = fs.readFileSync templatePath, 'utf8'
-        info = parse.replaceAll info, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
-        info = parse.replaceAll info, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
-        info = parse.replaceAll info, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
+        info = platform.replaceAll info, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
+        info = platform.replaceAll info, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
+        info = platform.replaceAll info, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
         sh.mkdir '-p', dep.cache.buildFile
         fs.writeFileSync infoPath, info, 'utf8'
         unless argv.quiet then console.log "wrote xc info plist @ #{infoPath}"
       xcProj = xcode.project(pbxPath)
       xcProj.parse (err) ->
         if err then rej err
-        # createGroup xcProj, dep.name
+        createGroup xcProj, 'source'
 
         rootObject = xcProj.rootObject
         addToXcProject = (collection, fn) ->
           _.each collection, (filePath) ->
             relative = path.relative dep.d.project, filePath
+            if argv.verbose then console.log "add #{relative} to pbxproj"
             fn relative
 
         addToXcProject context.includeDirs, (rel) -> xcProj.addToHeaderSearchPaths rel

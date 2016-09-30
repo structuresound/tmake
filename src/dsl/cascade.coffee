@@ -1,5 +1,5 @@
 _ = require 'underscore'
-check = require './check'
+check = require '../util/check'
 
 isNumeric = (n) ->
   !isNaN(parseFloat(n)) and isFinite(n)
@@ -228,3 +228,4 @@ module.exports =
     flatten shallowSearch(tree, selectors, test, [], 0)
 
   matchesSelectors: matchesSelectors
+  valueForKeyPath: valueForKeyPath

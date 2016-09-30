@@ -1,19 +1,21 @@
+require './util/string'
 path = require('path')
-fs = require('./fs')
-require('./string')
 colors = require ('chalk')
 check = require './check'
 CSON = require('cson')
+fs = require('./util/fs')
+
 
 module.exports = (argv, binDir, npmDir) ->
-  platform = require('./platform')(argv)
+  homeDir = ->
+    process.env[if process.platform == 'win32' then 'USERPROFILE' else 'HOME']
 
   pgname = "tmake"
   runDir = process.cwd()
 
   argv.cachePath ?= "trie_modules"
   argv.program ?= pgname
-  argv.userCache ?= "#{platform.homeDir()}/.#{pgname}"
+  argv.userCache ?= "#{homeDir()}/.#{pgname}"
   argv.npmDir ?= npmDir
   argv.binDir ?= binDir
   if argv.v then argv.verbose ?= argv.v

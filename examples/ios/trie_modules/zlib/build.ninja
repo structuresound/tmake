@@ -1,0 +1,31 @@
+ninja_required_version = 1.6.0
+builddir=build
+rule c
+  command = gcc -MMD -MF $out.d -target=armv7a-apple-darwin-eabi -Wall=1 -Wwrite-strings=1 -Wpointer-arith=1 -Wconversion=1 -c $in -o $out  -I/Users/leif/tmake/tmake/examples/ios/trie_modules/include -I/Users/leif/tmake/tmake/examples/ios/trie_modules/zlib/source/include
+  description = gcc -MMD -MF $out.d -target=armv7a-apple-darwin-eabi -Wall=1 -Wwrite-strings=1 -Wpointer-arith=1 -Wconversion=1 -c $in -o $out  -I/Users/leif/tmake/tmake/examples/ios/trie_modules/include -I/Users/leif/tmake/tmake/examples/ios/trie_modules/zlib/source/include
+  depfile = $out.d
+  deps = gcc
+rule cxx
+  command = gcc -MMD -MF $out.d -target=armv7a-apple-darwin-eabi -Wall=1 -Wwrite-strings=1 -Wpointer-arith=1 -Wconversion=1 -c $in -o $out  -I/Users/leif/tmake/tmake/examples/ios/trie_modules/include -I/Users/leif/tmake/tmake/examples/ios/trie_modules/zlib/source/include
+  description = gcc -MMD -MF $out.d -target=armv7a-apple-darwin-eabi -Wall=1 -Wwrite-strings=1 -Wpointer-arith=1 -Wconversion=1 -c $in -o $out  -I/Users/leif/tmake/tmake/examples/ios/trie_modules/include -I/Users/leif/tmake/tmake/examples/ios/trie_modules/zlib/source/include
+  depfile = $out.d
+  deps = gcc
+rule link
+  command = ar rv $out $in
+  description = ar rv $out $in
+build build//adler32.o: c source/adler32.c
+build build//compress.o: c source/compress.c
+build build//crc32.o: c source/crc32.c
+build build//deflate.o: c source/deflate.c
+build build//gzclose.o: c source/gzclose.c
+build build//gzlib.o: c source/gzlib.c
+build build//gzread.o: c source/gzread.c
+build build//gzwrite.o: c source/gzwrite.c
+build build//infback.o: c source/infback.c
+build build//inffast.o: c source/inffast.c
+build build//inflate.o: c source/inflate.c
+build build//inftrees.o: c source/inftrees.c
+build build//trees.o: c source/trees.c
+build build//uncompr.o: c source/uncompr.c
+build build//zutil.o: c source/zutil.c
+build build/zlib.a: link build//adler32.o build//compress.o build//crc32.o build//deflate.o build//gzclose.o build//gzlib.o build//gzread.o build//gzwrite.o build//infback.o build//inffast.o build//inflate.o build//inftrees.o build//trees.o build//uncompr.o build//zutil.o

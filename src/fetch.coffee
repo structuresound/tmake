@@ -1,21 +1,21 @@
 #git = require('nodegit')
 Promise = require("bluebird")
 git = require 'gift'
-fs = require('./fs')
-sh = require('./sh')
 colors = require ('chalk')
 tar = require('tar-fs')
 gunzip = require('gunzip-maybe')
 request = require('request-promise')
 path = require('path')
-require './string'
+require './util/string'
+fs = require('./util/fs')
+sh = require('./util/sh')
 
 findGit = ->
   if not sh.which 'git'
     sh.echo 'Sorry, this script requires git'
     sh.exit 1
 
-module.exports = (dep, db, argv, parse) ->
+module.exports = (argv, dep, platform, db) ->
   parsePath = (s) ->
     if s.startsWith '/' then s
     else path.join argv.runDir, s
@@ -45,7 +45,7 @@ module.exports = (dep, db, argv, parse) ->
     unless argv.quiet then console.log colors.gray 'to', dep.d.clone
     fs.existsAsync dep.d.clone
     .then (exists) ->
-      if exists && dep.cache.source == config.url && !parse.force()
+      if exists && dep.cache.source == config.url && !platform.force(dep)
         if argv.verbose then console.log colors.yellow 'using cache'
         Promise.resolve()
       else
@@ -101,7 +101,7 @@ module.exports = (dep, db, argv, parse) ->
               resolve res
 
   clone = ->
-    return checkout() if (dep.cache.git && fs.existsSync(dep.d.clone) && !parse.force())
+    return checkout() if (dep.cache.git && fs.existsSync(dep.d.clone) && !platform.force(dep))
     fs.nuke dep.d.clone
     unless argv.quiet then console.log colors.green "cloning #{config.url} into #{dep.d.clone}"
     new Promise (resolve, reject) ->
@@ -124,7 +124,7 @@ module.exports = (dep, db, argv, parse) ->
           reject e
 
   checkout = ->
-    if ((dep.cache.git?.checkout == config.checkout) && !parse.force())
+    if ((dep.cache.git?.checkout == config.checkout) && !platform.force(dep))
       unless argv.quiet then console.log 'using ', dep.name, '@', config.checkout
       return Promise.resolve()
     sh.Promise "git checkout #{config.checkout}", dep.d.clone, argv.verbose
@@ -137,7 +137,7 @@ module.exports = (dep, db, argv, parse) ->
           {}
 
   validate: ->
-    if fs.existsSync(dep.d.clone) && !parse.force()
+    if fs.existsSync(dep.d.clone) && !platform.force(dep)
       if config.archive
         Promise.resolve()
       else

@@ -1,9 +1,7 @@
 Promise = require 'bluebird'
-sh = require "../sh"
+sh = require "../util/sh"
 
-module.exports = (dep, argv) ->
-  platform = require('../platform')(argv, dep)
-
+module.exports = (argv, dep, platform) ->
   build = ->
     sh.Promise "make -j#{platform.j()}", dep.d.project, !argv.quiet
 

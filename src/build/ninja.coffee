@@ -4,12 +4,10 @@ path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require('../fs')
+fs = require('../util/fs')
 colors = require ('chalk')
 
-module.exports = (dep, argv) ->
-  platform = require('../platform')(argv, dep)
-
+module.exports = (argv, dep, platform) ->
   ninjaVersion = "1.6.0"
 
   ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"

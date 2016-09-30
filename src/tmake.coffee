@@ -1,12 +1,21 @@
 _ = require('underscore')
 _p = require("bluebird")
 path = require('path')
-fs = require('./fs')
-require('./string')
 colors = require ('chalk')
 Datastore = require('nedb-promise')
-cascade = require('./cascade')
-check = require('./check')
+
+require('./util/string')
+fs = require('./util/fs')
+cascade = require('./dsl/cascade')
+_platform = require('./dsl/platform')
+_prompt = require('./prompt')
+_graph = require('./graph')
+_cloud = require('./cloud')
+_configure = require('./build/configure')
+_build = require('./build/build')
+_install = require('./install')
+_fetch = require('./fetch')
+_test = require './test'
 
 module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
   argv.runDir ?= process.cwd()
@@ -27,27 +36,16 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       filename: "#{argv.userCache}/cli.db"
       autoload: true
 
-  prompt = require('./prompt')(argv)
-  platform = require('./platform')(argv, rootConfig)
-  graph = require('./graph')(argv, db, platform)
-  cloud = require('./cloud')(argv, settings, prompt)
-
-  allStrings = (o, fn) ->
-    rec = (o) ->
-      # console.log 'parsing', o
-      for k of o
-        if check o[k], String
-          o[k] = fn o[k]
-        else if check(o[k], Object) || check(o[k], Array)
-          rec o[k]
-    rec o
+  prompt = _prompt(argv)
+  platform = _platform(argv, rootConfig)
+  graph = _graph(argv, undefined, platform, db)
+  cloud = _cloud(argv, settings, prompt)
 
   buildPhase = (dep, phase) ->
-    parse = require('./parse')(dep, argv)
     switch phase
       when "fetch"
         if dep.fetch || dep.git || dep.link
-          fetch = require('./fetch')(dep, db, argv, parse)
+          fetch = _fetch(argv, dep, platform, db)
           if dep.link
             fetch.linkSource()
           else
@@ -55,19 +53,19 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
         else
           _p.resolve()
       when "configure"
-        require('./build/configure')(dep, argv, db, graph, parse).execute()
+        _configure(argv, dep, platform, db, graph).execute()
       when "build"
-        require('./build/build')(dep, argv, db, parse, false).execute()
+        _build(argv, dep, platform, db, false).execute()
       when "install"
-        require('./install')(dep, argv, db, parse).execute()
+        _install(argv, dep, platform, db).execute()
       when "clean"
         cleanDep dep
       when "test"
-        require('./build/configure')(dep, argv, db, graph, parse, true).execute()
+        _configure(argv, dep, platform, db, graph, true).execute()
         .then ->
-          require('./build/build')(dep, argv, db, parse, true).execute()
+          _build(argv, dep, platform, db, true).execute()
         .then ->
-          require('./test')(dep, argv, db).execute()
+          _test(argv, dep, platform, db).execute()
 
   cleanDep = (dep) ->
     if fs.existsSync(dep.d.build)
@@ -90,10 +88,9 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       unless _.contains preserve, k then modifier.$unset[k] = true
     db.update {name: dep.name}, modifier, {}
     .then ->
-      parse = require('./parse')(dep, argv)
       generatedBuildFile = dep.cache.generatedBuildFile
       if generatedBuildFile
-        prompt.ask colors.green("remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"), 'y', parse.force()
+        prompt.ask colors.green("remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"), 'y', platform.force(dep)
         .then (approved) ->
           if approved
             modifier = $unset:
@@ -141,8 +138,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
 
   processDep = (dep, steps) ->
     unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
-    parse = require('./parse')(dep, argv)
-    if (!dep.cached || argv._[0] == "clean" || parse.force())
+    if (!dep.cached || argv._[0] == "clean" || platform.force(dep))
       _p.each steps, (phase) ->
         if argv.verbose then console.log colors.gray ">> #{phase} >>"
         process.chdir runDir
@@ -192,6 +188,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
   push: push
   link: link
   unlink: unlink
+  platform: platform
   run: ->
     resolvedName = argv._[1] || rootConfig.name || graph.resolveDepName rootConfig
     switch argv._[0]
@@ -233,7 +230,6 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       when 'fetch'
         execute rootConfig, ["fetch"]
       when "parse"
-        # parse = require('./parse')(rootConfig, argv)
         parsed = cascade.deep rootConfig, platform.keywords(), platform.selectors()
         console.log colors.magenta JSON.stringify parsed, 0, 2
       when 'configure'

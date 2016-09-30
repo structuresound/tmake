@@ -1,13 +1,13 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require '../fs'
+fs = require '../util/fs'
 path = require('path')
 colors = require ('chalk')
-check = require('../check')
-cascade = require('../cascade')
-sh = require('../sh')
+check = require('../util/check')
+cascade = require('../dsl/cascade')
+sh = require('../util/sh')
 
-module.exports = (dep, argv, db, graph, parse, configureTests) ->
+module.exports = (argv, dep, platform, db, graph, configureTests) ->
   commands =
     any: (obj) -> commands.shell(obj)
     ninja: -> commands.with 'ninja'
@@ -15,19 +15,19 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     make: -> commands.with 'make'
     xcode: -> commands.with 'xcode'
     replace: (obj) ->
-      Promise.each parse.iterable(obj), (replEntry) ->
-        fs.glob parse.globArray(replEntry.matching, dep), undefined, dep.d.source
+      Promise.each platform.iterable(obj), (replEntry) ->
+        fs.glob platform.globArray(replEntry.matching, dep), undefined, dep.d.source
         .then (files) ->
           Promise.each files, (file) ->
-            parse.replaceInFile file, replEntry, dep
+            platform.replaceInFile file, replEntry, dep
 
     shell: (obj) ->
-      Promise.each parse.iterable(obj), (c) ->
+      Promise.each platform.iterable(obj), (c) ->
         if check c, String then c = cmd: c
-        sh.Promise parse.configSetting(c.cmd), parse.pathSetting(c.cwd || dep.d.source, dep), !argv.quiet
+        sh.Promise platform.parse(c.cmd, dep), platform.pathSetting(c.cwd || dep.d.source, dep), !argv.quiet
 
     create: (obj) ->
-      Promise.each parse.iterable(obj), (e) ->
+      Promise.each platform.iterable(obj), (e) ->
         filePath = path.join dep.d.source, e.path
         if argv.verbose then console.log 'create file', filePath
         fs.writeFileAsync filePath, e.string, encoding: 'utf8'
@@ -37,11 +37,10 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       configureFor system
 
     copy: (obj) ->
-      Promise.each parse.iterable(obj), (e) ->
+      Promise.each platform.iterable(obj), (e) ->
         console.log 'copy', e
-        copy e.matching, parse.pathSetting(e.from, dep), parse.pathSetting(e.to, dep), false
+        copy e.matching, platform.pathSetting(e.from, dep), platform.pathSetting(e.to, dep), false
 
-  platform = require('../platform')(argv, dep)
   settings = ['ldFlags', 'cFlags', 'cxxFlags', 'frameworks', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'xcode', 'cmake', 'make' ].concat settings
 
@@ -70,19 +69,19 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
       Promise.resolve filePaths
 
   globHeaders = ->
-    patterns = parse.globArray(configuration.headers?.matching || ['**/*.h','**/*.hpp', '**/*.ipp', '!test/**', '!tests/**', '!build/**'], dep)
+    patterns = platform.globArray(configuration.headers?.matching || ['**/*.h','**/*.hpp', '**/*.ipp', '!test/**', '!tests/**', '!build/**'], dep)
     Promise.map dep.d.includeDirs, (path) ->
       fs.glob patterns, dep.d.project, path
     .then (stack) ->
       Promise.resolve _.flatten stack
 
   globSources = ->
-    patterns = parse.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
+    patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
   linkNames = ->
-    patterns = parse.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
+    patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
     if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.source, dep.d.source
 
@@ -90,14 +89,12 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
 
   cascadingPlatformArgs = (base) ->
     return unless base
-    cascade.deep _.clone(base), platform.keywords(), [platform.name()]
+    flattened = cascade.deep _.clone(base), platform.keywords(), [platform.name()]
+    for i of flattened
+      flattened[i] = platform.parse flattened[i], dep
+    flattened
 
   flags = require './flags'
-
-  stdCFlags =
-    O: 2
-    linux:
-      pthread: true
 
   stdCxxFlags =
     O: 2
@@ -107,6 +104,11 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     linux:
       std: "c++0x"
       pthread: true
+    ios:
+      target: "armv7a-apple-darwin-eabi"
+      isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
+      "miphoneos-version-min": "{SDK_VERSION}"
+      #/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.3.sdk
 
   stdFrameworks =
     mac:
@@ -124,7 +126,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     new Promise (resolve) ->
       raw =
         frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
-        cFlags: _.extend(cascadingPlatformArgs(stdCFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
+        cFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
         cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
         ldFlags: cascadingPlatformArgs(configuration.ldFlags || stdLdFlags)
       context =
@@ -175,18 +177,18 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
     dep.cache.buildFile = buildFilePath systemName
     fs.existsAsync dep.cache.buildFile
     .then (exists) ->
-      if (!exists || (parse.force() && dep.cache.generatedBuildFile))
+      if (!exists || (platform.force(dep) && dep.cache.generatedBuildFile))
         createContext()
         .then (context) ->
           switch systemName
             when 'ninja'
-              require('./ninja')(dep,argv).generate context, dep.cache.buildFile
+              require('./ninja')(argv, dep, platform).generate context, dep.cache.buildFile
             when 'cmake'
-              require('./cmake')(dep, argv).generate context
+              require('./cmake')(argv, dep, platform).generate context
               .then (CMakeLists) ->
                 fs.writeFileAsync dep.cache.buildFile, CMakeLists
             when 'gyp'
-              require('./gyp')(configuration, dep, argv).generate context
+              require('./gyp')(argv, dep, platform).generate context
               .then (binding) ->
                 if argv.verbose then console.log 'node-gyp:', dep.cache.buildFile, JSON.stringify(binding, 0, 2)
                 fs.writeFileAsync dep.cache.buildFile, JSON.stringify(binding, 0, 2)
@@ -195,7 +197,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
               .then (Makefile) ->
                 fs.writeFileAsync dep.cache.buildFile, JSON.stringify(Makefile, 0, 2)
             when 'xcode'
-              require('./xcode')(dep,argv).generate context
+              require('./xcode')(argv, dep, platform).generate context
         .then ->
           db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile, "cache.generatedBuildFile": dep.cache.buildFile}}, {}
       else if exists
@@ -214,7 +216,7 @@ module.exports = (dep, argv, db, graph, parse, configureTests) ->
   getContext: -> createContext()
   commands: commands
   execute: ->
-    return Promise.resolve() if (dep.cache?.configured && !parse.force())
-    parse.iterate configuration, commands, settings
+    return Promise.resolve() if (dep.cache?.configured && !platform.force(dep))
+    platform.iterate configuration, commands, settings
     .then ->
       db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}

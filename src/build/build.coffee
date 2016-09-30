@@ -1,9 +1,9 @@
 Promise = require 'bluebird'
-fs = require '../fs'
-check = require('../check')
-sh = require('../sh')
+fs = require '../util/fs'
+check = require('../util/check')
+sh = require('../util/sh')
 
-module.exports = (dep, argv, db, parse, buildTests) ->
+module.exports = (argv, dep, platform, db, buildTests) ->
   buildFolder = dep.d.build
   buildFile = dep.cache.buildFile
   buildSettings = dep.build
@@ -22,9 +22,9 @@ module.exports = (dep, argv, db, parse, buildTests) ->
     make: -> commandBlock.with 'make'
     xcode: -> commandBlock.with 'xcode'
     shell: (obj) ->
-      Promise.each parse.iterable(obj), (c) ->
+      Promise.each platform.iterable(obj), (c) ->
         if check c, String then c = cmd: c
-        sh.Promise parse.configSetting(c.cmd), parse.pathSetting(c.cwd || dep.d.source, dep), true
+        sh.Promise platform.parse(c.cmd, dep), platform.pathSetting(c.cwd || dep.d.source, dep), true
     with: (name) ->
       buildWith name
 
@@ -39,20 +39,19 @@ module.exports = (dep, argv, db, parse, buildTests) ->
       if exists
         switch system
           when 'ninja'
-            runner = require('./ninja')(dep, argv)
+            runner = require('./ninja')(argv, dep, platform)
           when 'cmake'
-            runner = require('./cmake')(dep, argv)
+            runner = require('./cmake')(argv, dep, platform)
           when 'gyp'
-            runner = require('./gyp')(dep, argv)
+            runner = require('./gyp')(argv, dep, platform)
           when 'make'
-            runner = require('./make')(dep, argv)
+            runner = require('./make')(argv, dep, platform)
           when 'xcode'
-            runner = require('./xcode')(dep,argv)
+            runner = require('./xcode')(argv, dep, platform)
       runner.build()
 
   execute: ->
-    # return Promise.resolve() if ((!buildTests && dep.cache.built) || (buildTests && dep.cache.test.built)) && !parse.force()
     return Promise.resolve() unless buildSettings
-    parse.iterate buildSettings, commandBlock, ['cFlags', 'cxxFlags', 'frameworks', 'ldFlags', 'sources', 'headers', 'outputFile']
+    platform.iterate buildSettings, commandBlock, ['cFlags', 'cxxFlags', 'frameworks', 'ldFlags', 'sources', 'headers', 'outputFile']
     .then ->
       db.update {name: dep.name}, {$set: {"#{cachePath}": true}}, {}

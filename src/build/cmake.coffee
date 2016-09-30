@@ -1,13 +1,14 @@
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require '../fs'
-arrayify = require '../arrayify'
+fs = require '../util/fs'
+arrayify = require '../util/arrayify'
 path = require('path')
 sh = require('shelljs')
 colors = require ('chalk')
+_ninja = require('./ninja')
 
-module.exports = (dep, argv) ->
-  ninja = require('./ninja')(dep, argv)
+module.exports = (argv, dep, platform) ->
+  ninja = _ninja(argv, dep, platform)
 
   run = (command) ->
     if argv.verbose then console.log colors.green("run cmake command: " + command)

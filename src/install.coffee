@@ -2,10 +2,9 @@ _ = require('underscore')
 _vinyl = require('vinyl-fs')
 _p = require("bluebird")
 path = require('path')
-fs = require('./fs')
 sh = require "shelljs"
 colors = require ('chalk')
-
+fs = require('./util/fs')
 vinyl =
   symlink: _vinyl.symlink
   dest: _vinyl.dest
@@ -16,7 +15,7 @@ vinyl =
       string
     _vinyl.src patterns, opt
 
-module.exports = (dep, argv, db) ->
+module.exports = (argv, dep, platform, db) ->
   copy = (patterns, from, to, opt) ->
     filePaths = []
     fs.wait(vinyl.src(patterns,
@@ -101,7 +100,6 @@ module.exports = (dep, argv, db) ->
     else _p.resolve('headers')
 
   execute = ->
-    #return Promise.resolve() if (dep.cache?.installed && !parse.force())
     installHeaders()
     .then ->
       installLibs()

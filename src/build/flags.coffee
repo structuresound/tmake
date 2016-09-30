@@ -1,5 +1,5 @@
 _ = require 'underscore'
-fs = require '../fs'
+fs = require '../util/fs'
 
 jsonToCFlags = (options) ->
   jsonToCxxFlags _.omit options, ['std','stdlib']

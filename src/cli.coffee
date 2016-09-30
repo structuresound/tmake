@@ -1,7 +1,7 @@
-check = require './check'
 _ = require('underscore')
 _p = require("bluebird")
 colors = require ('chalk')
+check = require './util/check'
 
 module.exports = (p) ->
   _.mixin 'sortKeysBy': (obj, comparator) ->

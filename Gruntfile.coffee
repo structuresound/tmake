@@ -8,7 +8,7 @@ module.exports = (grunt) ->
           sourceMap: true
         flatten: false
         cwd: "#{__dirname}/src/"
-        src: ['**/*.coffee', '!**/*.test.coffee']
+        src: ['**/*.coffee', '!*.test.coffee']
         dest: 'lib/'
         ext: '.js'
       tests:
@@ -17,8 +17,8 @@ module.exports = (grunt) ->
           bare: true
           sourceMap: true
         flatten: false
-        cwd: "#{__dirname}/src/"
-        src: ['**/*.test.coffee']
+        cwd: "#{__dirname}/src/test"
+        src: ['*.test.coffee']
         dest: 'test/'
         ext: '.js'
     copy: js: files: [
@@ -31,8 +31,8 @@ module.exports = (grunt) ->
     simplemocha:
       options:
         globals: ['expect']
-        timeout: 3000
-        ignoreLeaks: false
+        timeout: 10000
+        ignoreLeaks: true
         ui: 'bdd'
         reporter: 'tap'
       all:
