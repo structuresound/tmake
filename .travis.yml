@@ -9,6 +9,6 @@ node_js:
   - '4'
 before_script:
   - npm install -g grunt-cli
-  - grunt coffee
+  - grunt build
 after_success:
   - npm run coveralls
