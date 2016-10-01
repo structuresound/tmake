@@ -33,7 +33,7 @@ module.exports = (argv, dep, platform, db) ->
     if dep.link
       console.log "link settings #{parsePath dep.link}package.cson"
       rawConfig = fs.readConfigSync "#{parsePath dep.link}package.cson"
-      _.extend dep, cascade.deep rawConfig, platform.keywords(), platform.selectors()
+      _.extend dep, cascade.deep rawConfig, platform.keywords, platform.selectors
 
     defaultPathOptions =
       source: ""

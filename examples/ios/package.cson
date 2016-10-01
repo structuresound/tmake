@@ -11,8 +11,8 @@ deps: [
     sources: matching: [ "*.c" ]
     cFlags:
       O: 3
-      Wall: 1
-      "Wwrite-strings": 1
-      "Wpointer-arith": 1
-      "Wconversion": 1
+      Wall: true
+      "Wwrite-strings": true
+      "Wpointer-arith": true
+      "Wconversion": true
 ]

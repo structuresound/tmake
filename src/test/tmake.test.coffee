@@ -89,7 +89,7 @@ describe 'tmake', ->
       _: ["configure"]
       xcode: true
       force: conf().name
-    unless _.contains _tmake.platform.selectors(), 'mac'
+    unless _.contains _tmake.platform.selectors, 'mac'
       @skip()
     else
       test args

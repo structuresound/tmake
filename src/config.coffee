@@ -1,7 +1,7 @@
 require './util/string'
 path = require('path')
 colors = require ('chalk')
-check = require './check'
+check = require './util/check'
 CSON = require('cson')
 fs = require('./util/fs')
 

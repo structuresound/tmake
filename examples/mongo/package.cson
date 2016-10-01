@@ -3,7 +3,7 @@ target: "bin"
 build:
   with: "cmake"
   linux:
-    ldFlags:
+    linkerFlags:
       ldl: 1
 deps: [
   git:

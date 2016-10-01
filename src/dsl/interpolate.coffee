@@ -15,14 +15,21 @@ _interpolate = (template, func) ->
   commands = template.match(/{[^}\r\n]*}/g)
   if commands
     if commands[0].length == template.length # allow for object replacement of single command
-      func(commands[0].slice(1, -1)) || template
+      res = func(commands[0].slice(1, -1))
+      if check res, String then _interpolate res, func
+      else res || template
     else
       interpolated = template
+      modified = false
       _.each commands, (c) ->
         lookup = func c.slice(1, -1)
         if lookup
+          modified = true
           interpolated = interpolated.replace c, lookup
-      interpolated
+      if modified
+        _interpolate interpolated, func
+      else
+        template
   else template
 
 interpolate = (template, funcOrData, opts) ->

@@ -5,7 +5,7 @@ build:
     with: "xcode"
   linux:
     with: "cmake"
-    ldFlags:
+    linkerFlags:
       ldl: 1
 deps: [
   git:

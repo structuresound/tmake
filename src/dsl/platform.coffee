@@ -4,8 +4,6 @@ _ = require('underscore')
 cascade = require './cascade'
 check = require '../util/check'
 sh = require('../util/sh')
-
-
 _ = require 'underscore'
 path = require('path')
 colors = require ('chalk')
@@ -14,9 +12,6 @@ Promise = require 'bluebird'
 
 fs = require '../util/fs'
 check = require '../util/check'
-
-iosArches = ["arm64", "armv7s", "armv7"]
-# androidArches = iosArches
 
 platformNames =
   linux: "linux"
@@ -39,45 +34,66 @@ validSelectors = [
   "cocoa"
   "sdl"
   "juce"
+  # OTHERS
+  "simulator"
+  # COMPILERS
+  "clang"
+  "gcc"
+  "msvc"
 ]
 
-architectureNames =
-  x86: "x86"
-  x32: "x86"
-  x64: "x64"
-  arm: "arm"
+compilers = [
+  "clang"
+  "gcc"
+  "msvc"
+]
+
+defaultPlatformCompiler =
+  mac: "clang"
+  ios: "clang"
+  linux: "gcc"
+  win: "msvc"
+
+validArchitectures =
   mac:
-    x64: "x86_64"
+    [ "x86_64" ]
   ios:
-    x64: iosArches
-    x86: iosArches
-    arm: iosArches
+    [ "arm64", "armv7s", "armv7" ]
+  simulator:
+    [ "x86_64" ]
 
 macros =
+  XC_RUN: "xcrun --sdk {XC_PLATFORM}"
   'mac ios':
     DEVELOPER: "$(xcode-select -print-path)"
   mac:
+    XC_PLATFORM: "macosx"
     PLATFORM: "darwin64-x86_64-cc"
     OSX_DEPLOYMENT_VERSION: "10.8"
-    OSX_SDK_VERSION: "$(xcrun --sdk macosx --show-sdk-version)"
-    OSX_PLATFORM: "$(xcrun --sdk macosx --show-sdk-platform-path)"
-    OSX_SDK: "$(xcrun --sdk macosx --show-sdk-path)"
+    SDK_VERSION: "$({XC_RUN} --show-sdk-version)"
+    OSX_SDK_VERSION: "$({XC_RUN} --show-sdk-version)"
+    OSX_PLATFORM: "$({XC_RUN} --show-sdk-platform-path)"
+    OSX_SDK: "$({XC_RUN} --show-sdk-path)"
   'mac linux':
     OS_ENDIANNESS: os.endianness()
     ARCH: "x86_64"
   ios:
+    XC_PLATFORM: "iphoneos"
+    XC_DIR: "iPhoneOS"
     ARCH: "arm64"
-    SDK_VERSION: "$(xcrun --sdk iphoneos --show-sdk-version)"
-    CROSS_TOP: "{DEVELOPER}/Platforms/iPhoneOS.platform/Developer"
-    CROSS_SDK: "iPhoneOS{SDK_VERSION}.sdk"
+    CROSS_TOP: "{DEVELOPER}/Platforms/{XC_DIR}.platform/Developer"
+    CROSS_SDK: "{XC_DIR}{SDK_VERSION}.sdk"
+    SDK_VERSION: "$({XC_RUN} --show-sdk-version)"
+    IPHONEOS_SDK_VERSION: "$({XC_RUN} --show-sdk-version)"
+    IPHONEOS_PLATFORM: "$({XC_RUN} --show-sdk-platform-path)"
+    IPHONEOS_SDK: "$({XC_RUN} --show-sdk-path)"
+    FRAMEWORKS: "{CROSS_TOP}/SDKs/{CROSS_SDK}/System/Library/Frameworks/"
+    INCLUDES: "{CROSS_TOP}/SDKs/{CROSS_SDK}/usr/include"
     IPHONEOS_DEPLOYMENT_VERSION: "6.0"
-    IPHONEOS_SDK_VERSION: "$(xcrun --sdk iphoneos --show-sdk-version)"
-    IPHONEOS_PLATFORM: "$(xcrun --sdk iphoneos --show-sdk-platform-path)"
-    IPHONEOS_SDK: "$(xcrun --sdk iphoneos --show-sdk-path)"
-
-keywords = _.uniq(Object.keys(platformNames)
-.concat(Object.keys(architectureNames))
-.concat(validSelectors))
+    simulator:
+      XC_PLATFORM: "iphonesimulator"
+      XC_DIR: "iPhoneSimulator"
+      ARCH: "x86_64"
 
 cache = {}
 macro = {}
@@ -86,6 +102,15 @@ module.exports = (argv, rootConfig) ->
   argvSelectors = Object.keys _.pick argv, validSelectors
   targetPlatform = ->
     argv.platform || rootConfig.platform || platformNames[os.platform()]
+
+  argv.compiler ?= defaultPlatformCompiler[targetPlatform()]
+  argvSelectors.push argv.compiler
+
+  selectors = [ targetPlatform()].concat(argvSelectors)
+
+  keywords = _.uniq(Object.keys(platformNames)
+  .concat(validArchitectures[targetPlatform()])
+  .concat(validSelectors))
 
   shellReplace = (m) ->
     if cache[m] then cache[m]
@@ -239,7 +264,6 @@ module.exports = (argv, rootConfig) ->
   replaceAll: replaceAll
   replace: replace
   name: -> targetPlatform()
-  keywords: -> keywords
-  selectors: ->
-    [ targetPlatform(), process.arch ].concat(argvSelectors)
+  keywords: keywords
+  selectors: selectors
   j: -> os.cpus().length

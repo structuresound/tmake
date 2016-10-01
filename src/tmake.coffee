@@ -90,20 +90,20 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     .then ->
       generatedBuildFile = dep.cache.generatedBuildFile
       if generatedBuildFile
-        prompt.ask colors.green("remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"), 'y', platform.force(dep)
-        .then (approved) ->
-          if approved
-            modifier = $unset:
-              "cache.generatedBuildFile": true
-            try
-              if fs.existsSync dep.cache.generatedBuildFile
-                if fs.lstatSync(dep.cache.generatedBuildFile).isDirectory()
-                  fs.nuke dep.cache.generatedBuildFile
-                else
-                  fs.unlinkSync generatedBuildFile
-            catch err
-              console.log colors.yellow err.message || err
-            db.update {name: dep.name}, modifier, {}
+        # prompt.ask colors.green("remove auto generated Configuration file #{colors.yellow generatedBuildFile}?"), 'y', platform.force(dep)
+        # .then (approved) ->
+        #   if approved
+        modifier = $unset:
+          "cache.generatedBuildFile": true
+        try
+          if fs.existsSync dep.cache.generatedBuildFile
+            if fs.lstatSync(dep.cache.generatedBuildFile).isDirectory()
+              fs.nuke dep.cache.generatedBuildFile
+            else
+              fs.unlinkSync generatedBuildFile
+        catch err
+          console.log colors.yellow err.message || err
+        db.update {name: dep.name}, modifier, {}
 
   findDepNamed = (name, root) ->
     if root?.name == name then return root
@@ -124,7 +124,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       graph.resolveDep _.extend configFile, d: root: runDir
 
   execute = (rawConfig, steps) ->
-    runConfig = cascade.deep rawConfig, platform.keywords(), platform.selectors()
+    runConfig = cascade.deep rawConfig, platform.keywords, platform.selectors
     resolveRoot runConfig
     .then (root) ->
       graph.all root
@@ -203,6 +203,8 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
             _p.each deps, (dep) -> cleanDep dep
           .then ->
             fs.nuke path.join(runDir, argv.cachePath)
+            fs.nuke path.join(runDir, 'bin')
+            fs.nuke path.join(runDir, 'build')
             console.log 'so fresh'
         else
           db.findOne name: resolvedName
@@ -230,7 +232,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       when 'fetch'
         execute rootConfig, ["fetch"]
       when "parse"
-        parsed = cascade.deep rootConfig, platform.keywords(), platform.selectors()
+        parsed = cascade.deep rootConfig, platform.keywords, platform.selectors
         console.log colors.magenta JSON.stringify parsed, 0, 2
       when 'configure'
         execute rootConfig, ["fetch","configure"]

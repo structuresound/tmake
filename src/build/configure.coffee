@@ -41,7 +41,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
         console.log 'copy', e
         copy e.matching, platform.pathSetting(e.from, dep), platform.pathSetting(e.to, dep), false
 
-  settings = ['ldFlags', 'cFlags', 'cxxFlags', 'frameworks', 'sources', 'headers', 'outputFile']
+  settings = ['linkerFlags', 'cFlags', 'cxxFlags', 'compilerFlags', 'frameworks', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'xcode', 'cmake', 'make' ].concat settings
 
   _build = _.pick(dep.build, filter)
@@ -89,12 +89,24 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
 
   cascadingPlatformArgs = (base) ->
     return unless base
-    flattened = cascade.deep _.clone(base), platform.keywords(), [platform.name()]
-    for i of flattened
-      flattened[i] = platform.parse flattened[i], dep
-    flattened
+    flattened = cascade.deep _.clone(base), platform.keywords, platform.selectors
+    platform.parse flattened, dep
 
   flags = require './flags'
+
+  stdCompilerFlags =
+    clang:
+      ios:
+        arch: "armv7"
+        isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
+        "miphoneos-version-min": "={SDK_VERSION}"
+        simulator:
+          "mios-simulator-version-min": "=6.1"
+          isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
+      arch: "{ARCH}"
+
+  stdMmFlags =
+    "fobjc-abi-version": 2
 
   stdCxxFlags =
     O: 2
@@ -104,17 +116,12 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     linux:
       std: "c++0x"
       pthread: true
-    ios:
-      target: "armv7a-apple-darwin-eabi"
-      isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
-      "miphoneos-version-min": "{SDK_VERSION}"
-      #/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.3.sdk
 
   stdFrameworks =
     mac:
       CoreFoundation: true
 
-  stdLdFlags =
+  stdLinkerFlags =
     # static: true
     linux:
       "lstdc++": true
@@ -126,9 +133,11 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     new Promise (resolve) ->
       raw =
         frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
-        cFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
+        cFlags: _.extend(cascadingPlatformArgs(_.omit stdCxxFlags, ['std','stdlib']), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
         cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
-        ldFlags: cascadingPlatformArgs(configuration.ldFlags || stdLdFlags)
+        linkerFlags: _.extend(cascadingPlatformArgs(stdLinkerFlags), cascadingPlatformArgs(configuration.linkerFlags))
+        compilerFlags: _.extend(cascadingPlatformArgs(stdCompilerFlags), cascadingPlatformArgs(configuration.compilerFlags))
+      console.log "selectors", platform.selectors, "compilerFlags", JSON.stringify raw.compilerFlags
       context =
         name: dep.name
         target: dep.target
@@ -136,8 +145,9 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
         raw: raw
         frameworks: flags.parseFrameworks raw.frameworks
         cFlags: flags.parseC raw.cFlags
-        cxxFlags: flags.parseCXX raw.cxxFlags
-        ldFlags: flags.parseLD raw.ldFlags
+        cxxFlags: flags.parseC raw.cxxFlags
+        linkerFlags: flags.parse raw.linkerFlags
+        compilerFlags: flags.parse raw.compilerFlags, join: " "
       globHeaders()
       .then (headers) ->
         context.headers = headers
