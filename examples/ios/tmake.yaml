@@ -1,0 +1,19 @@
+name: example_zlib
+version: 0.0.1
+target: bin
+platform: ios
+build:
+  with: xcode
+deps:
+  - git: madler/zlib
+    build:
+      with: ninja
+      sources:
+        matching:
+          - "*.c"
+      cFlags:
+        O: 3
+        Wall: true
+        Wwrite-strings: true
+        Wpointer-arith: true
+        Wconversion: true

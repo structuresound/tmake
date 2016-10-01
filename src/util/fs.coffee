@@ -5,6 +5,7 @@ path = require('path')
 CSON = require('cson')
 glob = require('glob-all')
 check = require('./check')
+yaml = require 'js-yaml'
 
 module.exports = (->
   fs.nuke = (path) ->
@@ -100,49 +101,42 @@ module.exports = (->
       if array.length then _p.resolve array[0]
       else _p.resolve undefined
 
-  fs.getConfigAsync = (configPath) ->
-    fs.findConfigAsync configPath
-    .then (resolved) ->
-      if resolved then fs.readConfigAsync resolved
+  defaultConfig = 'tmake'
 
-  fs.findConfigAsync = (configPath) ->
-    fs.existsAsync configPath
-    .then (exists) ->
-      if exists
-        _p.resolve configPath
-      else
-        # base = path.dirname configPath
-        prefix = path.basename configPath, path.extname configPath
-        # console.log 'config not found at', configPath
-        # console.log 'searching', prefix
-        fs.findOneAsync ["#{prefix}.*"]
+  fs.configExists = (configDir) ->
+    ext = ['yaml', 'json', 'cson']
+    for i of ext
+      filePath = "#{configDir}/#{defaultConfig}.#{ext[i]}"
+      return filePath if fs.existsSync(filePath)
+    console.log "no tmake.{yaml, json, cson} file present at #{configDir}"
+    return false
 
-  fs.readConfigAsync = (configPath) ->
-    #console.log 'reading', configPath
-    fs.existsAsync configPath
-    .then (exists) ->
-      if exists
+  fs.findConfigAsync = (configDir) ->
+    _p.resolve fs.configExists configDir
+
+  fs.readConfigAsync = (configDir) ->
+    fs.findConfigAsync configDir
+    .then (configPath) ->
+      if configPath
         fs.readFileAsync configPath, 'utf8'
         .then (data) ->
           switch path.extname configPath
-            when '.cson'
-              _p.resolve CSON.parse(data)
+            when '.cson' then _p.resolve CSON.parse(data)
             when '.json' then _p.resolve JSON.parse(data)
+            when '.yaml' then _p.resolve yaml.load(data)
             else _p.reject 'unknown config type', configPath
       else
-        console.log "no cson or json file present at #{path}"
         _p.resolve undefined
 
-  fs.readConfigSync = (configPath) ->
-    if fs.existsSync(configPath)
+  fs.readConfigSync = (configDir) ->
+    configPath = fs.configExists(configDir)
+    if configPath
       data = fs.readFileSync(configPath, 'utf8')
       switch path.extname configPath
         when '.cson' then CSON.parse(data)
         when '.json' then JSON.parse(data)
+        when '.yaml' then yaml.load(data)
         else throw new Error 'unknown config ext'
-    else
-      console.log "no cson or json file present at #{path}"
-      {}
-
+    else {}
   return fs
 )()

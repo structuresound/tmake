@@ -133,11 +133,10 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     new Promise (resolve) ->
       raw =
         frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
-        cFlags: _.extend(cascadingPlatformArgs(_.omit stdCxxFlags, ['std','stdlib']), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags))
+        cFlags: _.omit(_.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)), ['std','stdlib'])
         cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
         linkerFlags: _.extend(cascadingPlatformArgs(stdLinkerFlags), cascadingPlatformArgs(configuration.linkerFlags))
         compilerFlags: _.extend(cascadingPlatformArgs(stdCompilerFlags), cascadingPlatformArgs(configuration.compilerFlags))
-      console.log "selectors", platform.selectors, "compilerFlags", JSON.stringify raw.compilerFlags
       context =
         name: dep.name
         target: dep.target

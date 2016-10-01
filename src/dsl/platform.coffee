@@ -134,7 +134,6 @@ module.exports = (argv, rootConfig) ->
     if check(m, String)
       shellReplace m
     else if check(m, Object)
-      console.log 'replacing object', m,'with', objectReplace m, dict
       objectReplace m, dict
     else m
 
@@ -156,6 +155,9 @@ module.exports = (argv, rootConfig) ->
     if check conf, String
       _parse conf, dict
     else if check conf, Object
+      if conf.macro
+        console.log "parsing macro object, #{JSON.stringify conf}"
+        return objectReplace conf, dict || {}
       unless dict
         dict = conf
       allStrings _.clone(conf), (val) -> parse val, dict
@@ -212,21 +214,28 @@ module.exports = (argv, rootConfig) ->
         console.log colors.red 'failed to find command for', i.key
         commandObject.any(i.obj)
 
-  printRepl = (r) ->
+  printRepl = (r, localDict) ->
     string = "\n"
     _.each r.inputs, (v, k) ->
       if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
-      string += "#{k} : #{parse(v)}\n"
+      string += "#{k} : #{parse(v, localDict)}\n"
     string
 
-  replaceInFile = (f, r) ->
+  replaceInFile = (f, r, localDict) ->
     unless fs.existsSync f then throw new Error "no file at #{f}"
+    unless r.inputs then throw new Error "repl entry has no inputs object or array, #{JSON.stringify(r,0,2)}"
     stringFile = fs.readFileSync f, 'utf8'
     inputs = r.inputs
     _.each inputs, (v, k) ->
-      if r.directive then k = "#{r.directive.prepost || r.directive.pre || ''}#{k}#{r.directive.prepost || r.directive.post || ''}"
-      unless argv.quiet then console.log colors.green "[ replace ] #{k}", colors.magenta ": #{parse v}"
-      stringFile = replaceAll stringFile, k, parse(v)
+      if Array.isArray v
+        parsedKey = v[0]
+        parsedVal = v[1]
+      else
+        parsedKey = parse k, localDict
+        parsedVal = parse v, localDict
+      if r.directive then parsedKey = "#{r.directive.prepost || r.directive.pre || ''}#{parsedKey}#{r.directive.prepost || r.directive.post || ''}"
+      unless argv.quiet then console.log colors.green "[ replace ] #{parsedKey}", colors.magenta ": #{parsedVal}"
+      stringFile = replaceAll stringFile, parsedKey, parsedVal
     format =
       ext: path.extname f
       name: path.basename f, path.extname f
@@ -238,7 +247,7 @@ module.exports = (argv, rootConfig) ->
       format.name = path.basename parts[0]
       format.ext = parts.slice(1).join('.')
     editedFormat = _.extend format, _.pick r, Object.keys(format)
-    editedFormat.base = format.name + format.ext
+    editedFormat.base = "#{format.name}.#{format.ext}"
     newPath = path.format editedFormat
     existingString = ""
     if fs.existsSync newPath

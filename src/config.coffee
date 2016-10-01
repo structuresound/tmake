@@ -2,7 +2,7 @@ require './util/string'
 path = require('path')
 colors = require ('chalk')
 check = require './util/check'
-CSON = require('cson')
+yaml = require 'js-yaml'
 fs = require('./util/fs')
 
 
@@ -22,19 +22,16 @@ module.exports = (argv, binDir, npmDir) ->
 
   cli = require('./cli')(pgname)
 
-  defaultConfig = 'package.cson'
-  configPath = runDir + '/' + (argv.config || defaultConfig)
-
   init = ->
-    unless fs.existsSync(configPath)
+    unless fs.findConfigAsync runDir
       cli.createPackage()
       .then (config) ->
-        fs.writeFileSync defaultConfig, CSON.stringify config
+        fs.writeFileSync "#{runDir}/tmake.yaml", yaml.dump config
     else
-      console.log "aborting init, this folder already has a package.cson file present"
+      console.log "aborting init, this folder already has a package file present"
 
   run: ->
-    fs.getConfigAsync configPath
+    fs.readConfigAsync runDir
     .then (config) ->
       throw config if check config, Error
       argv._[0] ?= 'all'
