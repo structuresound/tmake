@@ -54,6 +54,8 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
           _p.resolve()
       when "configure"
         _configure(argv, dep, platform, db, graph).execute()
+        .then ->
+          _install(argv, dep, platform, db).installHeaders()
       when "build"
         _build(argv, dep, platform, db, false).execute()
       when "install"

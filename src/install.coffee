@@ -112,5 +112,8 @@ module.exports = (argv, dep, platform, db) ->
       if argv.verbose then console.log colors.green "installed"
       db.update {name: dep.name}, {$set: {"cache.installed": true}}, {}
 
+  installHeaders: installHeaders
+  installLibs: installLibs
+  installAssets: installAssets
   execute: execute
   copy: copy

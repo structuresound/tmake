@@ -6,6 +6,14 @@
 This tool is currently experimental, and possibly not useful, examine at your own risk.
 check out (not my project) https://conan.io if you need c++ dependency management today
 
+## What ?
+
+* npm for c++, (but not really because scripting vs symbols, em i rite?)
+
+## Why ?
+
+* native code runs fast, is safe, saves electricity
+
 ## 'it' can ->
 
 * fetch
@@ -22,6 +30,31 @@ check out (not my project) https://conan.io if you need c++ dependency managemen
   * no 'make install' everything is stored locally, and dependencies include locally
 * test
   * run tests -- not implemented yet
+
+other things of note
+
+* can be run directly with node or as a docker image (if linux is suitable host environment)
+
+## current roadmap, things aren't done that need to be
+
+host: yaml configs as json in a central repo
+hash: configuration against settings + source files
+cache: store static_libs + headers against config hash
+
+cross-compile via xCode to iOS
+cross-compile via docker to raspberry pi + other embedded linux
+
+## philosophies
+
+* always be cross-compiling
+* statically link all the things
+* declarative yaml / json only, no imperative configuration logic
+* can override settings in any dependency from any point below it in the config tree
+* cascading selectors make declarative style DRY
+* support other build tools (ninja, cmake, make, gyp)
+* be embeddable in another project / build system
+* avoid use of any globals on dev machine, project folder is the universe
+* instead of publishing / packaging built source, just pull cached libs based on system / config hash
 
 ## To Install
 ```bash
@@ -46,10 +79,6 @@ fetches ninja binary when needed
   * build-essentials on linux
   * this doesn't work yet on windows, but will some day
 
-## roadmap / next
-
-currently working on getting central repo server built (with tmake / dogfood)
-
 ## Run an example
 ```bash
 mkdir tmake-example && cd tmake-example
@@ -61,64 +90,43 @@ curl http://127.0.0.1:8080/hello
 
 ## What's the build file look like?
 
-this would build google's libre2
+a simple cross platform zlib config
 
-```coffee
-git: "google/re2"
+```yaml
+---
+git:
+  repository: madler/zlib
+  tag: v1.2.8
+configure:
+  replace:
+    gzguts:
+      matching:
+        - "gzguts.h"
+      inputs:
+        unistd:
+        - "#ifdef _LARGEFILE64_SOURCE"
+        - "#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
 build:
-  with: "ninja"
+  with: ninja
   sources:
-    ["re2/*.cc", "util/*.cc"]
-  "linux mac":
-    sources: ["re2/*.cc", "util/*.cc", "!util/threadwin.cc"]
-  cflags:
-    O3: 1
-    std: "c++11"
-    linux:
-      pthread: 1
+    matching:
+      - "*.c"
+  compilerFlags:
+    ios:
+      miphoneos-version-min: "=6.0"
+  cFlags:
+    O: 3
+    Wall: true
+    Wwrite-strings: true
+    Wpointer-arith: true
+    Wconversion: true
+    ios:
+      "fembed-bitcode": true
+
 ```
-
-## Use a dependency
-
-To depend on that re2 lib?
-
-```coffee
-name: myProject
-sources: ["src/*.cpp"]
-build: with: "ninja"
-deps: [
-  repo: "google/re2"
-  build: cflags: linux: Wall: 0 #override something on our dep
-]
-```
-
-## Reasons
-
-* npm for c++, easier said then done
-* native code can run fast, let's make it easy to share and build
-
-# some influences / projects that inform the code
-
-* social c++ (biiCode + conan.io)
-* expressive configuration management (coffee / cson)
-* structured tree as configuration file (json, mongo query language)
-* export to a fast build system (cmake / ninja)
-* lint / test packages as part of the contribute process (cocoapods)
-* transform existing files using globs and streams (gulp / vinyl fs)
-* flat dependencies / shallow trees (npm)
-* no non-expiring caches locally (docker)
-
-## philosophies
-
-* structured data, easy to override anything all the way up a dependency tree
-* overrides using css style selectors, object keys = selectors
-* support other build tools
-* be embeddable in another project / build system
-* no globals, where possible - project folder is the universe
-* cache all the way to .a files using hash of config file
 
 ## Contributing
-This tool is currently experimental, and possibly not useful, examine at your own risk.
+see 'warning' at the top, *update* this project is ALMOST useful now, holler at structuresound@gmail.com if you're interested in this project
 
 ## Release History
 _(Nothing yet)_
