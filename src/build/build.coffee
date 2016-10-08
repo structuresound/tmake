@@ -52,6 +52,6 @@ module.exports = (argv, dep, platform, db, buildTests) ->
 
   execute: ->
     return Promise.resolve() unless buildSettings
-    platform.iterate buildSettings, commandBlock, ['cFlags', 'cxxFlags', 'frameworks', 'linkerFlags', 'sources', 'headers', 'outputFile']
+    platform.iterate buildSettings, commandBlock, ['cFlags', 'cxxFlags', 'frameworks', 'compilerFlags', 'linkerFlags', 'sources', 'headers', 'outputFile']
     .then ->
       db.update {name: dep.name}, {$set: {"#{cachePath}": true}}, {}

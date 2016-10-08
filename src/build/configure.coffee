@@ -97,7 +97,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
   stdCompilerFlags =
     clang:
       ios:
-        arch: "armv7"
+        arch: "arm64"
         isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
         "miphoneos-version-min": "={SDK_VERSION}"
         simulator:
