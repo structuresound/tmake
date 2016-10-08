@@ -232,6 +232,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
       when 'fetch'
         execute rootConfig, ["fetch"]
       when "parse"
+        console.log "parsing with selectors:\n #{platform.selectors}"
         parsed = cascade.deep rootConfig, platform.keywords, platform.selectors
         console.log colors.magenta JSON.stringify parsed, 0, 2
       when 'configure'

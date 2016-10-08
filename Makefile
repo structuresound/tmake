@@ -5,8 +5,8 @@ npm:
 	grunt coffee
 	npm publish
 
-tmake: base
-	cd docker/tmake && docker build -t 1e1f/tmake --no-cache .
+docker: base
+	docker build -t 1e1f/tmake --no-cache .
 
 server:
 	cd server && docker build -t 1e1f/tmake:server .

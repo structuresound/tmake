@@ -1,0 +1,15 @@
+name: example_zlib
+version: 0.0.1
+target: bin
+platform: ios
+build:
+  with: xcode
+deps:
+  - fetch: "http://gstreamer.freedesktop.org/src/gstreamer/gstreamer-1.8.3.tar.xz"
+    build: ninja
+    deps:
+    - fetch: "http://ftp.gnome.org/pub/gnome/sources/glib/2.50/glib-2.50.0.tar.xz"
+      build: ninja
+      deps:
+      - fetch: "ftp://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz"
+        build: ninja

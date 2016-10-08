@@ -4,7 +4,7 @@ expect = require('chai').expect
 assert = require('chai').assert
 cascade = require '../lib/dsl/cascade.js'
 
-selectors = ['win', 'mac', 'x64', 'x86', 'clion']
+selectors = ['win', 'mac', 'linux', 'ios', 'android', 'x64', 'x86', 'simulator', 'clang', 'gcc', 'clion']
 
 testAObject =
   useAccel: 0
@@ -86,6 +86,23 @@ testBExpected = [
   other: "setting"
 ]
 
+stdCompilerFlags =
+  clang:
+    ios:
+      arch: "arm64"
+    arch: "x86"
+
+testCSelectors = [
+  ['ios', 'clang']
+  ['linux', 'gcc']
+]
+
+testCExpected = [
+  arch: "arm64"
+,
+  {}
+]
+
 describe 'check', ->
   it 'matches selectors', (done) ->
     assert.ok cascade.matchesSelectors ['ios', 'mac', 'win'], 'x86 mac win'
@@ -95,10 +112,12 @@ describe 'check', ->
     assert.ok !cascade.matchesSelectors ['apple', 'bananna'], 'x86'
     assert.ok !cascade.matchesSelectors ['apple', 'bananna'], ['x86', 'ios']
     done()
-  it 'parse shallow', (done) ->
+  it 'cascade selectors shallow', (done) ->
     for i of testASelectors
       assert.deepEqual cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]
     done()
-  it 'parse deep', ->
+  it 'cascade selectors deep', ->
     for i of testBSelectors
       expect(cascade.deep(testObjB, selectors, testBSelectors[i])).to.deep.equal testBExpected[i]
+    for i of testCSelectors
+      expect(cascade.deep(stdCompilerFlags, selectors, testCSelectors[i])).to.deep.equal testCExpected[i]

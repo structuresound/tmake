@@ -53,5 +53,5 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-copy'
 
   grunt.registerTask 'build', ['coffee', 'copy']
-  grunt.registerTask 'test', ['coffee', 'simplemocha']
+  grunt.registerTask 'test', ['coffee', 'copy', 'simplemocha']
   grunt.registerTask 'default', ['coffee', 'copy', 'simplemocha', 'watch']

@@ -9,18 +9,8 @@ argv =
 graph = require('../lib/graph')(argv)
 path = require('path')
 
-depA =
-  name: "auto"
-  git: "hello/world"
-
-depB =
-  name: "manual"
-  git: "hello/world"
-  path:
-    includeDirs: [
-      "testIncludeDir"
-      "another"
-    ]
+{ depA } = require './fixtures'
+{ depB } = require './fixtures'
 
 describe 'graph', ->
   it 'source/include', ->

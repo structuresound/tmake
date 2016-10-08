@@ -207,6 +207,11 @@ int main(int argc, char const *argv[]) {
         res << "That was easy wasn't it !\n";
       });
 
+  mux.handle("/api/v1/packages").get(
+      [](served::response &res, const served::request &req) {
+        res << "That was easy wasn't it !\n";
+      });
+
   insertTest();
   queryTest();
 

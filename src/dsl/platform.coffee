@@ -22,7 +22,17 @@ platformNames =
   ios: "ios"
   android: "android"
 
-validSelectors = [
+kits = [
+  "cocoa"
+  "sdl"
+  "juce"
+]
+
+environments = [
+  "simulator"
+]
+
+ides = [
   # IDE's
   "xcode"
   "clion"
@@ -30,16 +40,6 @@ validSelectors = [
   "vscode"
   "codeblocks"
   "appcode"
-  # Platforms
-  "cocoa"
-  "sdl"
-  "juce"
-  # OTHERS
-  "simulator"
-  # COMPILERS
-  "clang"
-  "gcc"
-  "msvc"
 ]
 
 compilers = [
@@ -99,18 +99,22 @@ cache = {}
 macro = {}
 
 module.exports = (argv, rootConfig) ->
-  argvSelectors = Object.keys _.pick argv, validSelectors
   targetPlatform = ->
     argv.platform || rootConfig.platform || platformNames[os.platform()]
 
+
+  keywords = _.uniq Object.keys(platformNames)
+  .concat(validArchitectures[targetPlatform()])
+  .concat compilers
+  .concat kits
+  .concat ides
+  .concat environments
+
+  argvSelectors = Object.keys _.pick argv, keywords
   argv.compiler ?= defaultPlatformCompiler[targetPlatform()]
   argvSelectors.push argv.compiler
 
-  selectors = [ targetPlatform()].concat(argvSelectors)
-
-  keywords = _.uniq(Object.keys(platformNames)
-  .concat(validArchitectures[targetPlatform()])
-  .concat(validSelectors))
+  selectors = [targetPlatform()].concat(argvSelectors)
 
   shellReplace = (m) ->
     if cache[m] then cache[m]

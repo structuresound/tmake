@@ -1,0 +1,30 @@
+---
+user: leif
+git:
+  repository: madler/zlib
+  tag: v1.2.8
+configure:
+  replace:
+    gzguts:
+      matching:
+        - "gzguts.h"
+      inputs:
+        unistd:
+        - "#ifdef _LARGEFILE64_SOURCE"
+        - "#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
+build:
+  with: ninja
+  sources:
+    matching:
+      - "*.c"
+  compilerFlags:
+    ios:
+      miphoneos-version-min: "=6.0"
+  cFlags:
+    O: 3
+    Wall: true
+    Wwrite-strings: true
+    Wpointer-arith: true
+    Wconversion: true
+    ios:
+      "fembed-bitcode": true

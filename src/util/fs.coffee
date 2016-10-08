@@ -116,17 +116,19 @@ module.exports = (->
 
   fs.readConfigAsync = (configDir) ->
     fs.findConfigAsync configDir
-    .then (configPath) ->
-      if configPath
-        fs.readFileAsync configPath, 'utf8'
-        .then (data) ->
-          switch path.extname configPath
-            when '.cson' then _p.resolve CSON.parse(data)
-            when '.json' then _p.resolve JSON.parse(data)
-            when '.yaml' then _p.resolve yaml.load(data)
-            else _p.reject 'unknown config type', configPath
-      else
-        _p.resolve undefined
+    .then (configPath) -> fs.parseFileAsync configPath
+
+  fs.parseFileAsync = (configPath) ->
+    if configPath
+      fs.readFileAsync configPath, 'utf8'
+      .then (data) ->
+        switch path.extname configPath
+          when '.cson' then _p.resolve CSON.parse(data)
+          when '.json' then _p.resolve JSON.parse(data)
+          when '.yaml' then _p.resolve yaml.load(data)
+          else _p.reject 'unknown config type', configPath
+    else
+      _p.resolve undefined
 
   fs.readConfigSync = (configDir) ->
     configPath = fs.configExists(configDir)

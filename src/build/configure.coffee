@@ -6,8 +6,10 @@ colors = require ('chalk')
 check = require('../util/check')
 cascade = require('../dsl/cascade')
 sh = require('../util/sh')
+_log = require('../util/log')
 
 module.exports = (argv, dep, platform, db, graph, configureTests) ->
+  log = _log argv
   commands =
     any: (obj) -> commands.shell(obj)
     ninja: -> commands.with 'ninja'
@@ -29,16 +31,16 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     create: (obj) ->
       Promise.each platform.iterable(obj), (e) ->
         filePath = path.join dep.d.source, e.path
-        if argv.verbose then console.log 'create file', filePath
+        log.verbose "create file #{filePath}"
         fs.writeFileAsync filePath, e.string, encoding: 'utf8'
 
     with: (system) ->
-      if argv.verbose then console.log 'configure for:', system
+      log.verbose "configure for: #{system}"
       configureFor system
 
     copy: (obj) ->
       Promise.each platform.iterable(obj), (e) ->
-        console.log 'copy', e
+        log.quiet "copy #{e}"
         copy e.matching, platform.pathSetting(e.from, dep), platform.pathSetting(e.to, dep), false
 
   settings = ['linkerFlags', 'cFlags', 'cxxFlags', 'compilerFlags', 'frameworks', 'sources', 'headers', 'outputFile']
@@ -59,7 +61,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
       cwd: from
       followSymlinks: false
     ).pipe(fs.map (file, emit) ->
-      if argv.verbose then console.log '+ ', path.relative file.cwd, file.path
+      log.verbose "+ #{path.relative file.cwd, file.path}"
       if flatten then file.base = path.dirname file.path
       newPath = to + '/' + path.relative file.base, file.path
       filePaths.push path.relative dep.d.home, newPath
@@ -77,12 +79,10 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
 
   globSources = ->
     patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
-    if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.project, dep.d.source
 
   linkNames = ->
     patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
-    if argv.dev then console.log 'glob src:', dep.d.source, ":/", patterns
     fs.glob patterns, dep.d.source, dep.d.source
 
   globDeps = -> graph.deps dep
@@ -137,6 +137,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
         cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
         linkerFlags: _.extend(cascadingPlatformArgs(stdLinkerFlags), cascadingPlatformArgs(configuration.linkerFlags))
         compilerFlags: _.extend(cascadingPlatformArgs(stdCompilerFlags), cascadingPlatformArgs(configuration.compilerFlags))
+      log.verbose raw
       context =
         name: dep.name
         target: dep.target
