@@ -35,12 +35,15 @@ test = (args) ->
   _runner.run()
 
 describe 'tmake', ->
-  fs.nuke runDir
-  sh.mkdir '-p', runDir
   @timeout 60000
   _tmake = require('../lib/tmake')(argv(), helloWorld, undefined, db, userDb, settingsDb)
 
+  it 'can clean the test folder', ->
+    fs.nuke runDir
+    expect(fs.existsSync runDir).to.equal(false)
+
   it 'can fetch a source tarball', ->
+    sh.mkdir '-p', runDir
     @slow 1000
     test _: ["fetch", "googletest"]
     .then ->

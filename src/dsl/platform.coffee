@@ -238,7 +238,8 @@ module.exports = (argv, rootConfig) ->
         parsedKey = parse k, localDict
         parsedVal = parse v, localDict
       if r.directive then parsedKey = "#{r.directive.prepost || r.directive.pre || ''}#{parsedKey}#{r.directive.prepost || r.directive.post || ''}"
-      unless argv.quiet then console.log colors.green "[ replace ] #{parsedKey}", colors.magenta ": #{parsedVal}"
+      if argv.verbose
+        if stringFile.includes(parsedKey) then console.log colors.green "[ replace ] #{parsedKey}", colors.magenta ": #{parsedVal}"
       stringFile = replaceAll stringFile, parsedKey, parsedVal
     format =
       ext: path.extname f
@@ -257,7 +258,7 @@ module.exports = (argv, rootConfig) ->
     if fs.existsSync newPath
       existingString = fs.readFileSync newPath, 'utf8'
     if existingString != stringFile
-      console.log '!!! write to', newPath
+      console.log 'replaced some strings in', newPath
       fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
   force: (dep) ->

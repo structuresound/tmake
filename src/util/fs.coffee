@@ -130,15 +130,18 @@ module.exports = (->
     else
       _p.resolve undefined
 
+  fs.parseFileSync = (configPath) ->
+    data = fs.readFileSync(configPath, 'utf8')
+    switch path.extname configPath
+      when '.cson' then CSON.parse(data)
+      when '.json' then JSON.parse(data)
+      when '.yaml' then yaml.load(data)
+      else throw new Error 'unknown config ext'
+
   fs.readConfigSync = (configDir) ->
     configPath = fs.configExists(configDir)
     if configPath
-      data = fs.readFileSync(configPath, 'utf8')
-      switch path.extname configPath
-        when '.cson' then CSON.parse(data)
-        when '.json' then JSON.parse(data)
-        when '.yaml' then yaml.load(data)
-        else throw new Error 'unknown config ext'
+      fs.parseFileSync configPath
     else {}
   return fs
 )()
