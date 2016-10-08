@@ -321,6 +321,14 @@ deps:
                 bcon:
                 - '#include <bcon.h>'
                 - '#include <libbson-1.0/bcon.h>'
+            include_bson_compat:
+              matching:
+              - src/yajl/*.h
+              - src/yajl/*.c
+              inputs:
+                yaji:
+                - '#include "bson-compat.h"'
+                - '#include <libbson-1.0/bson-compat.h>'
         build:
           with: ninja
           sources:
