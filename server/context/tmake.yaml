@@ -342,16 +342,12 @@ deps:
               stdlib: libc++
           outputFile: libbson-1.0.a
         path:
-          includeDirs:
-          - source/src
-          - source/src/bson
-          - source/src/yajl
           install:
             headers:
             - from: source/src/bson
               to: include/libbson-1.0
             - from: source/src/yajl
-              to: include/libbson-1.0
+              to: include/yajl
             - from: build/src/bson
               to: include/libbson-1.0
       - git:
