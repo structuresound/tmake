@@ -1,4 +1,3 @@
-_ = require 'underscore'
 Promise = require 'bluebird'
 colors = require ('chalk')
 sh = require('shelljs')

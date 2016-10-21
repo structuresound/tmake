@@ -6,30 +6,51 @@ path = require('path')
 sh = require('shelljs')
 colors = require ('chalk')
 _ninja = require('./ninja')
+# _toolchain = require './toolchain'
+{ fileHash } = require '../util/hash'
+_log = require('../util/log')
 
-module.exports = (argv, dep, platform) ->
-  ninja = _ninja(argv, dep, platform)
+module.exports = (argv, dep, platform, db) ->
+  throw new Error "no db provided to cmake" unless db
 
-  run = (command) ->
-    if argv.verbose then console.log colors.green("run cmake command: " + command)
+  ninja = _ninja(argv, dep, platform, db)
+  # toolchain = _toolchain(argv, dep, platform, db)
+  log = _log argv
+
+  run = (ninjaPath) ->
+    command = ninjaPath
+    log.quiet command
     new Promise (resolve, reject) ->
       sh.cd dep.d.build
       sh.exec command, (code, stdout, stderr) ->
-        if code then reject "cmake exited with code " + code + "\n" + command
+        if code then reject new Error "cmake exited with code #{code}\nfull command: #{command} \nfolder: #{dep.d.build}"
         else if stdout then resolve stdout
         else if stderr then resolve stderr
 
-  configure = (ninjaPath) ->
+  doConfiguration = (ninjaPath) ->
     cMakeDefines = _.extend
       LIBRARY_OUTPUT_PATH: dep.d.install.libraries[0].from
-    , dep.build.cmake?.configure
+    , dep.configure?.defines
     command = "cmake -G Ninja -DCMAKE_MAKE_PROGRAM=#{ninjaPath} #{dep.d.project}"
     _.each cMakeDefines, (value, key) ->
       if typeof value == 'string' or value instanceof String
         if value.startsWith '~/'
           value = "#{dep.d.home}/#{value.slice(2)}"
       command += " -D#{key}=#{value}"
+    log.quiet command
     run command
+
+  configure = (ninjaPath) ->
+    buildFile = path.join dep.d.project, dep.cache.buildFile
+    fileHash(buildFile)
+    .then (configHash) ->
+      if dep.cache.configuration == configHash
+        return Promise.resolve()
+      else
+        doConfiguration(ninjaPath)
+        .then ->
+          db.update {name: dep.name}, {$set: {"cache.configuration": configHash}}
+
 
   ###
   # CONFIG GEN
@@ -132,9 +153,8 @@ module.exports = (argv, dep, platform) ->
     .then ->
       Promise.resolve list
 
-  generate: (context) ->
-    if argv.verbose then console.log colors.green('configure cmake with context:'), JSON.stringify context,0,2
-    generateLists [header, boost, includeDirectories, sources, flags, target, link, assets], context
+  generate: ->
+    generateLists [header, boost, includeDirectories, sources, flags, target, link, assets], dep.configuration
 
   configure: ->
     ninja.getNinja()

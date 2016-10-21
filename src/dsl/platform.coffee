@@ -22,6 +22,11 @@ platformNames =
   ios: "ios"
   android: "android"
 
+archNames =
+  'x64': 'x86_64'
+  'arm': 'armv7a'
+  'arm64': 'arm64'
+
 kits = [
   "cocoa"
   "sdl"
@@ -42,6 +47,10 @@ ides = [
   "appcode"
 ]
 
+buildSystems = [
+  'cmake'
+  'ninja'
+]
 compilers = [
   "clang"
   "gcc"
@@ -75,9 +84,9 @@ macros =
     OSX_PLATFORM: "$({XC_RUN} --show-sdk-platform-path)"
     OSX_SDK: "$({XC_RUN} --show-sdk-path)"
   'mac linux':
-    OS_ENDIANNESS: os.endianness()
     ARCH: "x86_64"
   ios:
+    HOST_PLATFORM: "mac"
     XC_PLATFORM: "iphoneos"
     XC_DIR: "iPhoneOS"
     ARCH: "arm64"
@@ -102,9 +111,14 @@ module.exports = (argv, rootConfig) ->
   targetPlatform = ->
     argv.platform || rootConfig.platform || platformNames[os.platform()]
 
+  macros.OS_ENDIANNESS = os.endianness()
+  macros.HOST_PLATFORM = platformNames[os.platform()]
+  macros.HOST_ARCHITECTURE = archNames[os.arch()]
+  macros.TARGET_PLATFORM = targetPlatform()
 
   keywords = _.uniq Object.keys(platformNames)
   .concat(validArchitectures[targetPlatform()])
+  .concat buildSystems
   .concat compilers
   .concat kits
   .concat ides
@@ -160,7 +174,7 @@ module.exports = (argv, rootConfig) ->
       _parse conf, dict
     else if check conf, Object
       if conf.macro
-        console.log "parsing macro object, #{JSON.stringify conf}"
+        # log.verbose "parsing macro object, #{JSON.stringify conf}"
         return objectReplace conf, dict || {}
       unless dict
         dict = conf
@@ -168,6 +182,15 @@ module.exports = (argv, rootConfig) ->
     else conf
 
   _.extend macro, cascade.deep(macros, keywords, [targetPlatform()])
+
+  select = (base, options) ->
+    return unless base
+    options ?= {}
+    if options.ignore
+      options.keywords = _.difference keywords, options.ignore
+      options.selectors = _.difference selectors, options.ignore
+    flattened = cascade.deep _.clone(base), options.keywords || keywords, options.selectors || selectors
+    parse flattened, options.dict
 
   # console.log macro, 'cache\n', cache
   arrayify = (val) ->
@@ -214,9 +237,7 @@ module.exports = (argv, rootConfig) ->
         key: k
     Promise.each validCommands, (i) ->
       if commandObject[i.key] then commandObject[i.key](i.obj)
-      else
-        console.log colors.red 'failed to find command for', i.key
-        commandObject.any(i.obj)
+      else commandObject.any(i.obj)
 
   printRepl = (r, localDict) ->
     string = "\n"
@@ -258,7 +279,7 @@ module.exports = (argv, rootConfig) ->
     if fs.existsSync newPath
       existingString = fs.readFileSync newPath, 'utf8'
     if existingString != stringFile
-      console.log 'replaced some strings in', newPath
+      # console.log 'replaced some strings in', newPath
       fs.writeFileAsync newPath, stringFile, encoding: 'utf8'
 
   force: (dep) ->
@@ -268,6 +289,7 @@ module.exports = (argv, rootConfig) ->
   pathSetting: pathSetting
   parse: parse
   arrayify: arrayify
+  select: select
   replaceInFile: replaceInFile
   interpolate: interpolate
   iterable: iterable

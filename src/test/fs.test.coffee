@@ -3,11 +3,11 @@ check = require '../lib/util/check'
 fs = require('../lib/util/fs')
 { expect } = require('chai')
 
-npmDir = process.cwd()
+testArgv = require './testArgv'
 
 describe 'fs', ->
   it 'can parse a yaml file', ->
-    fs.parseFileAsync "#{npmDir}/src/test/fixtures/libbson.yaml"
+    fs.parseFileAsync "#{testArgv.npmDir}/src/test/configurations/libbson.yaml"
     .then (config) ->
       throw config if check config, Error
       expect(config.git.repository).to.equal("mongodb/libbson")

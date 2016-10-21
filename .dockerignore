@@ -1,7 +1,9 @@
+lib
+meteor
+node_modules
 server
 test
 tests
-lib
-node_modules
+tests_cache
 .DS_Store
 .git

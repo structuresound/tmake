@@ -2,13 +2,21 @@ _ = require 'underscore'
 Promise = require 'bluebird'
 fs = require '../util/fs'
 path = require('path')
-colors = require ('chalk')
 check = require('../util/check')
-cascade = require('../dsl/cascade')
 sh = require('../util/sh')
 _log = require('../util/log')
+{ jsonStableHash } = require '../util/hash'
+{ stringHash } = require '../util/hash'
+{ fileHash } = require '../util/hash'
+_toolchain = require './toolchain'
+_graph = require '../graph'
+_fetch = require '../util/fetch'
 
-module.exports = (argv, dep, platform, db, graph, configureTests) ->
+module.exports = (argv, dep, platform, db, configureTests) ->
+  toolchain = _toolchain(argv, dep, platform, db)
+  graph = _graph(argv, dep, platform, db)
+  fetch = _fetch(argv, dep, platform, db)
+
   log = _log argv
   commands =
     any: (obj) -> commands.shell(obj)
@@ -31,19 +39,21 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     create: (obj) ->
       Promise.each platform.iterable(obj), (e) ->
         filePath = path.join dep.d.source, e.path
-        log.verbose "create file #{filePath}"
-        fs.writeFileAsync filePath, e.string, encoding: 'utf8'
+        existing = fs.readIfExists filePath
+        if existing != e.string
+          log.verbose "create file #{filePath}"
+          fs.writeFileAsync filePath, e.string, encoding: 'utf8'
 
     with: (system) ->
       log.verbose "configure for: #{system}"
-      configureFor system
+      createBuildFileFor system
 
     copy: (obj) ->
       Promise.each platform.iterable(obj), (e) ->
         log.quiet "copy #{e}"
         copy e.matching, platform.pathSetting(e.from, dep), platform.pathSetting(e.to, dep), false
 
-  settings = ['linkerFlags', 'cFlags', 'cxxFlags', 'compilerFlags', 'frameworks', 'sources', 'headers', 'outputFile']
+  settings = ['linkerFlags', 'cFlags', 'cxxFlags', 'compilerFlags', 'defines', 'frameworks', 'sources', 'headers', 'outputFile']
   filter = [ 'with', 'ninja', 'xcode', 'cmake', 'make' ].concat settings
 
   _build = _.pick(dep.build, filter)
@@ -53,8 +63,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     _build = _.pick(dep.test.build, filter)
     _configuration = dep.test.configure
 
-  configuration = _.extend _build, dep.configure
-
+  configuration = _.extend _build, _configuration
   copy = (patterns, from, to, flatten) ->
     filePaths = []
     fs.wait(fs.src(patterns,
@@ -81,16 +90,7 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
     fs.glob patterns, dep.d.project, dep.d.source
 
-  linkNames = ->
-    patterns = platform.globArray(configuration.sources?.matching || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'], dep)
-    fs.glob patterns, dep.d.source, dep.d.source
-
   globDeps = -> graph.deps dep
-
-  cascadingPlatformArgs = (base) ->
-    return unless base
-    flattened = cascade.deep _.clone(base), platform.keywords, platform.selectors
-    platform.parse flattened, dep
 
   flags = require './flags'
 
@@ -103,10 +103,10 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
         simulator:
           "mios-simulator-version-min": "=6.1"
           isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
-      arch: "{ARCH}"
+      # arch: "{ARCH}"
 
-  stdMmFlags =
-    "fobjc-abi-version": 2
+  # stdMmFlags =
+  #   "fobjc-abi-version": 2
 
   stdCxxFlags =
     O: 2
@@ -129,104 +129,130 @@ module.exports = (argv, dep, platform, db, graph, configureTests) ->
     mac:
       "lc++": true
 
-  createContext = ->
-    new Promise (resolve) ->
-      raw =
-        frameworks: cascadingPlatformArgs(configuration.frameworks || stdFrameworks)
-        cFlags: _.omit(_.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cFlags || configuration.cxxFlags)), ['std','stdlib'])
-        cxxFlags: _.extend(cascadingPlatformArgs(stdCxxFlags), cascadingPlatformArgs(configuration.cxxFlags || configuration.cFlags))
-        linkerFlags: _.extend(cascadingPlatformArgs(stdLinkerFlags), cascadingPlatformArgs(configuration.linkerFlags))
-        compilerFlags: _.extend(cascadingPlatformArgs(stdCompilerFlags), cascadingPlatformArgs(configuration.compilerFlags))
-      log.verbose raw
-      context =
-        name: dep.name
-        target: dep.target
-        npmDir: argv.npmDir
-        raw: raw
-        frameworks: flags.parseFrameworks raw.frameworks
-        cFlags: flags.parseC raw.cFlags
-        cxxFlags: flags.parseC raw.cxxFlags
-        linkerFlags: flags.parse raw.linkerFlags
-        compilerFlags: flags.parse raw.compilerFlags, join: " "
-      globHeaders()
-      .then (headers) ->
-        context.headers = headers
-        globSources()
-      .then (sources) ->
-        context.sources = sources
-        linkNames()
-      .then (linkNames) ->
-        context.linkNames = linkNames
-        globDeps()
-      .then (depGraph) ->
-        if depGraph.length
-          # gather = []
-          # _.each depGraph, (subDep) ->
-          #   _.each subDep.d.install.headers, (ft) ->
-          #     gather.push ft.includeFrom || ft.to
-          # context.includeDirs = _.uniq gather
-          context.libs = _.chain depGraph
-          .map (d) -> _.map d.libs, (lib) -> path.join(d.d.home, lib)
-          .flatten()
-          .value()
-          .reverse()
-        context.includeDirs = _.union ["#{dep.d.home}/include"], dep.d.includeDirs
-        if argv.verbose then console.log colors.yellow JSON.stringify context.includeDirs, 0, 2
-        resolve context
+  jsonFlags =
+    frameworks: platform.select(configuration.frameworks || stdFrameworks)
+    cFlags: _.omit(_.extend(platform.select(stdCxxFlags), platform.select(configuration.cFlags || configuration.cxxFlags)), ['std','stdlib'])
+    cxxFlags: _.extend(platform.select(stdCxxFlags), platform.select(configuration.cxxFlags || configuration.cFlags))
+    linkerFlags: _.extend(platform.select(stdLinkerFlags), platform.select(configuration.linkerFlags))
+    compilerFlags: _.extend(platform.select(stdCompilerFlags), platform.select(configuration.compilerFlags))
 
-  buildFilePath = (systemName) ->
+  selectHostToolchain = ->
+    compiler = argv.compiler
+    if dep.build then compiler ?= dep.build.cc
+    if dep.configure then compiler ?= dep.configure.cc
+
+    hostToolchain = toolchain.select(dep.toolchain)
+    log.verbose hostToolchain
+    log.verbose "look for compiler #{compiler}"
+    cc = toolchain.pathForTool hostToolchain[compiler]
+    hostToolchain: hostToolchain
+    compiler: compiler
+    cc: cc
+
+  createContext = ->
+    dep.toolchainConfiguration =
+      target: dep.target
+      frameworks: flags.parseFrameworks jsonFlags.frameworks
+      cFlags: flags.parseC jsonFlags.cFlags
+      cxxFlags: flags.parseC jsonFlags.cxxFlags
+      linkerFlags: flags.parse jsonFlags.linkerFlags
+      compilerFlags: flags.parse jsonFlags.compilerFlags, join: " "
+    _.extend dep.toolchainConfiguration, selectHostToolchain()
+    dep.configuration = _.clone dep.toolchainConfiguration
+
+  globFiles = ->
+    globHeaders()
+    .then (headers) ->
+      dep.configuration.headers = headers
+      globSources()
+    .then (sources) ->
+      dep.configuration.sources = sources
+      globDeps()
+    .then (depGraph) ->
+      if depGraph.length
+        dep.configuration.libs = _.chain depGraph
+        .map (d) -> _.map d.libs, (lib) -> path.join(d.d.home, lib)
+        .flatten()
+        .value()
+        .reverse()
+      dep.configuration.includeDirs = _.union ["#{dep.d.home}/include"], dep.d.includeDirs
+      Promise.resolve()
+
+  getBuildFile = (systemName) ->
     buildFileNames =
       ninja: 'build.ninja'
       cmake: 'CMakeLists.txt'
       gyp: 'binding.gyp'
       make: 'Makefile'
       xcode: "#{dep.name}.xcodeproj"
-    path.join dep.d.project, buildFileNames[systemName]
+    buildFileNames[systemName]
 
-  configureFor = (systemName) ->
-    dep.cache.buildFile = buildFilePath systemName
-    fs.existsAsync dep.cache.buildFile
+  getBuildFilePath = (systemName) ->
+    path.join dep.d.project, getBuildFile(systemName)
+
+  createBuildFileFor = (systemName) ->
+    fs.existsAsync getBuildFilePath(systemName)
     .then (exists) ->
-      if (!exists || (platform.force(dep) && dep.cache.generatedBuildFile))
-        createContext()
-        .then (context) ->
-          switch systemName
-            when 'ninja'
-              require('./ninja')(argv, dep, platform).generate context, dep.cache.buildFile
-            when 'cmake'
-              require('./cmake')(argv, dep, platform).generate context
-              .then (CMakeLists) ->
-                fs.writeFileAsync dep.cache.buildFile, CMakeLists
-            when 'gyp'
-              require('./gyp')(argv, dep, platform).generate context
-              .then (binding) ->
-                if argv.verbose then console.log 'node-gyp:', dep.cache.buildFile, JSON.stringify(binding, 0, 2)
-                fs.writeFileAsync dep.cache.buildFile, JSON.stringify(binding, 0, 2)
-            when 'make'
-              require('./make')(context).generate context
-              .then (Makefile) ->
-                fs.writeFileAsync dep.cache.buildFile, JSON.stringify(Makefile, 0, 2)
-            when 'xcode'
-              require('./xcode')(argv, dep, platform).generate context
-        .then ->
-          db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile, "cache.generatedBuildFile": dep.cache.buildFile}}, {}
-      else if exists
-        db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile}}, {}
+      if exists
+        buildFileName = getBuildFile systemName
+        log.quiet "using pre-existing build file #{buildFileName}"
+        dep.cache.buildFile = buildFileName
+        db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile}}
       else
-        Promise.resolve dep.cache.buildFile
+        generateConfig systemName
 
-  buildType = (obj) ->
-    return unless obj
-    if obj.with then obj.with
-    else if obj.ninja then 'ninja'
-    else if obj.cmake then 'cmake'
-    else if obj.make then 'make'
-    else if obj.xcode then 'xcode'
+  generateConfig = (systemName) ->
+    buildFileName = getBuildFile systemName
+    buildFile = getBuildFilePath systemName
+    globFiles()
+    .then ->
+      switch systemName
+        when 'ninja'
+          require('./ninja')(argv, dep, platform, db).generate buildFile
+        when 'cmake'
+          require('./cmake')(argv, dep, platform, db).generate()
+          .then (CMakeLists) ->
+            fs.writeFileAsync buildFile, CMakeLists
+        when 'gyp'
+          require('./gyp')(argv, dep, platform, db).generate()
+          .then (binding) ->
+            fs.writeFileAsync buildFile, JSON.stringify(binding, 0, 2)
+        when 'make'
+          require('./make')(dep.configuration).generate()
+          .then (Makefile) ->
+            fs.writeFileAsync buildFile, JSON.stringify(Makefile, 0, 2)
+        when 'xcode'
+          require('./xcode')(argv, dep, platform, db).generate buildFile
+    .then ->
+      dep.cache.buildFile = buildFileName
+      db.update {name: dep.name}, {$set: {"cache.buildFile": dep.cache.buildFile, "cache.generatedBuildFile": dep.cache.buildFile}}
 
-  getContext: -> createContext()
+  hashMetaConfiguration = ->
+    urlHash = stringHash(fetch.resolveUrl())
+    stringHash(urlHash + jsonStableHash(configuration))
+
+  needsReconfigure = (cumulativeHash) ->
+    if dep.cache.metaConfiguration
+      if (cumulativeHash != dep.cache.metaConfiguration)
+        url = fetch.resolveUrl()
+        if dep.cache.url != stringHash(url)
+          log.error "url is stale, now #{url}"
+        else
+          log.error "#{dep.name} configuration is stale #{dep.cache.metaConfiguration}, now #{cumulativeHash}"
+          log.error configuration
+        true
+    else
+      true
+
+  hashMetaConfiguration: hashMetaConfiguration
   commands: commands
   execute: ->
-    return Promise.resolve() if (dep.cache?.configured && !platform.force(dep))
-    platform.iterate configuration, commands, settings
-    .then ->
-      db.update {name: dep.name}, {$set: {"cache.configured": true}}, {}
+    createContext()
+    configHash = hashMetaConfiguration()
+    if (platform.force(dep) || needsReconfigure(configHash))
+      platform.iterate configuration, commands, settings
+      .then ->
+        db.update {name: dep.name}, {$set: {"cache.metaConfiguration": configHash}}
+    else
+      log.verbose "configuration #{configHash} is current, use --force=#{dep.name} if you suspect the cache is stale"
+      Promise.resolve()

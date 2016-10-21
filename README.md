@@ -33,16 +33,14 @@ check out (not my project) https://conan.io if you need c++ dependency managemen
 
 other things of note
 
-* can be run directly with node or as a docker image (if linux is suitable host environment)
+* can be run directly on mac / win / linux with node
+* can use docker run 1e1f/tmake (if linux host environment is ok)
 
 ## current roadmap, things aren't done that need to be
 
 host: yaml configs as json in a central repo
-hash: configuration against settings + source files
 cache: store static_libs + headers against config hash
-
-cross-compile via xCode to iOS
-cross-compile via docker to raspberry pi + other embedded linux
+clang cross-compile and dynamic support for different toolchain / sysroot
 
 ## philosophies
 
@@ -50,11 +48,11 @@ cross-compile via docker to raspberry pi + other embedded linux
 * statically link all the things
 * declarative yaml / json only, no imperative configuration logic
 * can override settings in any dependency from any point below it in the config tree
-* cascading selectors make declarative style DRY
+* cascading selectors make configuration as DRY as possible
 * support other build tools (ninja, cmake, make, gyp)
 * be embeddable in another project / build system
 * avoid use of any globals on dev machine, project folder is the universe
-* instead of publishing / packaging built source, just pull cached libs based on system / config hash
+* no explicit publication of built source, just pull a hash if it exists
 
 ## To Install
 ```bash
@@ -65,8 +63,8 @@ npm install -g tmake
 
 Trying to make this as automatic as possible
 
-depends on node and cmake to be pre-installed by user
-fetches ninja binary when needed
+depends on node
+fetches most other aspects of the toolchain, except for git + cmake (presently)
 
 * nodejs - https://nodejs.org/en/
   * it is built in node
@@ -77,7 +75,7 @@ fetches ninja binary when needed
 * some build tools i.e.
   * xcode on mac
   * build-essentials on linux
-  * this doesn't work yet on windows, but will some day
+  * maybe works on windows? (i haven't checked yet)
 
 ## Run an example
 ```bash
@@ -126,7 +124,7 @@ build:
 ```
 
 ## Contributing
-see 'warning' at the top, *update* this project is ALMOST useful now, holler at structuresound@gmail.com if you're interested in this project
+see 'warning' at the top, *update* this project is ALMOST useful now, please holler at structuresound@gmail.com if you're interested in this project
 
 ## Release History
 _(Nothing yet)_

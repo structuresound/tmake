@@ -6,7 +6,7 @@ npm:
 	npm publish
 
 docker: base
-	docker build -t 1e1f/tmake --no-cache .
+	docker build -t 1e1f/tmake .
 
 server:
 	cd server && docker build -t 1e1f/tmake:server .

@@ -9,8 +9,8 @@ configure:
         - "gzguts.h"
       inputs:
         unistd:
-        - "#ifdef _LARGEFILE64_SOURCE"
-        - "#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
+        - "\n\n#ifdef _LARGEFILE64_SOURCE"
+        - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
 build:
   with: ninja
   sources:

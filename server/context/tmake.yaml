@@ -417,7 +417,9 @@ deps:
             libraries:
               from: source
               to: lib
-  - git: datasift/served
+  - git:
+      repository: datasift/served
+      tag: v1.3.2
     path:
       project: source
       install:
@@ -425,30 +427,30 @@ deps:
           from: source/lib
         headers:
           from: source/src
+    configure:
+      defines:
+        BOOST_ROOT: "~/include"
+        RE2_LIBRARY: "~/lib/libre2.a"
+        RE2_INCLUDE_DIR: "~/include/re2"
+        SERVED_BUILD_STATIC: 'ON'
+        SERVED_BUILD_TESTS: 'OFF'
+        SERVED_BUILD_SHARED: 'OFF'
     build:
       with: cmake
-      cmake:
-        configure:
-          BOOST_ROOT: "~/include"
-          RE2_LIBRARY: "~/lib/libre2.a"
-          RE2_INCLUDE_DIR: "~/include/re2"
-          SERVED_BUILD_STATIC: 'ON'
-          SERVED_BUILD_TESTS: 'OFF'
-          SERVED_BUILD_SHARED: 'OFF'
     deps:
     - git: boostorg/asio
-    - git: google/re2
+    - git:
+        repository: google/re2
+        archive: "2016-10-01"
       path:
         includeDirs:
         - source
         install:
           headers:
           - from: source/re2
-            to: include/re2/re2
-            includeFrom: include/re2
+            to: include/re2
           - from: source/util
             to: include/re2/util
-            includeFrom: include/re2
       build:
         with: ninja
         sources:

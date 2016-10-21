@@ -38,10 +38,11 @@ executeCommand = (command) ->
       else if stderr then resolve stderr
 
 module.exports = (argv, dep, platform) ->
-  generate = (context) ->
+  generate = (buildFile) ->
+    context = dep.configuration
     new Promise (res, rej) ->
       if argv.verbose then console.log colors.green('configure xcode project with context:'), context
-      pbxPath = path.join dep.cache.buildFile, 'project.pbxproj'
+      pbxPath = path.join buildFile, 'project.pbxproj'
       unless fs.existsSync pbxPath
         templatePath = path.join(argv.binDir, "assets/#{platform.name()}.pbxproj")
         unless fs.existsSync templatePath then throw new Error "no file @ #{templatePath}"
@@ -49,7 +50,7 @@ module.exports = (argv, dep, platform) ->
         pbxProj = platform.replaceAll pbxProj, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
         pbxProj = platform.replaceAll pbxProj, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
         pbxProj = platform.replaceAll pbxProj, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
-        sh.mkdir '-p', dep.cache.buildFile
+        sh.mkdir '-p', buildFile
         fs.writeFileSync pbxPath, pbxProj, 'utf8'
         unless argv.quiet then console.log "wrote xc project @ #{pbxPath}"
       infoPath = path.join dep.d.project, 'Info.plist'
@@ -60,15 +61,14 @@ module.exports = (argv, dep, platform) ->
         info = platform.replaceAll info, "TMAKE_PRODUCT_NAME", dep.name || 'tmake'
         info = platform.replaceAll info, "TMAKE_ORGANIZATION_NAME", dep.organization || 'tmake'
         info = platform.replaceAll info, "TMAKE-ORGANIZATION-IDENTIFIER", dep.identifier || 'tmake'
-        sh.mkdir '-p', dep.cache.buildFile
+        sh.mkdir '-p', buildFile
         fs.writeFileSync infoPath, info, 'utf8'
         unless argv.quiet then console.log "wrote xc info plist @ #{infoPath}"
       xcProj = xcode.project(pbxPath)
       xcProj.parse (err) ->
         if err then rej err
         createGroup xcProj, 'source'
-
-        rootObject = xcProj.rootObject
+        # rootObject = xcProj.rootObject
         addToXcProject = (collection, fn) ->
           _.each collection, (filePath) ->
             relative = path.relative dep.d.project, filePath
@@ -92,14 +92,15 @@ module.exports = (argv, dep, platform) ->
         fs.writeFileSync pbxPath, xcProj.writeSync()
         res()
 
-  build = (config) ->
-    safelyWrap = (string) ->
-      JSON.stringify string
+  build = ->
+    # safelyWrap = (string) ->
+    #   JSON.stringify string
+    buildFile = path.join(dep.d.project, dep.cache.buildFile)
 
     options =
       clean: true
       export: true
-      project: dep.cache.buildFile
+      project: buildFile
       configuration: ''
       workspace: ''
       scheme: ''
@@ -115,68 +116,68 @@ module.exports = (argv, dep, platform) ->
       arch: ''
       sdk: ''
 
-    runCleanCommand = ->
-      if !options.clean
-        return Promise.resolve()
-      command = [ 'clean' ]
-      if options.project
-        command.push '-project', safelyWrap(options.project)
-      executeCommand(command, true).then ->
-        console.log '`xcodebuild clean` was successful'
+    # runCleanCommand = ->
+    #   if !options.clean
+    #     return Promise.resolve()
+    #   command = [ 'clean' ]
+    #   if options.project
+    #     command.push '-project', safelyWrap(options.project)
+    #   executeCommand(command, true).then ->
+    #     console.log '`xcodebuild clean` was successful'
 
-    runArchiveCommand = ->
-      if !options.export
-        return Promise.resolve()
-      command = [ 'archive' ]
-      command.push '-archivePath', safelyWrap(options.archivePath)
-      if options.project
-        command.push '-project', safelyWrap(options.project)
-      if options.configuration
-        command.push '-configuration', safelyWrap(options.configuration)
-      if options.workspace
-        command.push '-workspace', safelyWrap(options.workspace)
-      if options.scheme
-        command.push '-scheme', safelyWrap(options.scheme)
-      if options.arch
-        command.push '-arch', safelyWrap(options.arch)
-      if options.sdk
-        command.push '-sdk', safelyWrap(options.sdk)
-      if !options.exportSigningIdentity
-        command.push 'CODE_SIGN_IDENTITY=""', 'CODE_SIGN_ENTITLEMENTS=""', 'CODE_SIGNING_REQUIRED=NO'
-      if options.target
-        command.push '-target', safelyWrap(options.target)
-      else if options.allTargets and !options.scheme
-        command.push '-alltargets'
-      console.log 'Archiving: '
-      executeCommand(command).then ->
-        console.log '`xcodebuild archive` was successful'
-        return
+    # runArchiveCommand = ->
+    #   if !options.export
+    #     return Promise.resolve()
+    #   command = [ 'archive' ]
+    #   command.push '-archivePath', safelyWrap(options.archivePath)
+    #   if options.project
+    #     command.push '-project', safelyWrap(options.project)
+    #   if options.configuration
+    #     command.push '-configuration', safelyWrap(options.configuration)
+    #   if options.workspace
+    #     command.push '-workspace', safelyWrap(options.workspace)
+    #   if options.scheme
+    #     command.push '-scheme', safelyWrap(options.scheme)
+    #   if options.arch
+    #     command.push '-arch', safelyWrap(options.arch)
+    #   if options.sdk
+    #     command.push '-sdk', safelyWrap(options.sdk)
+    #   if !options.exportSigningIdentity
+    #     command.push 'CODE_SIGN_IDENTITY=""', 'CODE_SIGN_ENTITLEMENTS=""', 'CODE_SIGNING_REQUIRED=NO'
+    #   if options.target
+    #     command.push '-target', safelyWrap(options.target)
+    #   else if options.allTargets and !options.scheme
+    #     command.push '-alltargets'
+    #   console.log 'Archiving: '
+    #   executeCommand(command).then ->
+    #     console.log '`xcodebuild archive` was successful'
+    #     return
 
-    runExportCommand = ->
-      if !options.export
-        return Promise.resolve()
-      command = [ '-exportArchive' ]
-      command.push '-archivePath "{0}.xcarchive"'.format(options.archivePath)
-      command.push '-exportPath "{0}/{1}"'.format(options.exportPath, options.exportFilename)
-      command.push '-exportFormat', options.exportFormat
-      if options.exportProvisioningProfile
-        command.push '-exportProvisioningProfile', safelyWrap(options.exportProvisioningProfile)
-      if options.exportSigningIdentity
-        command.push '-exportSigningIdentity', safelyWrap(options.exportSigningIdentity)
-      if options.exportInstallerIdentity
-        command.push '-exportInstallerIdentity', safelyWrap(options.exportInstallerIdentity)
-      if !options.exportSigningIdentity
-        command.push '-exportWithOriginalSigningIdentity'
-      console.log 'Exporting: '
-      executeCommand(command).then ->
-        console.log '`xcodebuild export` was successful'
-        return
+    # runExportCommand = ->
+    #   if !options.export
+    #     return Promise.resolve()
+    #   command = [ '-exportArchive' ]
+    #   command.push '-archivePath "{0}.xcarchive"'.format(options.archivePath)
+    #   command.push '-exportPath "{0}/{1}"'.format(options.exportPath, options.exportFilename)
+    #   command.push '-exportFormat', options.exportFormat
+    #   if options.exportProvisioningProfile
+    #     command.push '-exportProvisioningProfile', safelyWrap(options.exportProvisioningProfile)
+    #   if options.exportSigningIdentity
+    #     command.push '-exportSigningIdentity', safelyWrap(options.exportSigningIdentity)
+    #   if options.exportInstallerIdentity
+    #     command.push '-exportInstallerIdentity', safelyWrap(options.exportInstallerIdentity)
+    #   if !options.exportSigningIdentity
+    #     command.push '-exportWithOriginalSigningIdentity'
+    #   console.log 'Exporting: '
+    #   executeCommand(command).then ->
+    #     console.log '`xcodebuild export` was successful'
+    #     return
 
-    cleanUp = ->
-      if temporaryDirectory
-        temporaryDirectory.rmdir()
-      if options.export
-        console.log 'Built and exported product to: {0}/{1}'.format(options.exportPath, options.exportFilename)
+    # cleanUp = ->
+    #   if temporaryDirectory
+    #     temporaryDirectory.rmdir()
+    #   if options.export
+    #     console.log 'Built and exported product to: {0}/{1}'.format(options.exportPath, options.exportFilename)
 
     whichAsync 'xcodebuild'
     .then (path) ->
@@ -234,18 +235,18 @@ module.exports = (argv, dep, platform) ->
   #         throw error if error
   #         xcPath = path.join gypDir.path, "build/binding.xcodeproj"
   #         if fs.existsSync xcPath
-  #           if argv.verbose then console.log "mkdir", dep.cache.buildFile
-  #           # console.log "move #{xcPath} to #{dep.cache.buildFile}"
-  #           sh.mkdir '-p', dep.cache.buildFile
-  #           if argv.verbose then console.log "cp", xcPath, "to", dep.cache.buildFile
-  #           sh.cp '-R', "#{xcPath}", "#{dep.cache.buildFile}/"
+  #           if argv.verbose then console.log "mkdir", buildFile
+  #           # console.log "move #{xcPath} to #{buildFile}"
+  #           sh.mkdir '-p', buildFile
+  #           if argv.verbose then console.log "cp", xcPath, "to", buildFile
+  #           sh.cp '-R', "#{xcPath}", "#{buildFile}/"
   #           if argv.verbose then console.log "cleanup", gypDir.path
   #           #gypDir.rmdir()
   #         else
   #           throw new Error "gyp didn't create xcodeproj @ #{xcPath}"
   #     .catch (err) ->
   #       fs.nuke gypDir.path
-  #       fs.nuke dep.cache.buildFile
+  #       fs.nuke buildFile
   #       reject err
 
   generate: generate

@@ -2,18 +2,22 @@ Promise = require 'bluebird'
 fs = require '../util/fs'
 check = require('../util/check')
 sh = require('../util/sh')
+path = require('path')
+# _toolchain = require './toolchain'
+_log = require('../util/log')
 
 module.exports = (argv, dep, platform, db, buildTests) ->
-  buildFolder = dep.d.build
-  buildFile = dep.cache.buildFile
+  settings = ['linkerFlags', 'cFlags', 'cxxFlags', 'compilerFlags', 'defines', 'frameworks', 'sources', 'headers', 'outputFile']
   buildSettings = dep.build
-  cachePath = "cache.built"
+  log = _log argv
 
-  if buildTests
-    buildFolder = dep.d.test
-    buildFile = dep.cache.test.buildFile
-    buildSettings = dep.test?.build
-    cachePath = "cache.tests.built"
+  buildFolder = ->
+    if buildTests then dep.d.test
+    else dep.d.build
+
+  buildFile = ->
+    if buildTests then path.join dep.d.project, dep.test.buildFile
+    else path.join dep.d.project, dep.cache.buildFile
 
   commandBlock =
     any: (obj) -> commandBlock.shell obj
@@ -29,29 +33,45 @@ module.exports = (argv, dep, platform, db, buildTests) ->
       buildWith name
 
   ensureBuildFolder = ->
-    unless fs.existsSync buildFolder then fs.mkdirSync buildFolder
+    unless fs.existsSync buildFolder() then fs.mkdirSync buildFolder()
+
+  ensureBuildFile = ->
+    throw new Error "no build file specified" unless check buildFile(), "String"
+    throw new Error "no build file @ #{buildFile()}" unless fs.existsSync buildFile()
 
   buildWith = (system) ->
-    runner = build: -> Promise.reject "build file not found for #{system} @ #{buildFile}"
     ensureBuildFolder()
-    fs.existsAsync buildFile
-    .then (exists) ->
-      if exists
-        switch system
-          when 'ninja'
-            runner = require('./ninja')(argv, dep, platform)
-          when 'cmake'
-            runner = require('./cmake')(argv, dep, platform)
-          when 'gyp'
-            runner = require('./gyp')(argv, dep, platform)
-          when 'make'
-            runner = require('./make')(argv, dep, platform)
-          when 'xcode'
-            runner = require('./xcode')(argv, dep, platform)
-      runner.build()
+    ensureBuildFile()
+    switch system
+      when 'ninja'
+        runner = require('./ninja')(argv, dep, platform, db)
+      when 'cmake'
+        runner = require('./cmake')(argv, dep, platform, db)
+      when 'gyp'
+        runner = require('./gyp')(argv, dep, platform, db)
+      when 'make'
+        runner = require('./make')(argv, dep, platform, db)
+      when 'xcode'
+        runner = require('./xcode')(argv, dep, platform, db)
+    runner.build()
+
+  # hashSourceFolder = ->
+  #   cumulativeHash = dep.cache.url
+  #   globHeaders()
+  #   .then (headers) ->
+  #     Promise.each headers, (header) ->
+  #       fileHash path.join dep.d.project, header
+  #       .then (hash) ->
+  #         cumulativeHash = stringHash(cumulativeHash + hash)
+  #     globSources()
+  #   .then (sources) ->
+  #     Promise.each sources, (source) ->
+  #       fileHash path.join dep.d.project, source
+  #       .then (hash) ->
+  #         cumulativeHash = stringHash(cumulativeHash + hash)
+  #   .then ->
+  #     Promise.resolve cumulativeHash
 
   execute: ->
     return Promise.resolve() unless buildSettings
-    platform.iterate buildSettings, commandBlock, ['cFlags', 'cxxFlags', 'frameworks', 'compilerFlags', 'linkerFlags', 'sources', 'headers', 'outputFile']
-    .then ->
-      db.update {name: dep.name}, {$set: {"#{cachePath}": true}}, {}
+    platform.iterate buildSettings, commandBlock, settings

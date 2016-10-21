@@ -2,16 +2,13 @@
 assert = require('chai').assert
 expect = require('chai').expect
 _ = require 'underscore'
-colors = require ('chalk')
 
-argv =
-  runDir: process.cwd()
-  cachePath: "trie_modules"
+testArgv = require './testArgv'
 
 { depA } = require './fixtures'
 
 describe 'platform', ->
-  platform = require('../lib/dsl/platform')(argv, depA)
+  platform = require('../lib/dsl/platform')(testArgv, depA)
   it 'will select on the current platform', ->
     assert.ok _.contains platform.selectors, platform.name()
 

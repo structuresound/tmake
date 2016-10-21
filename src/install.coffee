@@ -5,6 +5,11 @@ path = require('path')
 sh = require "shelljs"
 colors = require ('chalk')
 fs = require('./util/fs')
+_log = require('./util/log')
+# { jsonStableHash } = require './util/hash'
+{ stringHash } = require './util/hash'
+{ fileHash } = require './util/hash'
+
 vinyl =
   symlink: _vinyl.symlink
   dest: _vinyl.dest
@@ -16,6 +21,8 @@ vinyl =
     _vinyl.src patterns, opt
 
 module.exports = (argv, dep, platform, db) ->
+  log = _log argv
+
   copy = (patterns, from, to, opt) ->
     filePaths = []
     fs.wait(vinyl.src(patterns,
@@ -48,19 +55,31 @@ module.exports = (argv, dep, platform, db) ->
 
   installBin = ->
     if _.contains ['bin'], dep.target
-      sh.mkdir '-p', path.join argv.runDir, 'bin'
+      sh.mkdir '-p', path.join(argv.runDir, 'bin')
+      binaries = []
       _.each dep.d.install.binaries, (ft) ->
         from = path.join(ft.from, dep.name)
         to = path.join(ft.to, dep.name)
-        if argv.verbose then console.log colors.green '[ install bin ] from', from, 'to', to
+        log.verbose "[ install bin ] from #{from} to #{to}"
         sh.mv from, to
+        binaries.push to
+      cumulativeHash = ""
+      _p.each binaries, (path) ->
+        console.log 'hash binary', path
+        fileHash path
+        .then (hash) ->
+          cumulativeHash = stringHash(cumulativeHash + hash)
+      .then ->
+        db.update name: dep.name,
+          $set: 'cache.bin': cumulativeHash, 'cache.target': cumulativeHash
+        , {}
     else _p.resolve('bin')
 
   installAssets = ->
     if dep.d.install.assets
       _p.map dep.d.install.assets, (ft) ->
         patterns = ft.matching || ['**/*.*']
-        if argv.verbose then console.log colors.green '[ install assets ] from', ft.from, 'to', ft.to
+        log.verbose "[ install assets ] from #{ft.from} to #{ft.to}"
         copy patterns, ft.from, ft.to,
           flatten: false
           followSymlinks: true
@@ -75,14 +94,23 @@ module.exports = (argv, dep, platform, db) ->
       _p.map dep.d.install.libraries, (ft) ->
         patterns = ft.matching || ['*.a']
         if dep.target == 'dynamic' then patterns = ft.matching || ['*.dylib', '*.so', '*.dll']
-        if argv.verbose then console.log colors.green '[ install libs ] from', ft.from, 'to', ft.to
+        log.verbose "[ install libs ] from #{ft.from} to #{ft.to}"
         symlink patterns, ft.from, ft.to,
           flatten: true
           followSymlinks: false
       .then (libPaths) ->
-        db.update name: dep.name,
-          $set: libs: _.flatten libPaths
-        , {}
+        cumulativeHash = ""
+        _p.each _.flatten(libPaths), (libPath) ->
+          fileHash(path.join(dep.d.home, libPath))
+          .then (hash) ->
+            cumulativeHash = stringHash(cumulativeHash + hash)
+        .then ->
+          db.update name: dep.name,
+            $set:
+              libs: _.flatten libPaths
+              'cache.libs': cumulativeHash
+              'cache.target': cumulativeHash
+          , {}
     else _p.resolve('libs')
 
   installHeaders = ->
@@ -93,10 +121,6 @@ module.exports = (argv, dep, platform, db) ->
         symlink patterns, ft.from, ft.to,
           flatten: false
           followSymlinks: true
-      .then (headerPaths) ->
-        db.update name: dep.name,
-          $set: headers: _.flatten headerPaths
-        , {}
     else _p.resolve('headers')
 
   execute = ->

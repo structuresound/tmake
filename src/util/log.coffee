@@ -1,6 +1,8 @@
 check = require './check'
 yaml = require 'js-yaml'
 colors = require ('chalk')
+# status = require('node-status')
+# console = status.console()
 
 getMessage = (msg) ->
   if check msg, Object
@@ -17,4 +19,8 @@ module.exports = (argv) ->
 
   quiet: (msg, color) ->
     if !argv.quiet || argv.verbose
-      console.log colors[color || 'gray'] getMessage msg
+      console.log colors[color || 'white'] getMessage msg
+
+  info: (msg, color) -> console.log colors[color || 'white'] getMessage msg
+  error: (msg) ->
+    console.log colors['red'] getMessage msg

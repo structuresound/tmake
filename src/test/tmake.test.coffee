@@ -6,23 +6,7 @@ _ = require('underscore')
 sh = require('../lib/util/sh')
 fs = require('../lib/util/fs')
 
-npmDir = process.cwd()
-runDir = path.join process.cwd(), 'tests'
-binDir = path.join process.cwd(), 'bin'
-
-argv = ->
-  runDir: runDir
-  binDir: binDir
-  userCache: path.join runDir, '/fake_cache'
-  cachePath: "trie_modules"
-  npmDir: npmDir
-  pgname: "tmake"
-  quiet: true
-  verbose: false
-  test: true
-  yes: true
-  _: []
-
+testArgv = require './testArgv'
 db = new Datastore()
 userDb = new Datastore()
 settingsDb = new Datastore()
@@ -30,45 +14,47 @@ settingsDb = new Datastore()
 { helloWorld } = require './fixtures'
 
 test = (args) ->
-  _args = _.extend argv(), args
-  _runner = require('../lib/tmake')(_args, helloWorld, undefined, db, userDb, settingsDb)
+  argv = {}
+  Object.assign argv, testArgv, args
+  _runner = require('../lib/tmake')(argv, helloWorld, undefined, db, userDb, settingsDb)
   _runner.run()
 
 describe 'tmake', ->
-  @timeout 60000
-  _tmake = require('../lib/tmake')(argv(), helloWorld, undefined, db, userDb, settingsDb)
+  @timeout 120000
+  argv = {}
+  Object.assign argv, testArgv
+  _tmake = require('../lib/tmake')(argv, helloWorld, undefined, db, userDb, settingsDb)
 
   it 'can clean the test folder', ->
-    fs.nuke runDir
-    expect(fs.existsSync runDir).to.equal(false)
+    fs.nuke testArgv.runDir
+    expect(fs.existsSync testArgv.runDir).to.equal(false)
 
   it 'can fetch a source tarball', ->
-    sh.mkdir '-p', runDir
+    sh.mkdir '-p', testArgv.runDir
     @slow 1000
     test _: ["fetch", "googletest"]
     .then ->
-      file = fs.existsSync path.join runDir, 'trie_modules/googletest/source'
+      file = fs.existsSync path.join testArgv.runDir, 'trie_modules/googletest/source'
       expect(file).to.equal(true)
 
   it 'can build an existing cmake project', ->
     @slow 5000
     test _: ["all", "googletest"]
     .then ->
-      file = fs.existsSync path.join runDir, 'trie_modules/lib/libgtest.a'
+      file = fs.existsSync path.join testArgv.runDir, 'trie_modules/lib/libgtest.a'
       expect(file).to.equal(true)
 
   it 'can fetch a git repo', ->
     @slow 2000
     test _: ["fetch"]
     .then ->
-      db.findOne name: helloWorld.name
-    .then (dep) ->
-      expect(dep.cache.git.checkout).to.equal("master")
+      file = fs.existsSync path.join testArgv.runDir, "source/README.md"
+      expect(file).to.equal(true)
 
   it 'can configure a ninja build', ->
     test _: ["configure"]
     .then ->
-      file = fs.existsSync path.join runDir, 'build.ninja'
+      file = fs.existsSync path.join testArgv.runDir, 'build.ninja'
       expect(file).to.equal(true)
 
   it 'can build configure an xcode project', ->
@@ -81,7 +67,7 @@ describe 'tmake', ->
     else
       test args
       .then ->
-        file = fs.existsSync path.join runDir, "#{helloWorld.name}.xcodeproj/project.pbxproj"
+        file = fs.existsSync path.join testArgv.runDir, "#{helloWorld.name}.xcodeproj/project.pbxproj"
         expect(file).to.equal(true)
 
   it 'can build using ninja', ->
@@ -89,10 +75,10 @@ describe 'tmake', ->
     .then ->
       db.findOne name: helloWorld.name
     .then (dep) ->
-      expect(dep.cache.built).to.equal(true)
+      expect((dep.cache.bin || dep.cache.libs)).to.be.a("String")
 
   it 'run the built binary', ->
-    sh.Promise "./#{helloWorld.name}", (path.join runDir, 'bin'), true
+    sh.Promise "./#{helloWorld.name}", (path.join testArgv.runDir, 'bin'), true
     .then (res) ->
       results = res.split('\n')
       expect(results[results.length-2]).to.equal 'Hello, world, from Visual C++!'

@@ -5,8 +5,10 @@ path = require('path')
 check = require './util/check'
 fs = require('./util/fs')
 cascade = require('./dsl/cascade')
+_log = require('./util/log')
 
 module.exports = (argv, dep, platform, db) ->
+  log = _log argv
   parsePath = (s) ->
     throw new Error "#{s} is not a string" unless check s, String
     if s.startsWith '/' then s
@@ -110,22 +112,36 @@ module.exports = (argv, dep, platform, db) ->
     if parent
       if parent.platform
         dep.platform = parent.platform
-    dep.cache ?= test: {}
+      if parent.override
+        _.extend dep, parent.override
+        _.extend dep.override, parent.override
     db.findOne name: dep.name
     .then (result) ->
-      merged = dep
-      if result
-        _.extend merged, _.pick result, ['cache', 'libs']
+      merged = result || cache: test: {}
+      _.extend merged, _.omit dep, ['cache', 'libs']
       entry = _.clone merged
       if entry.deps
         entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
-      delete entry.d
+      entry.version ?= that.resolveDepVersion dep
+      entry.user ?= 'local'
       if result
+        log.verbose entry, "red"
         db.update {name: dep.name}, {$set: entry}
         .then -> that.resolvePaths merged
       else
         db.insert entry
         .then -> that.resolvePaths merged
+
+  that.resolveDepVersion = (dep) ->
+    if check dep.version, String then dep.name
+    else if check dep.tag, String then dep.tag
+    else if dep.git
+      if check dep.git.tag, String
+        dep.git.tag
+      else if check dep.git.branch, String
+        dep.git.branch
+      else
+        'master'
 
   that.resolveDepName = (dep) ->
     if check dep, String then dep

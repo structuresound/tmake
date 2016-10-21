@@ -12,3 +12,4 @@ server/context/tmake_server.xcodeproj
 server/context/Info.plist
 /test
 /tests
+/tests_cache

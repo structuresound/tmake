@@ -1,59 +1,47 @@
-unzip = require('unzip')
-request = require('request-promise')
 path = require('path')
 sh = require "shelljs"
 _ = require 'underscore'
 Promise = require 'bluebird'
-fs = require('../util/fs')
-colors = require ('chalk')
+# fs = require('../util/fs')
+# colors = require ('chalk')
+ninjaVersion = '1.6.0'
+_log = require('../util/log')
 
-module.exports = (argv, dep, platform) ->
-  ninjaVersion = "1.6.0"
+_toolchain = require './toolchain'
 
-  ninjaUrl = "https://github.com/ninja-build/ninja/releases/download/v#{ninjaVersion}/ninja-#{platform.name()}.zip"
-  ninjaPath = argv.userCache
-  ninjaDownload = path.join ninjaPath, "ninja"
-  ninjaLocal = path.join ninjaPath, "ninja_#{ninjaVersion}"
-
-  useSystemNinja = ->
-    if dep.system?.ninja
-      if sh.which 'ninja' then return "ninja"
-      else console.log "system ninja specified, but can't find it"
-    false
+module.exports = (argv, dep, platform, db) ->
+  log = _log argv
+  toolchain = _toolchain(argv, dep, platform, db)
 
   getNinja = ->
-    ninjaExecutable = useSystemNinja() || ninjaLocal
-    fs.existsAsync ninjaExecutable
-    .then (exists) ->
-      if exists
-        if argv.verbose then console.log 'found ninja'
-        Promise.resolve ninjaExecutable
-      else
-        if argv.verbose then console.log 'fetch ninja binaries . . . '
-        new Promise (resolve, reject) ->
-          request(ninjaUrl).pipe(unzip.Extract(path: ninjaPath))
-          .on 'close', ->
-            if argv.verbose then console.log "chmod 755 #{ninjaLocal}"
-            sh.mv ninjaDownload, ninjaLocal
-            fs.chmod "#{ninjaLocal}", 755, (err) ->
-              if err then reject err
-              else
-                if argv.verbose then console.log '. . . ninja installed'
-                resolve ninjaLocal
+    resolved = toolchain.select
+      ninja:
+        version: ninjaVersion
+        url: "https://github.com/ninja-build/ninja/releases/download/v{ninja.version}/ninja-{HOST_PLATFORM}.zip"
+    toolchain.fetch resolved
+    .then ->
+      Promise.resolve toolchain.pathForTool(resolved.ninja)
+
+  verifyToolchain = ->
+    toolchain.fetch dep.configuration.hostToolchain
 
   build = ->
     new Promise (resolve, reject) ->
-      getNinja()
+      verifyToolchain()
+      .then ->
+        getNinja()
       .then (ninjaPath) ->
-        directory = path.dirname dep.cache.buildFile
+        directory = dep.d.project
         command = "#{ninjaPath} -C #{directory}"
+        log.verbose command
         sh.exec command, (code, stdout, stderr) ->
           if code then reject "ninja exited with code " + code + "\n" + command
           else if stdout then resolve stdout
           else if stderr then resolve stderr
 
-  genBuildScript = (context, fileName) ->
-    if argv.verbose then console.log colors.green('configure ninja with context:'), context
+  genBuildScript = (fileName) ->
+    context = dep.configuration
+    # if argv.verbose then console.log colors.green('configure ninja with context:'), context
     getRule = (ext) ->
       switch ext
         when ".cpp", ".cc" then "cxx"
@@ -62,10 +50,10 @@ module.exports = (argv, dep, platform) ->
     ninjaConfig = require('ninja-build-gen')(ninjaVersion, 'build')
     includeString = " -I" + context.includeDirs.join(" -I")
 
-    cc = context.compiler or "gcc"
+    cc = context.cc or "gcc"
 
     cCommand = "#{cc} #{context.compilerFlags.join(' ')} -MMD -MF $out.d #{context.cFlags.join(' ')} -c $in -o $out #{includeString}"
-    cxxCommand = "#{cc} #{context.compilerFlags.join(' ')} -MMD -MF $out.d #{context.compilerFlags} #{context.cxxFlags.join(' ')} -c $in -o $out #{includeString}"
+    cxxCommand = "#{cc} #{context.compilerFlags.join(' ')} -MMD -MF $out.d #{context.cxxFlags.join(' ')} -c $in -o $out #{includeString}"
 
     ninjaConfig
     .rule 'c'
