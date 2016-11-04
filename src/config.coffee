@@ -4,9 +4,10 @@ colors = require ('chalk')
 check = require './util/check'
 yaml = require 'js-yaml'
 fs = require('./util/fs')
-
+_log = require('./util/log')
 
 module.exports = (argv, binDir, npmDir) ->
+  log = _log argv
   homeDir = ->
     process.env[if process.platform == 'win32' then 'USERPROFILE' else 'HOME']
 
@@ -36,12 +37,12 @@ module.exports = (argv, binDir, npmDir) ->
       throw config if check config, Error
       argv._[0] ?= 'all'
       if config
-        try
+        # try
           cli.parse argv
           tmake = require('./tmake')(argv, config, cli)
           tmake.run()
-        catch error
-          console.log 'tmake error: ', error
+        # catch error
+        #   log.error "tmake error: #{error}"
       else
         switch argv._[0]
           when 'init'

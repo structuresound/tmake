@@ -14,16 +14,15 @@ module.exports = (->
     if !folderPath || (folderPath == '/')
       throw new Error "don't nuke everything"
     if fs.existsSync folderPath
-      files = []
-      if fs.existsSync(folderPath)
-        files = fs.readdirSync(folderPath)
-        files.forEach (file) ->
-          curPath = folderPath + '/' + file
-          if fs.lstatSync(curPath).isDirectory()
-            fs.nuke curPath
-          else
-            fs.unlinkSync curPath
-        fs.rmdirSync folderPath
+      files = fs.readdirSync(folderPath)
+      files.forEach (file) ->
+        curPath = path.join folderPath, file
+        if fs.lstatSync(curPath).isDirectory()
+          fs.nuke curPath
+        else
+          fs.unlinkSync curPath
+      console.log "remove folder #{folderPath}"
+      fs.rmdirSync folderPath
 
   fs.prune = (folderPath) ->
     files = []

@@ -55,7 +55,8 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
     configure: (dep, tests) ->
       configure = _configure(argv, dep, platform, db, tests)
       if configure.hashMetaConfiguration() != dep.cache.metaConfiguration
-        fs.nuke dep.d.clone
+        if dep.cache.url
+          fs.nuke dep.d.clone
       buildPhase.fetch(dep)
       .then ->
         configure.execute()
@@ -76,6 +77,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
         _test(argv, dep, platform, db).execute()
 
   cleanDep = (dep) ->
+    log.quiet "cleaning #{dep.name}"
     log.verbose dep.d
     log.verbose dep.libs
     if fs.existsSync(dep.d.build)
@@ -110,7 +112,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
             else
               fs.unlinkSync generatedBuildFile
         catch err
-          console.log colors.yellow err.message || err
+          log.error err colors.yellow err.message || err
         db.update {name: dep.name}, modifier, {}
 
   findDepNamed = (name, root) ->
@@ -126,23 +128,19 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
   resolveRoot = (configFile) ->
     if argv._[1]
       dep = findDepNamed argv._[1], configFile
-      if dep then graph.resolveDep dep
+      if dep then graph.resolve dep
       else throw new Error "no dependency matching " + argv._[1]
     else
-      graph.resolveDep _.extend configFile, d: root: runDir
+      graph.resolve _.extend configFile, d: root: runDir
 
   execute = (rawConfig, phase) ->
-    runConfig = cascade.deep rawConfig, platform.keywords, platform.selectors
-    resolveRoot runConfig
-    .then (root) ->
-      graph.all root
-      .then (deps) ->
-        #if argv._[1] && argv.verbose then console.log JSON.stringify deps, 0, 2
-        unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
-        if argv.nodeps
-          processDep root, phase
-        else
-          _p.each deps, (dep) -> processDep dep, phase
+    resolveRoot rawConfig
+    .then (deps) ->
+      unless argv.quiet then console.log colors.green _.map(deps, (d) -> d.name).join(' >> ')
+      if argv.nodeps
+        processDep root, phase
+      else
+        _p.each deps, (dep) -> processDep dep, phase
 
   processDep = (dep, phase) ->
     unless argv.quiet then console.log colors.magenta "<< #{dep.name} >>"
@@ -209,28 +207,28 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
           .then (dep) ->
             if dep
               graph.resolveDep dep
-              .then (resolvedDep) ->
-                log.quiet "cleaning #{dep.name}"
-                cleanDep resolvedDep
+              .then cleanDep
               .then ->
                 db.findOne name: depName
                 .then (cleaned) ->
                   log.verbose cleaned
             else console.log colors.red 'didn\'t find dep for', depName
 
-        if resolvedName == 'all'
+        if resolvedName == 'all' && rootConfig.deps
           _p.each rootConfig.deps, (dep) ->
             findAndClean dep.name
           .then ->
             findAndClean rootConfig.name
         else
-          findAndClean resolvedName
+          graph.resolveDep rootConfig
+          .then cleanDep
 
-      when 'reset'
+      when 'reset', 'nuke'
+        log.quiet "nuke cache #{path.join(runDir, argv.cachePath)}"
         fs.nuke path.join(runDir, argv.cachePath)
         fs.nuke path.join(runDir, 'bin')
         fs.nuke path.join(runDir, 'build')
-        console.log 'post nuke freshness'
+        log.quiet 'post nuke freshness'
       when 'link'
         db.findOne name: resolvedName
         .then (dep) -> link dep || rootConfig
@@ -246,7 +244,7 @@ module.exports = (argv, rootConfig, cli, db, localRepo, settings) ->
         execute rootConfig, "fetch"
       when "parse"
         console.log "parsing with selectors:\n #{platform.selectors}"
-        parsed = cascade.deep rootConfig, platform.keywords, platform.selectors
+        parsed = graph.resolve rootConfig
         log.quiet parsed, 'magenta'
       when 'configure'
         execute rootConfig, "configure"

@@ -1,6 +1,8 @@
 /src
+/docker
 /meteor
 /server
 /tests
+/tests_cache
 /test
 node_modules

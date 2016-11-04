@@ -1,4 +1,4 @@
-DepGraph = require('dependency-graph').DepGraph
+{ DepGraph } = require 'dependency-graph'
 _ = require 'underscore'
 _p = require("bluebird")
 path = require('path')
@@ -16,7 +16,6 @@ module.exports = (argv, dep, platform, db) ->
 
   that = {}
   cache = {}
-  _graph = new DepGraph()
 
   that.resolvePaths = (dep) ->
     return _p.resolve dep if dep.d?.resolved
@@ -33,9 +32,12 @@ module.exports = (argv, dep, platform, db) ->
 
     # _.extend dep, fs.readConfigSync "#{argv.runDir}/#{argv.cachePath}/#{dep.name}/package.cson"
     if dep.link
-      console.log "link settings #{parsePath dep.link}package.cson"
-      rawConfig = fs.readConfigSync "#{parsePath dep.link}package.cson"
-      _.extend dep, cascade.deep rawConfig, platform.keywords, platform.selectors
+      configDir = parsePath dep.link
+      configPath = fs.configExists configDir
+      if configPath
+        log.verbose "load config from linked directory #{configPath}"
+        rawConfig = fs.readConfigSync configPath
+        _.extend dep, cascade.deep rawConfig, platform.keywords, platform.selectors
 
     defaultPathOptions =
       source: ""
@@ -106,29 +108,33 @@ module.exports = (argv, dep, platform, db) ->
 
     _p.resolve dep
 
-  that.resolveDep = (dep, parent) ->
-    dep.name ?= that.resolveDepName dep
-    dep.target ?= 'static'
+  that.resolveDep = (_dep, parent) ->
+    mutable = _.clone _dep
     if parent
       if parent.platform
-        dep.platform = parent.platform
+        mutable.platform = parent.platform
       if parent.override
-        _.extend dep, parent.override
-        _.extend dep.override, parent.override
-    db.findOne name: dep.name
+        _.extend mutable, parent.override
+        _.extend mutable.override, parent.override
+
+    mutable = cascade.deep mutable, platform.keywords, platform.selectors
+    mutable.name ?= that.resolveDepName mutable
+    mutable.target ?= 'static'
+
+    db.findOne name: mutable.name
     .then (result) ->
       merged = result || cache: test: {}
-      _.extend merged, _.omit dep, ['cache', 'libs']
+      _.extend merged, _.omit mutable, ['cache', 'libs']
       entry = _.clone merged
       if entry.deps
         entry.deps = _.map entry.deps, (d) -> name: that.resolveDepName(d)
-      entry.version ?= that.resolveDepVersion dep
+      entry.version ?= that.resolveDepVersion mutable
       entry.user ?= 'local'
       if result
-        log.verbose entry, "red"
-        db.update {name: dep.name}, {$set: entry}
+        db.update {name: mutable.name}, {$set: entry}
         .then -> that.resolvePaths merged
       else
+        log.verbose entry, "red"
         db.insert entry
         .then -> that.resolvePaths merged
 
@@ -161,14 +167,14 @@ module.exports = (argv, dep, platform, db) ->
         that.resolveDep dep, root
         .then (resolved) ->
           throw new Error "recursive dependency" if resolved.name == root.name
-          that.graph resolved, graph
+          that._graph resolved, graph
           .then ->
             if argv.verbose then console.log 'add dependency', resolved.name, ">>", root.name
             graph.addDependency root.name, resolved.name
     else
-      _p.resolve()
+      that.resolveDep root
 
-  that.graph = (root, graph) ->
+  that._graph = (root, graph) ->
     if cache[root.name] then _p.resolve graph
     else
       graph.addNode root.name
@@ -178,11 +184,11 @@ module.exports = (argv, dep, platform, db) ->
         _p.resolve graph
 
   that._map = (dep, mapFn) ->
-    that.graph(dep, _graph).then (graph) ->
+    that._graph(dep, new DepGraph()).then (graph) ->
       _p.resolve _.map graph.overallOrder(), mapFn
 
   that._map_deps = (dep, mapFn) ->
-    that.graph(dep, _graph).then (graph) ->
+    that._graph(dep, new DepGraph()).then (graph) ->
       _p.resolve _.map graph.dependenciesOf(dep.name), mapFn
 
   that.map = (dep, mapFn) -> that._map dep, (name) -> mapFn(cache[name])
@@ -192,5 +198,10 @@ module.exports = (argv, dep, platform, db) ->
   that.deps = (dep) ->
     cache = {}
     that._map_deps dep, (name) -> cache[name]
+
+  that.resolve = (root) ->
+    that.resolveDep root
+    .then ->
+      that.all root
 
   that
