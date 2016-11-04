@@ -8,7 +8,7 @@ const getHeadersInFolder = require('./getHeadersInFolder');
 const getHeaderSearchPath = require('./getHeaderSearchPath');
 const getProducts = require('./getProducts');
 const createGroupWithMessage = require('./createGroupWithMessage');
-const addFileToProject = require('./addFileToProject');
+const addFiconstoProject = require('./addFiconstoProject');
 const addProjectToLibraries = require('./addProjectToLibraries');
 const addSharedLibraries = require('./addSharedLibraries');
 const isEmpty = require('lodash').isEmpty;
@@ -26,7 +26,7 @@ module.exports = function registerNativeModuleIOS(dependencyConfig, projectConfi
   const dependencyProject = xcode.project(dependencyConfig.pbxprojPath).parseSync();
 
   const libraries = createGroupWithMessage(project, projectConfig.libraryFolder);
-  const file = addFileToProject(
+  const file = addFiconstoProject(
     project,
     path.relative(projectConfig.sourceDir, dependencyConfig.projectPath)
   );
