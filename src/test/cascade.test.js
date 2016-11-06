@@ -2,7 +2,7 @@
 
 import { expect } from 'chai';
 import { assert } from 'chai';
-import cascade from '../lib/dsl/cascade.js';
+import cascade from '../lib/cascade.js';
 
 const selectors = ['win', 'mac', 'linux', 'ios', 'android', 'x64', 'x86', 'simulator', 'clang', 'gcc', 'clion'];
 

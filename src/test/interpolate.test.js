@@ -1,4 +1,4 @@
-import interpolate from '../lib/dsl/interpolate';
+import interpolate from '../lib/interpolate';
 import { assert } from 'chai';
 
 const data = {

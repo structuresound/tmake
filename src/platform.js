@@ -1,17 +1,16 @@
 import os from 'os';
 import _ from 'underscore';
 import path from 'path';
-import colors from 'chalk';
 import Promise from 'bluebird';
-import { Map } from 'immutable';
+import {Map} from 'immutable';
 
-import cascade from './cascade';
-import check from '../util/check';
-import sh from '../util/sh';
+import log from './util/log';
+import cascade from './util/cascade';
+import check from './util/check';
+import sh from './util/sh';
 import interpolate from './interpolate';
-import fs from '../util/fs';
-import argv from '../util/argv';
-
+import fs from './util/fs';
+import argv from './util/argv';
 
 const platformNames = {
   linux: 'linux',
@@ -135,7 +134,7 @@ const shellReplace = (m) => {
   }
   const commands = m.match(/\$\([^\)\r\n]*\)/g);
   if (commands) {
-    const interpolated = m;
+    let interpolated = m;
     _.each(commands, (c) => {
       interpolated = interpolated.replace(c, sh.get(c.slice(2, -1)));
     });
@@ -149,7 +148,7 @@ function objectReplace(m, dict) {
   if (!m.macro) {
     throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
   }
-  const res = Promisearse(m.macro, dict);
+  const res = _parse(m.macro, dict);
   if (m.map) {
     return m.map[res];
   }
@@ -166,56 +165,53 @@ function replace(m, dict) {
 }
 
 function allStrings(o, fn) {
-  for (const k in o) {
-    if (check(o[k], String)) {
-      o[k] = fn(o[k]);
-    } else if (check(o[k], Object) || check(o[k], Array)) {
-      allStrings(o[k], fn);
+  const mut = _.clone(o);
+  for (const k of Object.keys(mut)) {
+    if (check(mut[k], String)) {
+      mut[k] = fn(mut[k]);
+    } else if (check(mut[k], Object) || check(mut[k], Array)) {
+      allStrings(mut[k], fn);
     }
   }
-  return o;
+  return mut;
 }
 
-function Promisearse(_val, dict) {
-  var val = _.clone(_val)
+function _parse(_val, dict) {
+  let mut = _.clone(_val);
   if (dict) {
-    val = interpolate(val, dict);
+    mut = interpolate(mut, dict);
   }
-  val = interpolate(val, macro);
-  return replace(val, dict);
+  mut = interpolate(mut, macro);
+  return replace(mut, dict);
 }
 
 function parse(conf, dict) {
   if (check(conf, String)) {
-    return Promisearse(conf, dict);
+    return _parse(conf, dict);
   } else if (check(conf, Object)) {
     if (conf.macro) {
       // log.verbose 'parsing macro object, #{JSON.stringify conf}'
       return objectReplace(conf, dict || {});
     }
-    if (!dict) {
-      dict = conf;
-    }
-    return allStrings(_.clone(conf), val => parse(val, dict));
-  } else {
-    return conf;
+    return allStrings(_.clone(conf || conf), val => {
+      return parse(val, dict || conf);
+    });
   }
+  return conf;
 }
 
 _.extend(macro, cascade.deep(macros, keywords, [targetPlatform()]));
 
 function select(base, options) {
   if (!base) {
-    return;
+    throw new Error('selecting on empty object');
   }
-  if (typeof options === 'undefined' || options === null) {
-    options = {};
+  const mutableOptions = _.clone(options || {});
+  if (mutableOptions.ignore) {
+    mutableOptions.keywords = _.difference(keywords, options.ignore);
+    mutableOptions.selectors = _.difference(selectors, options.ignore);
   }
-  if (options.ignore) {
-    options.keywords = _.difference(keywords, options.ignore);
-    options.selectors = _.difference(selectors, options.ignore);
-  }
-  const flattened = cascade.deep(_.clone(base), options.keywords || keywords, options.selectors || selectors);
+  const flattened = cascade.deep(_.clone(base), mutableOptions.keywords, mutableOptions.selectors);
   return parse(flattened, options.dict);
 }
 
@@ -223,21 +219,21 @@ function select(base, options) {
 function arrayify(val) {
   if (check(val, Array)) {
     return val;
-  } else {
-    return [val];
   }
+  return [val];
 }
 
-function fullPath(p) {
+function fullPath(p, dep) {
   if (p.startsWith('/')) {
     return p;
-  } else {
-    return path.join(rootConfig.d.root, p);
   }
+  return path.join(dep.d.root, p);
 }
 
 function pathArray(val) {
-  _.map(arrayify(val), v => pathSetting(v));
+  _.map(arrayify(val), (v) => {
+    return pathSetting(v);
+  });
 }
 
 function pathSetting(val) {
@@ -245,71 +241,60 @@ function pathSetting(val) {
 }
 
 function globArray(val) {
-  _.map(arrayify(val), v => parse(v));
+  _.map(arrayify(val), (v) => {
+    return parse(v);
+  });
 }
 
-function leaves(root, fn) {
-  if (Array.isArray(root) || (root !== null && typeof val === 'object')) {
-    return (() => {
-      const result = [];
-      for (const i in root) {
-        result.push(leaves(i, fn));
-      }
-      return result;
-    })();
-  } else {
-    return fn(root);
-  }
-}
-
-function replaceAll(str, find, replace) {
+function replaceAll(str, find, rep) {
   const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return str.replace(new RegExp(escaped, 'g'), replace);
+  return str.replace(new RegExp(escaped, 'g'), rep);
 }
 
 function iterable(val) {
   if (check(val, Array)) {
     return val;
   } else if (check(val, Object)) {
-    return _.map(val, v => v);
-  } else {
-    return [val];
+    return _.map(val, (v) => {
+      return v;
+    });
   }
+  return [val];
 }
 
-function iterateConf(confObject, commandObject, ignore) {
-  if (typeof ignore === 'undefined' || ignore === null) {
-    ignore = [];
-  }
-  if (check(confObject, String)) {
-    confObject = [confObject];
+function iterate(confObject, fn, ignore) {
+  let mutableConf = _.clone(confObject);
+  if (check(mutableConf, String)) {
+    mutableConf = [mutableConf];
   }
   const validCommands = [];
-  _.each(confObject, function(v, k) {
+  for (const k of mutableConf) {
+    let key = k;
+    const val = mutableConf[key];
     if (check(k, Number)) {
-      k = 'shell';
-    } else if (_.contains(ignore, k)) {
-      return;
+      key = 'shell';
+    } else if (!_.contains(ignore, key)) {
+      validCommands.push({obj: val, key: key});
     }
-    return validCommands.push({obj: v, key: k});
-  });
-  return _p(validCommands, function(i) {
-    if (commandObject[i.key]) {
-      return commandObject[i.key](i.obj);
-    } else {
-      return commandObject.any(i.obj);
+  }
+  return Promise.each(validCommands, (i) => {
+    if (fn(i.key)) {
+      return fn(i.key, i.obj);
     }
+    return fn('any', i.obj);
   });
 }
 
 function printRepl(r, localDict) {
-  const string = '\n';
-  _.each(r.inputs, function(v, k) {
+  let string = '\n';
+  for (const k of r.inputs) {
+    const val = r.inputs(k);
+    let key = k;
     if (r.directive) {
-      k = `${r.directive.prepost || r.directive.pre || ''}${k}${r.directive.prepost || r.directive.post || ''}`;
+      key = `${r.directive.prepost || r.directive.pre || ''}${k}${r.directive.prepost || r.directive.post || ''}`;
     }
-    return string += `${k} : ${parse(v, localDict)}\n`;
-  });
+    string += `${key} : ${parse(val, localDict)}\n`;
+  }
   return string;
 }
 
@@ -320,33 +305,35 @@ function replaceInFile(f, r, localDict) {
   if (!r.inputs) {
     throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, 0, 2)}`);
   }
-  const stringFile = fs.readFileSync(f, 'utf8');
-  const {inputs} = r;
-  _.each(inputs, function(v, k) {
+  let stringFile = fs.readFileSync(f, 'utf8');
+  for (const k of r.inputs) {
+    const v = r.inputs(k);
+    let parsedKey;
+    let parsedVal;
     if (Array.isArray(v)) {
-      var parsedKey = v[0];
-      var parsedVal = v[1];
+      parsedKey = v[0];
+      parsedVal = v[1];
     } else {
-      var parsedKey = parse(k, localDict);
-      var parsedVal = parse(v, localDict);
+      parsedKey = parse(k, localDict);
+      parsedVal = parse(v, localDict);
     }
     if (r.directive) {
-      var parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
+      parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
     }
     if (argv.verbose) {
       if (stringFile.includes(parsedKey)) {
-        console.log(colors.green(`[ replace ] ${parsedKey}`, colors.magenta(`: ${parsedVal}`)));
+        log.add(`[ replace ] ${parsedKey} : ${parsedVal}`);
       }
     }
-    return stringFile = replaceAll(stringFile, parsedKey, parsedVal);
-  });
+    stringFile = replaceAll(stringFile, parsedKey, parsedVal);
+  }
   const format = {
     ext: path.extname(f),
     name: path.basename(f, path.extname(f)),
     dir: path.dirname(f),
     base: path.basename(f)
   };
-  if (format.ext = '.in') {
+  if (format.ext === '.in') {
     const parts = f.split('.');
     format.dir = path.dirname(parts[0]);
     format.name = path.basename(parts[0]);
@@ -357,7 +344,7 @@ function replaceInFile(f, r, localDict) {
   const editedFormat = _.extend(format, _.pick(r, Object.keys(format)));
   editedFormat.base = `${format.name}.${format.ext}`;
   const newPath = path.format(editedFormat);
-  const existingString = '';
+  let existingString = '';
   if (fs.existsSync(newPath)) {
     existingString = fs.readFileSync(newPath, 'utf8');
   }
@@ -380,7 +367,7 @@ export default {
   replaceInFile,
   interpolate,
   iterable,
-  iterate : iterateConf,
+  iterate,
   macro,
   cache,
   printRepl,

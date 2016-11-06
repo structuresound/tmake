@@ -32,6 +32,9 @@ export default {
   info(msg, color) {
     console.log(colors[color || 'white'](getMessage(msg)));
   },
+  warn(msg, color) {
+    console.log(colors[color || 'yellow'](getMessage(msg)));
+  },
   add(msg, color) {
     console.log(colors[color || 'green'](getMessage(msg)));
   },

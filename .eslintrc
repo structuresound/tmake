@@ -23,7 +23,7 @@
     "react/prefer-stateless-function": "off",
     "flowtype-errors/show-errors": 2,
     // 1e1f
-    "new-cap": ["error", { "capIsNewExceptions": ["Map", "List", "Record"]}],
+    "new-cap": ["error", { "capIsNewExceptions": ["Promise", "Map", "List", "Record"]}],
     "object-curly-spacing": ['error', 'never'],
     "arrow-body-style": ["error", "always"],
     "no-underscore-dangle": ["off"]

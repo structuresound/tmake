@@ -10,7 +10,7 @@ import testArgv from './testArgv';
 const db = new Datastore();
 
 import { helloWorld } from './fixtures';
-const platform = require('../lib/dsl/platform')(testArgv, helloWorld);
+const platform = require('../lib/platform')(testArgv, helloWorld);
 const toolchain = require('../lib/build/toolchain')(testArgv, helloWorld, platform, db);
 
 describe('toolchain', function() {

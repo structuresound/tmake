@@ -1,18 +1,21 @@
 import _ from 'underscore';
 import Promise from 'bluebird';
 import colors from 'chalk';
-import check from './util/check';
+import check from '1e1f-tools';
+
+const name = 'tmake';
 
 _.mixin({
-  ['sortKeysBy'](obj, comparator) {
-    const keys = _.sortBy(_.keys(obj), function(key) {
+  sortKeysBy(obj, comparator) {
+    const keys = _.sortBy(_.keys(obj), (key) => {
       if (comparator) {
         return comparator(obj[key], key);
-      } else {
-        return key;
       }
+      return key;
     });
-    return _.object(keys, _.map(keys, key => obj[key]));
+    return _.object(keys, _.map(keys, key => {
+      return obj[key];
+    }));
   }
 });
 
@@ -21,15 +24,18 @@ const c = {
   y: colors.yellow
 };
 
-const commands = function() {
-  const packageCommand = desc => ({
+function packageCommand(desc) {
+  return {
     name: 'package',
     type: [
       'String', 'Undefined'
     ],
     typeName: 'optional string',
     description: desc
-  });
+  };
+}
+
+function commands() {
   return {
     example: {
       name: 'example',
@@ -37,16 +43,19 @@ const commands = function() {
         'String', 'Undefined'
       ],
       typeName: 'optional',
-      description: [`copy an ${c.y('example')} to the current directory`, `the default is a c++11 http server: ${c.y('served')}`]
+      description: [
+        `copy an ${c.y('example')} to the current directory`,
+        `the default is a c++11 http server: ${c.y('served')}`
+      ]
     },
-    ls: packageCommand(`list state of a ${c.y('package')} from the local ${p} database`),
-    path: packageCommand(`list local directories for a ${c.y('package')} from the local ${p} database`),
+    ls: packageCommand(`list state of a ${c.y('package')} from the local ${name} database`),
+    path: packageCommand(`list local directories for a ${c.y('package')} from the local ${name} database`),
     install: packageCommand('copy libs and headers to destination'),
     all: packageCommand('fetch, update, build, install'),
     fetch: packageCommand(`git / get dependencies for all or ${c.y('package')}`),
     configure: packageCommand(`configure build system ${c.y('package')}`),
     build: packageCommand(`build this project or dependency ${c.y('package')}`),
-    push: packageCommand(`upload the current config file to the ${p} package repository`),
+    push: packageCommand(`upload the current config file to the ${name} package repository`),
     link: packageCommand(`link the current or specified ${c.y('package')} to your local package repository`),
     unlink: packageCommand(`remove the current or specified ${c.y('package')} from your local package repository`),
     clean: packageCommand(`clean project, ${c.y('package')}, or 'all'`),
@@ -66,38 +75,40 @@ const commands = function() {
       description: 'usage guide'
     }
   };
-};
+}
 
-const parseOptions = function(cmd) {
+function parseOptions(cmd) {
   if (!commands()[cmd]) {
-    throw 'unknown command';
+    throw new Error('unknown command');
   }
   return commands()[cmd];
-};
+}
 
-const usage = function(cmd) {
+function usage(cmd) {
   const o = parseOptions(cmd);
-  return `${colors.gray('usage:')} ${p} ${colors.green(cmd)} ${colors.yellow(o.name)} \n${colors.gray(o.description)}`;
-};
+  return `${colors.gray('usage:')} ${name} ${colors.green(cmd)} ${colors.yellow(o.name)} \n${colors.gray(o.description)}`;
+}
 
-const manual = function() {
-  const man = `
-${colors.gray('usage:')} ${p} ${colors.green('command')} ${colors.yellow('option')}
-`;
-  _.each(_.sortKeysBy(commands()), function(o, cmd) {
+function manual() {
+  let man = `
+  ${colors.gray('usage:')} ${name} ${colors.green('command')} ${colors.yellow('option')}
+  `;
+  _.each(_.sortKeysBy(commands()), (o, cmd) => {
     if (o.name) {
       man += `           ${colors.green(cmd)} ${colors.yellow(o.name)} ${colors.gray(o.typeName || o.type)}\n`;
     } else {
       man += `           ${colors.green(cmd)}\n`;
     }
     if (check(o.description, Array)) {
-      return _.each(o.description, d => man += colors.gray(`              ${d}\n`));
+      _.each(o.description, (d) => {
+        man += colors.gray(`              ${d}\n`);
+      });
     } else {
-      return man += colors.gray(`              ${o.description}\n`);
+      man += colors.gray(`              ${o.description}\n`);
     }
   });
   return man;
-};
+}
 
 const defaultPackage = {
   name: 'newProject',
@@ -108,7 +119,9 @@ const defaultPackage = {
   }
 };
 
-const createPackage = () => new Promise(resolve => resolve(defaultPackage));
+function createPackage() {
+  return Promise.resolve(defaultPackage);
+}
 
 export default {
   parse(argv) {
@@ -121,7 +134,7 @@ export default {
     }
   },
   hello() {
-    return `if this is a new project run '${p} example' or type '${p} help' for more options`;
+    return `if this is a new project run '${name} example' or type '${name} help' for more options`;
   },
   createPackage,
   manual

@@ -1,75 +1,22 @@
 import _ from 'underscore';
 import Promise from 'bluebird';
-import fs from '../util/fs';
 import path from 'path';
-import check from '../util/check';
+import {diff, check} from '1e1f-tools';
+
+import fs from '../util/fs';
 import sh from '../util/sh';
 import log from '../util/log';
-import {jsonStableHash} from '../util/hash';
-import {stringHash} from '../util/hash';
-import {fileHash} from '../util/hash';
 import toolchain from './toolchain';
 import graph from '../graph';
 import fetch from '../util/fetch';
+import argv from '../util/argv';
+import platform from '../platform';
 
-const commands = {
-  any(obj) {
-    return commands.shell(obj);
-  },
-  ninja() {
-    return commands.with ('ninja') ;
-    }
-  ,
-  cmake() {
-    return commands.with ('cmake') ;
-    }
-  ,
-  make() {
-    return commands.with ('make') ;
-    }
-  ,
-  xcode() {
-    return commands.with ('xcode') ;
-    }
-  ,
-  replace(obj) {
-    return _p(platform.iterable(obj), replEntry => fs.glob(platform.globArray(replEntry.matching, dep), undefined, dep.d.source).then(files => _p(files, file => platform.replaceInFile(file, replEntry, dep))));
-  },
+import * as db from '../db';
 
-  shell(obj) {
-    return _p(platform.iterable(obj), function(c) {
-      if (check(c, String)) {
-        c = {
-          cmd: c
-        };
-      }
-      return sh.Promise(platform.parse(c.cmd, dep), platform.pathSetting(c.cwd || dep.d.source, dep), !argv.quiet);
-    });
-  },
-
-  create(obj) {
-    return _p(platform.iterable(obj), function(e) {
-      const filePath = path.join(dep.d.source, e.path);
-      const existing = fs.readIfExists(filePath);
-      if (existing !== e.string) {
-        log.verbose(`create file ${filePath}`);
-        return fs.writeFileAsync(filePath, e.string, {encoding: 'utf8'});
-      }
-    });
-  },
-
-  with(system) {
-    log.verbose(`configure for: ${system}`);
-    return createBuildFileFor(system);
-  },
-
-  copy(obj) {
-    return _p(platform.iterable(obj), function(e) {
-      log.quiet(`copy ${e}`);
-      return copy(e.matching, platform.pathSetting(e.from, dep), platform.pathSetting(e.to, dep), false);
-    });
-  }
-};
+import {jsonStableHash, stringHash} from '../util/hash';
+import cmake from './cmake';
+import ninja from './ninja';
 
 const settings = [
   'linkerFlags',
@@ -82,82 +29,145 @@ const settings = [
   'headers',
   'outputFile'
 ];
-const filter = ['with', 'ninja', 'xcode', 'cmake', 'make'].concat(settings);
 
-const _build = _.pick(dep.build, filter);
-const _configuration = dep.configure;
+function resolveConfiguration(dep, configureTests) {
+  const filter = ['with', 'ninja', 'xcode', 'cmake', 'make'].concat(settings);
 
-if (configureTests && dep.test) {
-  _build = _.pick(dep.test.build, filter);
-  _configuration = dep.test.configure;
+  let _build = _.pick(dep.build, filter);
+  let _configuration = dep.configure;
+
+  if (configureTests && dep.test) {
+    _build = _.pick(dep.test.build, filter);
+    _configuration = dep.test.configure;
+  }
+
+  return _.extend(_build, _configuration);
 }
 
-const configuration = _.extend(_build, _configuration);
-var copy = function(patterns, from, to, flatten) {
+function functionIterable(dep) {
+  return (name, obj) => {
+    switch (name) {
+      case 'ninja':
+      case 'cmake':
+        return createBuildFileFor(name);
+      case 'any':
+      case 'shell':
+      default:
+        return Promise.each(platform.iterable(obj), (command) => {
+          const c = check(command, String)
+            ? {
+              cmd: command
+            }
+            : command;
+          const setting = platform.pathSetting(c.cwd || dep.d.source, dep);
+          return sh.Promise(platform.parse(c.cmd, dep), setting, !argv.quiet);
+        });
+      case 'replace':
+        return Promise.each(platform.iterable(obj), (replEntry) => {
+          const pattern = platform.globArray(replEntry.matching, dep);
+          return fs
+            .glob(pattern, undefined, dep.d.source)
+            .then((files) => {
+              return Promise.each(files, (file) => {
+                return platform.replaceInFile(file, replEntry, dep);
+              });
+            });
+        });
+      case 'create':
+        return Promise.each(platform.iterable(obj), (e) => {
+          const filePath = path.join(dep.d.source, e.path);
+          const existing = fs.readIfExists(filePath);
+          if (existing !== e.string) {
+            log.verbose(`create file ${filePath}`);
+            return fs.writeFileAsync(filePath, e.string, {encoding: 'utf8'});
+          }
+        });
+      case 'copy':
+        return Promise.each(platform.iterable(obj), (e) => {
+          log.quiet(`copy ${e}`);
+          const fromDir = platform.pathSetting(e.from, dep);
+          return copy(e.matching, fromDir, platform.pathSetting(e.to, dep), false);
+        });
+    }
+  };
+}
+
+function copy(patterns, options) {
   const filePaths = [];
   return fs.wait(fs.src(patterns, {
-    cwd: from,
+    cwd: options.from,
     followSymlinks: false
-  }).pipe(fs.map(function(file, emit) {
-    log.verbose(`+ ${path.relative(file.cwd, file.path)}`);
-    if (flatten) {
-      file.base = path.dirname(file.path);
+  }).pipe(fs.map((file, emit) => {
+    const mutable = file;
+    log.verbose(`+ ${path.relative(mutable.cwd, mutable.path)}`);
+    if (options.flatten) {
+      mutable.base = path.dirname(mutable.path);
     }
-    const newPath = to + '/' + path.relative(file.base, file.path);
-    filePaths.push(path.relative(dep.d.home, newPath));
+    const newPath = path.join(options.to, path.relative(mutable.base, mutable.path));
+    filePaths.push(path.relative(options.relative, newPath));
     return emit(null, file);
-  })).pipe(fs.dest(to))).then(() => Promise.resolve(filePaths));
-};
+  })).pipe(fs.dest(options.to))).then(() => {
+    return Promise.resolve(filePaths);
+  });
+}
 
-const globHeaders = function() {
-  const patterns = platform.globArray(__guard__(configuration.headers, x => x.matching) || [
-    '**/*.h',
-    '**/*.hpp',
-    '**/*.ipp',
-    '!test/**',
-    '!tests/**',
-    '!build/**'
-  ], dep);
-  return Promise.map(dep.d.includeDirs, path => fs.glob(patterns, dep.d.project, path)).then(stack => Promise.resolve(_.flatten(stack)));
-};
+function globHeaders(dep, configuration) {
+  const patterns = platform.globArray(configuration.headers
+    ? configuration.headers.matching
+    : [
+      '**/*.h',
+      '**/*.hpp',
+      '**/*.ipp',
+      '!test/**',
+      '!tests/**',
+      '!build/**'
+    ], dep);
+  return Promise.map(dep.d.includeDirs, (includePath) => {
+    return fs.glob(patterns, dep.d.project, includePath);
+  }).then((stack) => {
+    return Promise.resolve(_.flatten(stack));
+  });
+}
 
-const globSources = function() {
-  const patterns = platform.globArray(__guard__(configuration.sources, x => x.matching) || [
+function globSources(dep, configuration) {
+  const patterns = platform.globArray(configuration.sources.matching || [
     '**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'
   ], dep);
   return fs.glob(patterns, dep.d.project, dep.d.source);
-};
+}
 
-const globDeps = () => graph.deps(dep);
+function globDeps(dep) {
+  return graph.deps(dep);
+}
 
 const flags = require('./flags');
 
 const stdCompilerFlags = {
   clang: {
     ios: {
-      arch: "arm64",
-      isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}",
-      "miphoneos-version-min": "={SDK_VERSION}",
+      arch: 'arm64',
+      isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}',
+      'miphoneos-version-min': '={SDK_VERSION}',
       simulator: {
-        "mios-simulator-version-min": "=6.1",
-        isysroot: "{CROSS_TOP}/SDKs/{CROSS_SDK}"
+        'mios-simulator-version-min': '=6.1',
+        isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}'
       }
     }
   }
 };
-// arch: "{ARCH}"
+// arch: '{ARCH}'
 
 // stdMmFlags =
-//   "fobjc-abi-version": 2
+//   'fobjc-abi-version': 2
 
 const stdCxxFlags = {
   O: 2,
   mac: {
-    std: "c++11",
-    stdlib: "libc++"
+    std: 'c++11',
+    stdlib: 'libc++'
   },
   linux: {
-    std: "c++0x",
+    std: 'c++0x',
     pthread: true
   }
 };
@@ -171,24 +181,16 @@ const stdFrameworks = {
 const stdLinkerFlags = {
   // static: true
   linux: {
-    "lstdc++": true,
-    "lpthread": true
+    'lstdc++': true,
+    'lpthread': true
   },
   mac: {
-    "lc++": true
+    'lc++': true
   }
 };
 
-const jsonFlags = {
-  frameworks: platform.select(configuration.frameworks || stdFrameworks),
-  cFlags: _.omit(_.extend(platform.select(stdCxxFlags), platform.select(configuration.cFlags || configuration.cxxFlags)), ['std', 'stdlib']),
-  cxxFlags: _.extend(platform.select(stdCxxFlags), platform.select(configuration.cxxFlags || configuration.cFlags)),
-  linkerFlags: _.extend(platform.select(stdLinkerFlags), platform.select(configuration.linkerFlags)),
-  compilerFlags: _.extend(platform.select(stdCompilerFlags), platform.select(configuration.compilerFlags))
-};
-
-const selectHostToolchain = function() {
-  const {compiler} = argv;
+function selectHostToolchain(dep) {
+  let compiler = argv.compiler;
   if (dep.build) {
     if (typeof compiler === 'undefined' || compiler === null) {
       compiler = dep.build.cc;
@@ -205,36 +207,62 @@ const selectHostToolchain = function() {
   log.verbose(`look for compiler ${compiler}`);
   const cc = toolchain.pathForTool(hostToolchain[compiler]);
   return {hostToolchain, compiler, cc};
-};
+}
 
-const createContext = function() {
-  dep.toolchainConfiguration = {
-    target: dep.target,
+function resolveJsonFlags(configuration) {
+  return {
+    frameworks: platform.select(configuration.frameworks || stdFrameworks),
+    cFlags: _.omit(_.extend(platform.select(stdCxxFlags), platform.select(configuration.cFlags || configuration.cxxFlags)), ['std', 'stdlib']),
+    cxxFlags: _.extend(platform.select(stdCxxFlags), platform.select(configuration.cxxFlags || configuration.cFlags)),
+    linkerFlags: _.extend(platform.select(stdLinkerFlags), platform.select(configuration.linkerFlags)),
+    compilerFlags: _.extend(platform.select(stdCompilerFlags), platform.select(configuration.compilerFlags))
+  };
+}
+
+function createContext(input) {
+  const output = diff.clone(input);
+  output.configuration = resolveConfiguration(output);
+  const jsonFlags = resolveJsonFlags(output.configuration);
+  output.toolchainConfiguration = {
+    target: output.target,
     frameworks: flags.parseFrameworks(jsonFlags.frameworks),
     cFlags: flags.parseC(jsonFlags.cFlags),
     cxxFlags: flags.parseC(jsonFlags.cxxFlags),
     linkerFlags: flags.parse(jsonFlags.linkerFlags),
-    compilerFlags: flags.parse(jsonFlags.compilerFlags, {join: " "})
+    compilerFlags: flags.parse(jsonFlags.compilerFlags, {join: ' '})
   };
-  _.extend(dep.toolchainConfiguration, selectHostToolchain());
-  return dep.configuration = _.clone(dep.toolchainConfiguration);
-};
+  _.extend(output.toolchainConfiguration, selectHostToolchain());
+  output.configuration = _.clone(output.toolchainConfiguration);
+  return output;
+}
 
-const globFiles = () => globHeaders().then(function(headers) {
-  dep.configuration.headers = headers;
-  return globSources();
-}).then(function(sources) {
-  dep.configuration.sources = sources;
-  return globDeps();
-}).then(function(depGraph) {
-  if (depGraph.length) {
-    dep.configuration.libs = _.chain(depGraph).map(d => _.map(d.libs, lib => path.join(d.d.home, lib))).flatten().value().reverse();
-  }
-  dep.configuration.includeDirs = _.union([`${dep.d.home}/include`], dep.d.includeDirs);
-  return Promise.resolve();
-});
+function globFiles(input) {
+  const output = diff.clone(input);
+  return globHeaders(output).then((headers) => {
+    output.configuration.headers = headers;
+    return globSources();
+  }).then((sources) => {
+    output.configuration.sources = sources;
+    return globDeps();
+  }).then((depGraph) => {
+    if (depGraph.length) {
+      output.configuration.libs = _
+        .chain(depGraph)
+        .map(d => {
+          return _.map(d.libs, (lib) => {
+            return path.join(d.d.home, lib);
+          });
+        })
+        .flatten()
+        .value()
+        .reverse();
+    }
+    output.configuration.includeDirs = _.union([`${output.d.home}/include`], output.d.includeDirs);
+    return Promise.resolve(output);
+  });
+}
 
-const getBuildFile = function(systemName) {
+function getBuildFile(dep, systemName) {
   const buildFileNames = {
     ninja: 'build.ninja',
     cmake: 'CMakeLists.txt',
@@ -243,62 +271,85 @@ const getBuildFile = function(systemName) {
     xcode: `${dep.name}.xcodeproj`
   };
   return buildFileNames[systemName];
-};
+}
 
-const getBuildFilePath = systemName => path.join(dep.d.project, getBuildFile(systemName));
+function getBuildFilePath(dep, systemName) {
+  return path.join(dep.d.project, getBuildFile(systemName));
+}
 
-var createBuildFileFor = systemName => fs.existsAsync(getBuildFilePath(systemName)).then(function(exists) {
-  if (exists) {
-    const buildFileName = getBuildFile(systemName);
-    log.quiet(`using pre-existing build file ${buildFileName}`);
-    dep.cache.buildFile = buildFileName;
-    return db.update({
-      name: dep.name
-    }, {
-      $set: {
-        "cache.buildFile": dep.cache.buildFile
+function createBuildFileFor(input, systemName) {
+  const dep = diff.clone(input);
+  return fs
+    .existsAsync(getBuildFilePath(dep, systemName))
+    .then((exists) => {
+      if (exists) {
+        const buildFileName = getBuildFile(dep, systemName);
+        log.quiet(`using pre-existing build file ${buildFileName}`);
+        dep.cache.buildFile = buildFileName;
+        return db.update({
+          name: dep.name
+        }, {
+          $set: {
+            'cache.buildFile': dep.cache.buildFile
+          }
+        });
       }
+      return generateConfig(systemName);
+    })
+    .then(() => {
+      return Promise.resolve(dep);
     });
-  } else {
-    return generateConfig(systemName);
-  }
-});
+}
 
-var generateConfig = function(systemName) {
-  const buildFileName = getBuildFile(systemName);
-  const buildFile = getBuildFilePath(systemName);
-  return globFiles().then(function() {
-    switch (systemName) {
-      case 'ninja':
-        return require('./ninja')(dep, platform, db).generate(buildFile);
-      case 'cmake':
-        return require('./cmake')(dep, platform, db).generate().then(CMakeLists => fs.writeFileAsync(buildFile, CMakeLists));
-      case 'gyp':
-        return require('./gyp')(dep, platform, db).generate().then(binding => fs.writeFileAsync(buildFile, JSON.stringify(binding, 0, 2)));
-      case 'make':
-        return require('./make')(dep.configuration).generate().then(Makefile => fs.writeFileAsync(buildFile, JSON.stringify(Makefile, 0, 2)));
-      case 'xcode':
-        return require('./xcode')(dep, platform, db).generate(buildFile);
-    }
-  }).then(function() {
-    dep.cache.buildFile = buildFileName;
-    return db.update({
-      name: dep.name
-    }, {
-      $set: {
-        "cache.buildFile": dep.cache.buildFile,
-        "cache.generatedBuildFile": dep.cache.buildFile
-      }
-    });
+function generateConfig(input, systemName) {
+  return globFiles(input).then((conf) => {
+    return generateBuildFile(conf, systemName);
+  }).then((conf) => {
+    return processConfig(conf, systemName);
   });
-};
+}
 
-const hashMetaConfiguration = function() {
+function generateBuildFile(input, systemName) {
+  const buildFile = getBuildFilePath(systemName);
+  switch (systemName) {
+    case 'ninja':
+      return ninja.generate(input, buildFile);
+    case 'cmake':
+      return cmake
+        .generate(input)
+        .then((CMakeLists) => {
+          return fs.writeFileAsync(buildFile, CMakeLists);
+        })
+        .then((conf) => {
+          return Promise.resolve(conf);
+        });
+    default:
+      throw new Error(`bad build system ${systemName}`);
+  }
+}
+
+function processConfig(input, systemName) {
+  const conf = diff.clone(input);
+  const buildFileName = getBuildFile(systemName);
+  conf.cache.buildFile = buildFileName;
+  return db.update({
+    name: conf.name
+  }, {
+    $set: {
+      'cache.buildFile': conf.cache.buildFile,
+      'cache.generatedBuildFile': conf.cache.buildFile
+    }
+  }).then(() => {
+    return Promise.resolve(conf);
+  });
+}
+
+function hashMetaConfiguration(configuration) {
   const urlHash = stringHash(fetch.resolveUrl());
   return stringHash(urlHash + jsonStableHash(configuration));
-};
+}
 
-const needsReconfigure = function(cumulativeHash) {
+function needsReconfigure(dep, cumulativeHash) {
   if (dep.cache.metaConfiguration) {
     if (cumulativeHash !== dep.cache.metaConfiguration) {
       const url = fetch.resolveUrl();
@@ -306,32 +357,32 @@ const needsReconfigure = function(cumulativeHash) {
         log.error(`url is stale, now ${url}`);
       } else {
         log.error(`${dep.name} configuration is stale ${dep.cache.metaConfiguration}, now ${cumulativeHash}`);
-        log.error(configuration);
+        log.error(dep.configuration);
       }
       return true;
     }
   } else {
     return true;
   }
-};
+}
 
 export default {
   hashMetaConfiguration,
-  commands,
-  execute() {
-    createContext();
-    const configHash = hashMetaConfiguration();
-    if (platform.force(dep) || needsReconfigure(configHash)) {
-      return platform.iterate(configuration, commands, settings).then(() => db.update({
-        name: dep.name
-      }, {
-        $set: {
-          "cache.metaConfiguration": configHash
-        }
-      }));
-    } else {
-      log.verbose(`configuration ${configHash} is current, use --force=${dep.name} if you suspect the cache is stale`);
-      return Promise.resolve();
+  execute(input) {
+    const conf = createContext(input);
+    const configHash = hashMetaConfiguration(conf);
+    if (platform.force(conf) || needsReconfigure(conf, configHash)) {
+      return platform.iterate(conf.configuration, functionIterable(conf), settings).then(() => {
+        return db.update({
+          name: conf.name
+        }, {
+          $set: {
+            'cache.metaConfiguration': configHash
+          }
+        });
+      });
     }
+    log.verbose(`configuration ${configHash} is current, use --force=${conf.name} if you suspect the cache is stale`);
+    return Promise.resolve(conf);
   }
 };

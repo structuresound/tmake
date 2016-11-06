@@ -1,10 +1,12 @@
 import Promise from 'bluebird';
-import fs from '../util/fs';
-import check from '../util/check';
-import sh from '../util/sh';
 import path from 'path';
-// _toolchain = require './toolchain'
-import log from '../util/log';
+import {check} from '1e1f-tools';
+
+import fs from '../util/fs';
+import sh from '../util/sh';
+import platform from '../platform';
+import cmake from './cmake';
+import ninja from './ninja';
 
 const settings = [
   'linkerFlags',
@@ -17,96 +19,71 @@ const settings = [
   'headers',
   'outputFile'
 ];
-const buildSettings = dep.build;
 
-const buildFolder = function() {
-  if (buildTests) {
+function buildFolder(dep) {
+  if (dep.build.buildTests) {
     return dep.d.test;
-  } else {
-    return dep.d.build;
   }
-};
+  return dep.d.build;
+}
 
-const buildFile = function() {
-  if (buildTests) {
+function buildFile(dep) {
+  if (dep.build.buildTests) {
     return path.join(dep.d.project, dep.test.buildFile);
-  } else {
-    return path.join(dep.d.project, dep.cache.buildFile);
   }
-};
+  return path.join(dep.d.project, dep.cache.buildFile);
+}
 
-const commandBlock = {
-  any(obj) {
-    return commandBlock.shell(obj);
-  },
-  ninja() {
-    return commandBlock.with ('ninja') ;
+function commandBlock(dep) {
+  return (name, obj) => {
+    switch (name) {
+      case 'ninja':
+      case 'cmake':
+        return buildWith(name);
+      case 'shell':
+        return Promise.each(platform.iterable(obj), (c) => {
+          let lc = check(c, String)
+            ? lc = {
+              cmd: c
+            }
+            : c;
+          const setting = platform.pathSetting(lc.cwd || dep.d.source, dep);
+          return sh.Promise(platform.parse(lc.cmd, dep), setting, true);
+        });
+      case 'any':
+      default:
+        return commandBlock.shell(obj);
     }
-  ,
-  cmake() {
-    return commandBlock.with ('cmake') ;
-    }
-  ,
-  make() {
-    return commandBlock.with ('make') ;
-    }
-  ,
-  xcode() {
-    return commandBlock.with ('xcode') ;
-    }
-  ,
-  shell(obj) {
-    return _p(platform.iterable(obj), function(c) {
-      if (check(c, String)) {
-        c = {
-          cmd: c
-        };
-      }
-      return sh.Promise(platform.parse(c.cmd, dep), platform.pathSetting(c.cwd || dep.d.source, dep), true);
-    });
-  },
-  with(name) {
-    return buildWith(name);
-  }
-};
+  };
+}
 
-const ensureBuildFolder = function() {
-  if (!fs.existsSync(buildFolder())) {
-    return fs.mkdirSync(buildFolder());
+function ensureBuildFolder(dep) {
+  if (!fs.existsSync(buildFolder(dep))) {
+    return fs.mkdirSync(buildFolder(dep));
   }
-};
+}
 
-const ensureBuildFile = function() {
-  if (!check(buildFile(), "String")) {
-    throw new Error("no build file specified");
+function ensureBuildFile(dep) {
+  if (!check(buildFile(dep), 'String')) {
+    throw new Error('no build file specified');
   }
-  if (!fs.existsSync(buildFile())) {
-    throw new Error(`no build file @ ${buildFile()}`);
+  if (!fs.existsSync(buildFile(dep))) {
+    throw new Error(`no build file @ ${buildFile(dep)}`);
   }
-};
+}
 
-var buildWith = function(system) {
-  ensureBuildFolder();
-  ensureBuildFile();
+function buildWith(dep, system) {
+  ensureBuildFolder(dep);
+  ensureBuildFile(dep);
   switch (system) {
     case 'ninja':
-      var runner = require('./ninja')(dep, platform, db);
-      break;
+      return ninja.build(dep);
     case 'cmake':
-      runner = require('./cmake')(dep, platform, db);
-      break;
-    case 'gyp':
-      runner = require('./gyp')(dep, platform, db);
-      break;
-    case 'make':
-      runner = require('./make')(dep, platform, db);
-      break;
-    case 'xcode':
-      runner = require('./xcode')(dep, platform, db);
-      break;
+      return cmake.build(dep);
+    default:
+      throw new Error(`bad build system ${system}`);
   }
-  return runner.build();
-};
+}
 
 // hashSourceFolder = ->
 //   cumulativeHash = dep.cache.url
@@ -126,10 +103,10 @@ var buildWith = function(system) {
 //     Promise.resolve cumulativeHash
 
 export default {
-  execute() {
-    if (!buildSettings) {
+  execute(dep) {
+    if (!dep.build) {
       return Promise.resolve();
     }
-    return platform.iterate(buildSettings, commandBlock, settings);
+    return platform.iterate(dep.build, commandBlock(dep), settings);
   }
 };

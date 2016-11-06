@@ -5,7 +5,7 @@ import colors from 'chalk';
 
 import './util/string';
 import fs from './util/fs';
-import platform from './dsl/platform';
+import platform from './platform';
 import prompt from './prompt';
 import graph from './graph';
 import cloud from './cloud';

@@ -2,9 +2,9 @@ import {DepGraph} from 'dependency-graph';
 import _ from 'underscore';
 import Promise from 'bluebird';
 import path from 'path';
-import check from './util/check';
+import check from '1e1f-tools';
 import fs from './util/fs';
-import cascade from './dsl/cascade';
+import cascade from './util/cascade';
 import log from './util/log';
 import argv from './util/argv';
 import * as db from './db';
@@ -312,4 +312,4 @@ function resolve(root) {
   });
 }
 
-export {all, deps, resolve};
+export default {all, deps, resolve};

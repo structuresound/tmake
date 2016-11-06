@@ -8,10 +8,10 @@ import testArgv from './testArgv';
 import { tmakeConfig } from './fixtures';
 
 describe('platform', function() {
-  const platform = require('../lib/dsl/platform')(testArgv, tmakeConfig);
+  const platform = require('../lib/platform')(testArgv, tmakeConfig);
   it('will select on the current platform', () => assert.ok(_.contains(platform.selectors, platform.name())));
 
-  const cascade = require('../lib/dsl/cascade.js');
+  const cascade = require('../lib/cascade.js');
   const dep = platform.parse(cascade.deep(tmakeConfig, platform.keywords, platform.selectors));
 
   it('will parse the configuration based on self and platform selectors', function() {

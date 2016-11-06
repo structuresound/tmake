@@ -6,7 +6,7 @@ import log from '../util/log';
 import {stringHash} from '../util/hash';
 import _ from 'underscore';
 import _fetch from '../util/fetch';
-import check from '../util/check';
+import {check} from '1e1f-tools';
 import '../util/string';
 
 const stdToolchain = {
@@ -90,7 +90,7 @@ const fetchToolchain = function(toolchain) {
   if (!check(toolchain, Object)) {
     throw new Error("toolchain not object");
   }
-  return _p(Object.keys(toolchain), function(name) {
+  return Promise.each(Object.keys(toolchain), function(name) {
     const tool = toolchain[name];
     const toolpath = pathForTool(tool);
     log.verbose(`checking for tool: ${name} @ ${toolpath}`);
