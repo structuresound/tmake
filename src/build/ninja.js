@@ -1,6 +1,6 @@
 import path from 'path';
 import sh from 'shelljs';
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import nbg from 'ninja-build-gen';
 import log from '../util/log';

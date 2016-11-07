@@ -1,18 +1,17 @@
 import Promise from 'bluebird';
-import colors from 'chalk';
 import path from 'path';
 import request from 'request';
 import progress from 'request-progress';
 import ProgressBar from 'progress';
 
-import './string';
+import {startsWith} from '../util/string';
 import fs from './fs';
 import sh from './sh';
 import log from './log';
 import {stringHash} from './hash';
 import argv from './argv';
 
-import platform from '../platform';
+import profile from '../profile';
 import * as db from '../db';
 
 function download(url, cacheDir) {
@@ -78,7 +77,7 @@ function findGit() {
 }
 
 function parsePath(s) {
-  if (s.startsWith('/')) {
+  if (startsWith(s, '/')) {
     return s;
   }
   return path.join(argv.runDir, s);
@@ -130,7 +129,7 @@ function getSource(dep) {
     .then((exists) => {
       const url = resolveUrl();
       const hash = stringHash(url);
-      if (exists && dep.cache.url === hash && !platform.force(dep)) {
+      if (exists && dep.cache.url === hash && !profile.force(dep)) {
         if (argv.verbose) {
           log.warn('using cache');
         }
@@ -183,7 +182,7 @@ function linkSource(dep) {
 }
 
 function validate(dep) {
-  if (fs.existsSync(dep.d.clone) && !platform.force(dep)) {
+  if (fs.existsSync(dep.d.clone) && !profile.force(dep)) {
     return Promise.resolve();
   }
   return getSource();

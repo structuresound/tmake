@@ -1,6 +1,6 @@
 import path from 'path';
 import yaml from 'js-yaml';
-import check from './util/check';
+import {check} from './util/check';
 import fs from './util/fs';
 import log from './util/log';
 import argv from './util/argv';

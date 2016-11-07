@@ -1,7 +1,7 @@
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import path from 'path';
-import {diff, check} from '1e1f-tools';
+import {diff, check} from 'js-object-tools';
 
 import fs from '../util/fs';
 import sh from '../util/sh';
@@ -10,7 +10,7 @@ import toolchain from './toolchain';
 import graph from '../graph';
 import fetch from '../util/fetch';
 import argv from '../util/argv';
-import platform from '../platform';
+import profile from '../profile';
 
 import * as db from '../db';
 
@@ -53,28 +53,28 @@ function functionIterable(dep) {
       case 'any':
       case 'shell':
       default:
-        return Promise.each(platform.iterable(obj), (command) => {
+        return Promise.each(profile.iterable(obj), (command) => {
           const c = check(command, String)
             ? {
               cmd: command
             }
             : command;
-          const setting = platform.pathSetting(c.cwd || dep.d.source, dep);
-          return sh.Promise(platform.parse(c.cmd, dep), setting, !argv.quiet);
+          const setting = profile.pathSetting(c.cwd || dep.d.source, dep);
+          return sh.Promise(profile.parse(c.cmd, dep), setting, !argv.quiet);
         });
       case 'replace':
-        return Promise.each(platform.iterable(obj), (replEntry) => {
-          const pattern = platform.globArray(replEntry.matching, dep);
+        return Promise.each(profile.iterable(obj), (replEntry) => {
+          const pattern = profile.globArray(replEntry.matching, dep);
           return fs
             .glob(pattern, undefined, dep.d.source)
             .then((files) => {
               return Promise.each(files, (file) => {
-                return platform.replaceInFile(file, replEntry, dep);
+                return profile.replaceInFile(file, replEntry, dep);
               });
             });
         });
       case 'create':
-        return Promise.each(platform.iterable(obj), (e) => {
+        return Promise.each(profile.iterable(obj), (e) => {
           const filePath = path.join(dep.d.source, e.path);
           const existing = fs.readIfExists(filePath);
           if (existing !== e.string) {
@@ -83,10 +83,10 @@ function functionIterable(dep) {
           }
         });
       case 'copy':
-        return Promise.each(platform.iterable(obj), (e) => {
+        return Promise.each(profile.iterable(obj), (e) => {
           log.quiet(`copy ${e}`);
-          const fromDir = platform.pathSetting(e.from, dep);
-          return copy(e.matching, fromDir, platform.pathSetting(e.to, dep), false);
+          const fromDir = profile.pathSetting(e.from, dep);
+          return copy(e.matching, fromDir, profile.pathSetting(e.to, dep), false);
         });
     }
   };
@@ -112,7 +112,7 @@ function copy(patterns, options) {
 }
 
 function globHeaders(dep, configuration) {
-  const patterns = platform.globArray(configuration.headers
+  const patterns = profile.globArray(configuration.headers
     ? configuration.headers.matching
     : [
       '**/*.h',
@@ -130,7 +130,7 @@ function globHeaders(dep, configuration) {
 }
 
 function globSources(dep, configuration) {
-  const patterns = platform.globArray(configuration.sources.matching || [
+  const patterns = profile.globArray(configuration.sources.matching || [
     '**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'
   ], dep);
   return fs.glob(patterns, dep.d.project, dep.d.source);
@@ -211,11 +211,11 @@ function selectHostToolchain(dep) {
 
 function resolveJsonFlags(configuration) {
   return {
-    frameworks: platform.select(configuration.frameworks || stdFrameworks),
-    cFlags: _.omit(_.extend(platform.select(stdCxxFlags), platform.select(configuration.cFlags || configuration.cxxFlags)), ['std', 'stdlib']),
-    cxxFlags: _.extend(platform.select(stdCxxFlags), platform.select(configuration.cxxFlags || configuration.cFlags)),
-    linkerFlags: _.extend(platform.select(stdLinkerFlags), platform.select(configuration.linkerFlags)),
-    compilerFlags: _.extend(platform.select(stdCompilerFlags), platform.select(configuration.compilerFlags))
+    frameworks: profile.select(configuration.frameworks || stdFrameworks),
+    cFlags: _.omit(_.extend(profile.select(stdCxxFlags), profile.select(configuration.cFlags || configuration.cxxFlags)), ['std', 'stdlib']),
+    cxxFlags: _.extend(profile.select(stdCxxFlags), profile.select(configuration.cxxFlags || configuration.cFlags)),
+    linkerFlags: _.extend(profile.select(stdLinkerFlags), profile.select(configuration.linkerFlags)),
+    compilerFlags: _.extend(profile.select(stdCompilerFlags), profile.select(configuration.compilerFlags))
   };
 }
 
@@ -371,8 +371,8 @@ export default {
   execute(input) {
     const conf = createContext(input);
     const configHash = hashMetaConfiguration(conf);
-    if (platform.force(conf) || needsReconfigure(conf, configHash)) {
-      return platform.iterate(conf.configuration, functionIterable(conf), settings).then(() => {
+    if (profile.force(conf) || needsReconfigure(conf, configHash)) {
+      return profile.iterate(conf.configuration, functionIterable(conf), settings).then(() => {
         return db.update({
           name: conf.name
         }, {

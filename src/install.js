@@ -1,4 +1,4 @@
-import _ from 'underscore';
+import _ from 'lodash';
 import _vinyl from 'vinyl-fs';
 import Promise from 'bluebird';
 import path from 'path';
@@ -9,13 +9,14 @@ import log from './util/log';
 import {stringHash, fileHash} from './util/hash';
 import argv from './util/argv';
 import * as db from './db';
+import {startsWith} from '../util/string';
 
 const vinyl = {
   symlink: _vinyl.symlink,
   dest: _vinyl.dest,
   src(glob, opt) {
     const patterns = _.map(glob, (string) => {
-      if (string.startsWith('/')) {
+      if (startsWith(string, '/')) {
         return string.slice(1);
       }
       return string;

@@ -1,19 +1,20 @@
 import {DepGraph} from 'dependency-graph';
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import path from 'path';
-import check from '1e1f-tools';
+import {check} from 'js-object-tools';
 import fs from './util/fs';
 import cascade from './util/cascade';
 import log from './util/log';
 import argv from './util/argv';
+import {startsWith} from './util/string';
 import * as db from './db';
 
 function parsePath(s) {
   if (!check(s, String)) {
     throw new Error(`${s} is not a string`);
   }
-  if (s.startsWith('/')) {
+  if (startsWith(s, '/')) {
     return s;
   }
   return path.join(argv.runDir, s);
@@ -27,7 +28,7 @@ function arrayify(val) {
 }
 
 function fullPath(p, root) {
-  if (p.startsWith('/')) {
+  if (startsWith(p, '/')) {
     return p;
   }
   path.join(root, p);
@@ -39,7 +40,7 @@ function pathArray(val, root) {
   });
 }
 
-function resolvePaths(dep, platform) {
+function resolvePaths(dep, profile) {
   const mutable = _.clone(dep);
   if (dep.link) {
     const configDir = parsePath(dep.link);
@@ -47,7 +48,7 @@ function resolvePaths(dep, platform) {
     if (configPath) {
       log.verbose(`load config from linked directory ${configPath}`);
       const rawConfig = fs.readConfigSync(configPath);
-      _.extend(dep, cascade.deep(rawConfig, platform.keywords, platform.selectors));
+      _.extend(dep, cascade.deep(rawConfig, profile.keywords(), profile.selectors()));
     }
   }
 
@@ -165,8 +166,8 @@ function resolvePaths(dep, platform) {
 function resolveDep(_dep, parent) {
   let mutable = _.clone(_dep);
   if (parent) {
-    if (parent.platform) {
-      mutable.platform = parent.platform;
+    if (parent.profile) {
+      mutable.profile = parent.profile;
     }
     if (parent.override) {
       _.extend(mutable, parent.override);
@@ -174,7 +175,7 @@ function resolveDep(_dep, parent) {
     }
   }
 
-  mutable = cascade.deep(mutable, mutable.platform.keywords, mutable.platform.selectors);
+  mutable = cascade.deep(mutable, mutable.profile.keywords(), mutable.profile.selectors());
   if (mutable.name == null) {
     mutable.name = resolveDepName(mutable);
   }

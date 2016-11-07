@@ -1,6 +1,5 @@
-import _ from 'underscore';
-import check from './util/check';
-import {valueForKeyPath} from './util/cascade';
+import _ from 'lodash';
+import {diff, check} from 'js-object-tools';
 
 function defaultLookup(key, data) {
   if (key in data) {
@@ -9,7 +8,7 @@ function defaultLookup(key, data) {
   // look up the chain
   const keyParts = key.split('.');
   if (keyParts.length > 1) {
-    return valueForKeyPath(key, data);
+    return diff.valueForKeyPath(key, data);
   }
 }
 
@@ -25,8 +24,7 @@ function _interpolate(template, func) {
     }
     let interpolated = _.clone(template);
     let modified = false;
-    for (const k of commands) {
-      const c = commands[k];
+    for (const c of commands) {
       const lookup = func(c.slice(1, -1));
       if (lookup) {
         modified = true;
@@ -41,20 +39,15 @@ function _interpolate(template, func) {
 }
 
 function interpolate(template, funcOrData, opts) {
-  if (!template) {
-    throw new Error('interpolate undefined');
+  if (!template || !funcOrData) {
+    throw new Error('interpolate undefined or without function or data blob');
   }
   if (check(template, String)) {
-    let func = _.clone(funcOrData);
-    if (funcOrData) {
-      if (!check(funcOrData, Function)) {
-        func = (key) => {
-          return defaultLookup(key, funcOrData);
-        };
-      }
-    } else {
-      throw new Error('need to provide dictionary or key function to interpolate');
-    }
+    const func = check(funcOrData, Function)
+      ? funcOrData
+      : (key) => {
+        return defaultLookup(key, funcOrData);
+      };
     return _interpolate(template, func, opts);
   }
   return template;

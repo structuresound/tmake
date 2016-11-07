@@ -1,10 +1,10 @@
 import Promise from 'bluebird';
 import path from 'path';
-import {check} from '1e1f-tools';
+import {check} from 'js-object-tools';
 
 import fs from '../util/fs';
 import sh from '../util/sh';
-import platform from '../platform';
+import profile from '../profile';
 import cmake from './cmake';
 import ninja from './ninja';
 
@@ -41,14 +41,14 @@ function commandBlock(dep) {
       case 'cmake':
         return buildWith(name);
       case 'shell':
-        return Promise.each(platform.iterable(obj), (c) => {
+        return Promise.each(profile.iterable(obj), (c) => {
           let lc = check(c, String)
             ? lc = {
               cmd: c
             }
             : c;
-          const setting = platform.pathSetting(lc.cwd || dep.d.source, dep);
-          return sh.Promise(platform.parse(lc.cmd, dep), setting, true);
+          const setting = profile.pathSetting(lc.cwd || dep.d.source, dep);
+          return sh.Promise(profile.parse(lc.cmd, dep), setting, true);
         });
       case 'any':
       default:
@@ -107,6 +107,6 @@ export default {
     if (!dep.build) {
       return Promise.resolve();
     }
-    return platform.iterate(dep.build, commandBlock(dep), settings);
+    return profile.iterate(dep.build, commandBlock(dep), settings);
   }
 };

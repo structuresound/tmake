@@ -1,16 +1,16 @@
 import yaml from 'js-yaml';
 import sh from 'shelljs';
-import _ from 'underscore';
+import _ from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import CSON from 'cson';
 import glob from 'glob-all';
 import vinyl from 'vinyl-fs';
 import map from 'map-stream';
+import {check} from 'js-object-tools';
 
 import log from './log';
-import check from './check';
-import { unarchive } from './archive';
+import {unarchive} from './archive';
 
 fs.nuke = (folderPath) => {
   if (!folderPath || (folderPath === '/')) {
@@ -30,11 +30,10 @@ fs.nuke = (folderPath) => {
 };
 
 fs.prune = (folderPath) => {
-  const files = [];
   if (fs.existsSync(folderPath)) {
-    files = fs.readdirSync(folderPath);
+    const files = fs.readdirSync(folderPath);
     if (files.length) {
-      const modified = false;
+      let modified = false;
       for (const file of files) {
         const curPath = path.join(folderPath, file);
         if (fs.lstatSync(curPath).isDirectory()) {
@@ -53,8 +52,8 @@ fs.prune = (folderPath) => {
   }
 };
 
-fs.src = fs.vinyl.src;
-fs.dest = fs.vinyl.dest;
+fs.src = vinyl.src;
+fs.dest = vinyl.dest;
 fs.wait = function wait(stream, readOnly) {
   return (resolve, reject) => {
     stream.on('error', reject);
@@ -72,7 +71,6 @@ fs.deleteAsync = filePath => new Promise((resolve, reject) => fs.unlink(filePath
   return resolve(1);
 }));
 
-fs.vinyl = vinyl;
 fs.map = map;
 fs._glob = function _glob(srcPattern, relative, cwd) {
   return new Promise((resolve, reject) => {
@@ -98,7 +96,7 @@ fs._glob = function _glob(srcPattern, relative, cwd) {
 };
 
 fs.glob = (patternS, relative, cwd) => {
-  const patterns = [];
+  let patterns = [];
   if (check(patternS, String)) {
     patterns.push(patternS);
   } else if (check(patternS, Array)) {
@@ -217,8 +215,8 @@ fs.unarchive = function fsUnarchive(archive, tempDir, toDir, toPath) {
 
 fs.moveArchive = (tempDir, toDir, toPath) => {
   const files = fs.readdirSync(tempDir);
-  const resolvedToPAth = toPath;
   if (files.length === 1) {
+    let resolvedToPAth = toPath;
     const file = files[0];
     const fullPath = `${tempDir}/${file}`;
     if (fs.lstatSync(fullPath).isDirectory()) {

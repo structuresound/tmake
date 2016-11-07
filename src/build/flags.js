@@ -1,7 +1,7 @@
-import _ from 'underscore';
-import '../util/string';
+import _ from 'lodash';
+import {startsWith} from '../util/string';
 import fs from '../util/fs';
-import {check} from '1e1f-tools';
+import {check} from 'js-object-tools';
 
 function jsonToCFlags(object) {
   const opt = _.clone(object);
@@ -66,19 +66,19 @@ function _jsonToFlags(object, options) {
       if ((typeof opt === 'string') || check(opt, Number)) {
         let {join} = options;
         if (typeof opt === 'string') {
-          if (opt.startsWith(' ')) {
+          if (startsWith(opt, ' ')) {
             join = '';
           }
-          if (opt.startsWith('=')) {
+          if (startsWith(opt, '=')) {
             join = '';
           }
         }
-        if (key.startsWith(options.prefix)) {
+        if (startsWith(key, options.prefix)) {
           return flags.push(`${key}${join}${opt}`);
         }
         return flags.push(`${options.prefix}${key}${join}${opt}`);
       }
-      if (key.startsWith(options.prefix)) {
+      if (startsWith(key, options.prefix)) {
         return flags.push(`${key}`);
       }
       return flags.push(`${options.prefix}${key}`);

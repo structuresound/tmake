@@ -1,10 +1,19 @@
-/*globals describe it*/
+import {expect, assert} from 'chai';
+import cascade from '../lib/util/cascade.js';
 
-import { expect } from 'chai';
-import { assert } from 'chai';
-import cascade from '../lib/cascade.js';
-
-const selectors = ['win', 'mac', 'linux', 'ios', 'android', 'x64', 'x86', 'simulator', 'clang', 'gcc', 'clion'];
+const keywords = [
+  'win',
+  'mac',
+  'linux',
+  'ios',
+  'android',
+  'x64',
+  'x86',
+  'simulator',
+  'clang',
+  'gcc',
+  'clion'
+];
 
 const testAObject = {
   useAccel: 0,
@@ -29,138 +38,169 @@ const testAObject = {
 };
 
 const testASelectors = [
-  ['mac', 'x64'],
+  [
+    'mac', 'x64'
+  ],
   ['win'],
   ['win', 'x64']
 ];
 
 const testAExpected = [
-  {useAccel: 6}
-,
-  {useAccel: 1}
-,
-  {useAccel: 3}
+  {
+    useAccel: 6
+  }, {
+    useAccel: 1
+  }, {
+    useAccel: 3
+  }
 ];
 
 const testObjB = {
-  'mac ios': {
+  'mac, ios': {
     flag: true
   },
-  other: "setting",
+  other: 'setting',
   build: {
-    with: "error A",
-    'mac ios': {
+    with: 'error A',
+    'mac, ios': {
       sources: {
-        matching: [ 'apple.c' ]
+        matching: ['apple.c']
       }
     },
-    mac: {
-      with: "cmake"
+    'mac': {
+      with: 'cmake'
     }
   },
-  x64: {
+  'x64': {
     build: {
-      with: "error C",
-      mac: {
-        with: "ninja",
+      with: 'error C',
+      'mac': {
+        with: 'ninja',
         clion: {
-          with: "cmake"
+          with: 'cmake'
         }
       }
     }
   },
-  win: {
+  'win': {
     build: {
       with: {
-        x64: "clang",
-        x86: "gcc"
+        'x64': 'clang',
+        'x86': 'gcc'
       }
     }
   }
 };
 
 const testBSelectors = [
-  ['mac', 'x64'],
-  ['mac', 'x64', 'clion'],
+  [
+    'mac', 'x64'
+  ],
+  [
+    'mac', 'x64', 'clion'
+  ],
   ['win'],
   ['win', 'x64']
 ];
 
-const testBExpected = [{
-  flag: true,
-  other: "setting",
-  build: {
-    with: "ninja",
-    sources: { matching: [ 'apple.c' ]
+const testBExpected = [
+  {
+    flag: true,
+    other: 'setting',
+    build: {
+      with: 'ninja',
+      sources: {
+        matching: ['apple.c']
+      }
+    }
+  }, {
+    flag: true,
+    other: 'setting',
+    build: {
+      with: 'cmake',
+      sources: {
+        matching: ['apple.c']
+      }
+    }
+  }, {
+    build: {
+      with: 'error A'
+    },
+    other: 'setting'
+  }, {
+    build: {
+      with: 'clang'
+    },
+    other: 'setting'
   }
-  }
-}
-, {
-  flag: true,
-  other: "setting",
-  build: {
-    with: "cmake",
-    sources: { matching: [ 'apple.c' ]
-  }
-  }
-}
-, {
-  build: { with: "error A"
-},
-  other: "setting"
-}
-, {
-  build: { with: "clang"
-},
-  other: "setting"
-}
 ];
 
-const stdCompilerFlags = {
+const testObjC = {
   clang: {
-    ios: {
-      arch: "arm64"
+    'ios': {
+      arch: 'arm64'
     },
-    arch: "x86"
+    'arch': 'x86'
   }
 };
 
 const testCSelectors = [
-  ['ios', 'clang'],
+  [
+    'ios', 'clang'
+  ],
   ['linux', 'gcc']
 ];
 
 const testCExpected = [
-  {arch: "arm64"}
-,
-  {}
+  {
+    arch: 'arm64'
+  }, {}
 ];
 
-describe('check', function() {
-  it('matches selectors', function(done) {
-    assert.ok(cascade.matchesSelectors(['ios', 'mac', 'win'], 'x86 mac win'));
-    assert.ok(cascade.matchesSelectors(['ios', 'mac', 'win'], 'ios'));
-    return done();
+describe('select', () => {
+  it('matches', () => {
+    assert.ok(cascade.select(['apple'], 'apple'));
   });
-  it('doesnt match selectors', function(done) {
-    assert.ok(!cascade.matchesSelectors(['apple', 'bananna'], 'x86'));
-    assert.ok(!cascade.matchesSelectors(['apple', 'bananna'], ['x86', 'ios']));
-    return done();
+  it('matches OR', () => {
+    assert.ok(cascade.select([
+      'ios', 'mac', 'win'
+    ], 'x86, mac, win'));
   });
-  it('cascade selectors shallow', function(done) {
-    for (const i in testASelectors) {
-      assert.deepEqual(cascade.shallow(testAObject, selectors, testASelectors[i]), testAExpected[i]);
-    }
-    return done();
+  it('matches AND', () => {
+    assert.ok(cascade.select([
+      'apple', 'bananna'
+    ], 'apple bananna'));
   });
-  return it('cascade selectors deep', function() {
-    for (var i in testBSelectors) {
-      expect(cascade.deep(testObjB, selectors, testBSelectors[i])).to.deep.equal(testBExpected[i]);
-    }
-    return (() => {
-      const result = [];
-      for (i in testCSelectors) {
-        result.push(expect(cascade.deep(stdCompilerFlags, selectors, testCSelectors[i])).to.deep.equal(testCExpected[i]));
-      }
-      return result;
-    })();});});
+  it('fails', () => {
+    assert.ok(!cascade.select([
+      'apple', 'bananna'
+    ], 'x86'));
+  });
+  it('fails AND', () => {
+    assert.ok(!cascade.select(['apple'], 'apple bananna'));
+  });
+  it('fails OR/AND', () => {
+    assert.ok(!cascade.select(['bananna'], 'apple, bananna orange'));
+  });
+});
+
+describe('cascade', () => {
+  for (const i in testASelectors) {
+    it(`select A${i} ${testASelectors[i]}`, () => {
+      const result = cascade.shallow(testAObject, keywords, testASelectors[i]);
+      assert.deepEqual(result, testAExpected[i]);
+    });
+  }
+  for (const i in testBSelectors) {
+    it(`select B${i} ${testBSelectors[i]}`, () => {
+      const result = cascade.deep(testObjB, keywords, testBSelectors[i]);
+      assert.deepEqual(result, testBExpected[i]);
+    });
+  }
+  for (const i in testCSelectors) {
+    it(`select C${i} ${testCSelectors[i]}`, () => {
+      const result = cascade.shallow(testObjC, keywords, testCSelectors[i]);
+      assert.deepEqual(result, testCExpected[i]);
+    });
+  }
+});

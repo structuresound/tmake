@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import stringify from 'json-stable-stringify';
-import check from './check';
+import {check, stringify} from 'js-object-tools';
 import fs from './fs';
 
 export default {
@@ -26,8 +25,12 @@ export default {
     return new Promise((resolve) => {
       const hash = crypto.createHash('md5');
       const stream = fs.createReadStream(filePath);
-      stream.on('data', data => hash.update(data, 'utf8'));
-      return stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('data', data => {
+        return hash.update(data, 'utf8');
+      });
+      stream.on('end', () => {
+        return resolve(hash.digest('hex'));
+      });
     });
   }
 };

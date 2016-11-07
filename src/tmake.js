@@ -1,11 +1,11 @@
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import path from 'path';
 import colors from 'chalk';
 
 import './util/string';
 import fs from './util/fs';
-import platform from './platform';
+import profile from './profile';
 import prompt from './prompt';
 import graph from './graph';
 import cloud from './cloud';
@@ -38,18 +38,18 @@ const buildPhase = {
     return buildPhase
       .fetch(dep)
       .then(() => configure.execute().then(() => {
-        return install.headers(dep, platform, db, tests);
+        return install.headers(dep, profile, db, tests);
       }));
   },
   build(dep, tests) {
     return buildPhase
       .configure(dep, tests)
-      .then(() => build.execute(dep, platform, db, tests));
+      .then(() => build.execute(dep, profile, db, tests));
   },
   install(dep, phase, tests) {
     return buildPhase
       .build(dep, tests)
-      .then(() => install.execute(dep, platform, db));
+      .then(() => install.execute(dep, profile, db));
   },
   clean(dep) {
     return cleanDep(dep);
@@ -57,7 +57,7 @@ const buildPhase = {
   test(dep) {
     return buildPhase
       .build(dep, true)
-      .then(() => test.execute(dep, platform, db));
+      .then(() => test.execute(dep, profile, db));
   }
 };
 
@@ -170,7 +170,7 @@ function processDep(dep, phase) {
   if (!argv.quiet) {
     log.quiet(`<< ${dep.name} >>`, 'green');
   }
-  if (!dep.cached || argv._[0] === 'clean' || platform.force(dep)) {
+  if (!dep.cached || argv._[0] === 'clean' || profile.force(dep)) {
     if (argv.verbose) {
       log.quiet(`>> ${phase} >>`);
     }
@@ -281,7 +281,7 @@ const tmake = {
   push,
   link,
   unlink,
-  platform,
+  profile,
   run(rootConfig) {
     const resolvedName = argv._[1] || rootConfig.name || graph.resolveDepName(rootConfig);
     switch (argv._[0]) {
@@ -323,7 +323,7 @@ const tmake = {
       case 'fetch':
         return execute(rootConfig, 'fetch');
       case 'parse':
-        log.quiet(`parsing with selectors:\n ${platform.selectors}`);
+        log.quiet(`parsing with selectors:\n ${profile.selectors()}`);
         log.quiet(graph.resolve(rootConfig), 'magenta');
         break;
       case 'configure':

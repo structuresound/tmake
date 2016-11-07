@@ -10,8 +10,14 @@ function endsWith(string, s) {
   return s === '' || string.slice(-s.length) === s;
 }
 
+function replaceAll(str, find, rep) {
+  const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(new RegExp(escaped, 'g'), rep);
+}
+
 export {
   startsWith,
   beginsWith,
-  endsWith
+  endsWith,
+  replaceAll
 };

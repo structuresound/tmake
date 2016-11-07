@@ -1,29 +1,17 @@
-import _ from 'underscore';
-import {check, diff} from '1e1f-tools';
+import _ from 'lodash';
+import {check, diff} from 'js-object-tools';
+import {replaceAll} from './string';
+import log from './log';
 
-function validateSelector(val, key, test) {
-  if (!check(val, Object)) {
-    return false;
-  }
-  if (!test(val, key)) {
-    return false;
-  }
-  return true;
-}
-
-function deepSearch(object, selectors, test, stack, height) {
-  const keys = diff.keyPaths(object);
-  if (stack[height || 0] == null) {
-    stack[height || 0] = {};
-  }
-  _.each(keys, (key) => {
+function deepSearch(object, keywords, selectors, stack) {
+  for (const key of diff.keyPaths(object)) {
     let priority = 0;
     let filtered = key;
     const unfiltered = key.split('.');
     let valid = true;
-    _.each(unfiltered, (kp) => {
-      if (matchesSelectors(selectors, kp)) {
-        if (test(0, kp)) {
+    for (const kp of unfiltered) {
+      if (select(keywords, kp)) {
+        if (select(selectors, kp)) {
           priority += 1;
           filtered = filtered.replace(`${kp}.`, '');
           filtered = filtered.replace(`.${kp}`, '');
@@ -31,35 +19,39 @@ function deepSearch(object, selectors, test, stack, height) {
           valid = false;
         }
       }
-    });
+    }
     if (valid) {
       if (stack[priority] == null) {
         stack[priority] = {};
       }
-      const val = valueForKeyPath(key, object);
+      const val = diff.valueForKeyPath(key, object);
       stack[priority][filtered] = val;
     }
-  });
+  }
   const flat = {};
   _.each(stack, (priority) => {
     _.each(priority, (v, k) => {
-      mergeValueAtKeypath(v, k, flat);
+      diff.mergeValueAtKeypath(v, k, flat);
     });
   });
   return flat;
 }
 
-function shallowSearch(current, selectors, test, stack, height) {
-  if (stack[height || 0] == null) {
-    stack[height || 0] = {};
+function shallowSearch(current, keywords, selectors, stack, height) {
+  if (!check(stack[height], Object)) {
+    stack[height] = {};
   }
-  for (const prop of Object.keys(current)) {
-    if (_.contains(selectors, prop)) {
-      if (validateSelector(current[prop], prop, test)) {
-        shallowSearch(current[prop], selectors, test, stack, height + 1);
+  for (const key of Object.keys(current)) {
+    if (select(keywords, key)) {
+      if (select(selectors, key)) {
+        shallowSearch(current[key], keywords, selectors, stack, height + 1);
       }
     } else {
-      stack[height][prop] = current[prop];
+      if (check(current[key], Object)) {
+        stack[height][key] = flatten(shallowSearch(current[key], keywords, selectors, [], 0));
+      } else {
+        stack[height][key] = current[key];
+      }
     }
   }
   return stack;
@@ -73,38 +65,45 @@ function flatten(stack) {
   return flat;
 }
 
-function matchesSelectors(keywords, selector) {
-  if (selector.indexOf(' ') !== -1) {
-    const selectors = selector.split(' ');
-    const matches = _.intersection(keywords, selectors);
-    return matches.length > 0;
+function parseAnd(input, cssString) {
+  if (cssString.indexOf(' ') !== -1) {
+    return diff.every(cssString.split(' '), (subCssString) => {
+      return diff.contains(input, subCssString);
+    });
   }
-  return _.contains(keywords, selector);
+  return diff.contains(input, cssString);
 }
 
-function search(tree, selectors, testOrValidSelectors, searchFn) {
-  let test = testOrValidSelectors;
-  if (testOrValidSelectors) {
-    if (!check(testOrValidSelectors, Function)) {
-      test = (val, key) => {
-        return matchesSelectors(testOrValidSelectors, key);
-      };
-    }
-  } else {
-    test = () => {
-      return true;
-    };
+function parseOr(input, cssString) {
+  const repl = replaceAll(cssString, ', ', ',');
+  if (repl.indexOf(',') !== -1) {
+    return diff.any(repl.split(','), (subCssString) => {
+      return parseAnd(input, subCssString);
+    });
   }
-  return searchFn(tree, selectors, test, [], 0);
+  return parseAnd(input, repl);
+}
+
+function select(input, cssString) {
+  return parseOr(input, cssString);
+}
+
+function search(tree, keywords, selectors, searchFn) {
+  if (!tree) {
+    throw new Error('searching undefined for selectors');
+  }
+  if (!keywords || !selectors) {
+    log.warn('searching tree without keywords or selectors string');
+  }
+  return searchFn(tree, keywords, selectors, [], 0);
 }
 
 export default {
-  deep(tree, selectors, testOrValidSelectors) {
-    return search(tree, selectors, testOrValidSelectors, deepSearch);
+  shallow(tree, keywords, selectors) {
+    return flatten(search(tree, keywords, selectors, shallowSearch));
   },
-  shallow(tree, selectors, testOrValidSelectors) {
-    return flatten(search(tree, selectors, testOrValidSelectors, shallowSearch));
+  deep(tree, keywords, selectors) {
+    return search(tree, keywords, selectors, deepSearch);
   },
-  matchesSelectors,
-  valueForKeyPath
+  select
 };

@@ -1,5 +1,5 @@
 /*  eslint no-template-curly-in-string: "off"*/
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import path from 'path';
 import sh from 'shelljs';
@@ -10,6 +10,7 @@ import ninja from './ninja';
 import {fileHash} from '../util/hash';
 import log from '../util/log';
 import * as db from '../db';
+import {startsWith} from '../util/string';
 
 function run(dep, ninjaPath) {
   const command = ninjaPath;
@@ -38,7 +39,7 @@ function doConfiguration(dep, ninjaPath) {
     .forEach((key) => {
       let value = cMakeDefines[key];
       if (typeof value === 'string' || value instanceof String) {
-        if (value.startsWith('~/')) {
+        if (startsWith(value, '~/')) {
           value = `${dep
             .d
             .home}/${value

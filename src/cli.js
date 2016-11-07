@@ -1,7 +1,7 @@
-import _ from 'underscore';
+import _ from 'lodash';
 import Promise from 'bluebird';
 import colors from 'chalk';
-import check from '1e1f-tools';
+import {check} from 'js-object-tools';
 
 const name = 'tmake';
 
