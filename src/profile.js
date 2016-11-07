@@ -3,13 +3,19 @@ import _ from 'lodash';
 import path from 'path';
 import Promise from 'bluebird';
 import {check, diff} from 'js-object-tools';
-import {replaceAll} from './util/string';
+import {replaceAll, startsWith} from './util/string';
 import log from './util/log';
 import cascade from './util/cascade';
 import sh from './util/sh';
 import interpolate from './interpolate';
 import fs from './util/fs';
 import argv from './util/argv';
+
+const defaultCompiler = {
+  mac: 'clang',
+  linux: 'gcc',
+  win: 'msvc'
+};
 
 const platformNames = {
   linux: 'linux',
@@ -27,85 +33,68 @@ const archNames = {
   arm64: 'arm64'
 };
 
-const kits = ['cocoa', 'sdl', 'juce'];
+const HOST_ENDIANNESS = os.endianness();
+const HOST_PLATFORM = platformNames[os.platform()];
+const HOST_ARCHITECTURE = archNames[os.arch()];
+const HOST_CPU = os.cpus();
 
-const environments = ['simulator'];
-
-const ides = [
-  // IDE's
-  'xcode',
-  'clion',
-  'msvs',
-  'vscode',
-  'codeblocks',
-  'appcode'
-];
-
-const buildSystems = ['cmake', 'ninja'];
-const compilers = ['clang', 'gcc', 'msvc'];
-
-const macros = {
-  XC_RUN: 'xcrun --sdk {XC_PLATFORM}',
-  'host-mac': {
-    DEVELOPER: '$(xcode-select -print-path)'
-  },
-  'host-mac target-mac': {
-    XC_PLATFORM: 'macosx',
-    PLATFORM: 'darwin64-x86_64-cc',
-    OSX_DEPLOYMENT_VERSION: '10.8',
-    SDK_VERSION: '$({XC_RUN} --show-sdk-version)',
-    OSX_SDK_VERSION: '$({XC_RUN} --show-sdk-version)',
-    OSX_PLATFORM: '$({XC_RUN} --show-sdk-profile-path)',
-    OSX_SDK: '$({XC_RUN} --show-sdk-path)'
-  },
-  'host-mac target-ios': {
-    HOST_PLATFORM: 'mac',
-    XC_PLATFORM: 'iphoneos',
-    XC_DIR: 'iPhoneOS',
-    CROSS_TOP: '{DEVELOPER}/Platforms/{XC_DIR}.profile/Developer',
-    CROSS_SDK: '{XC_DIR}{SDK_VERSION}.sdk',
-    SDK_VERSION: '$({XC_RUN} --show-sdk-version)',
-    IPHONEOS_SDK_VERSION: '$({XC_RUN} --show-sdk-version)',
-    IPHONEOS_PLATFORM: '$({XC_RUN} --show-sdk-profile-path)',
-    IPHONEOS_SDK: '$({XC_RUN} --show-sdk-path)',
-    FRAMEWORKS: '{CROSS_TOP}/SDKs/{CROSS_SDK}/System/Library/Frameworks/',
-    INCLUDES: '{CROSS_TOP}/SDKs/{CROSS_SDK}/usr/include',
-    IPHONEOS_DEPLOYMENT_VERSION: '6.0',
-    simulator: {
-      XC_PLATFORM: 'iphonesimulator',
-      XC_DIR: 'iPhoneSimulator'
-    }
+const HOST_ENV = {
+  architecture: HOST_ARCHITECTURE,
+  endianness: HOST_ENDIANNESS,
+  compiler: defaultCompiler[HOST_PLATFORM],
+  platform: HOST_PLATFORM,
+  cpu: {
+    num: HOST_CPU.length,
+    speed: HOST_CPU[0].speed
   }
 };
 
-const cache = {};
+const DEFAULT_TARGET_ENV = {
+  architecture: HOST_ARCHITECTURE,
+  endianness: HOST_ENDIANNESS,
+  platform: HOST_PLATFORM
+};
 
-function keywords() {
-  return [].concat(_.map(Object.keys(platformNames), (key) => {
-    return `host-${key}`;
-  })).concat(_.map(Object.keys(platformNames), (key) => {
-    return `target-${key}`;
-  }))
-    .concat(buildSystems)
-    .concat(compilers)
-    .concat(kits)
-    .concat(ides)
-    .concat(environments);
+function parseSelectors(dict, base) {
+  const _selectors = [];
+  const selectables = _.pick(dict, ['platform', 'compiler']);
+  for (const key of Object.keys(selectables)) {
+    _selectors.push(`${base}-${selectables[key]}`);
+  }
+  return _selectors;
 }
 
-const argvSelectors = Object.keys(_.pick(argv, keywords()));
+const macros = fs.parseFileSync(path.join(argv.binDir, 'environment.yaml'));
+const _keywords = fs.parseFileSync(path.join(argv.binDir, 'keywords.yaml'));
+const keywords = [].concat(_.map(_keywords.host, (key) => {
+  return `host-${key}`;
+})).concat(_.map(_keywords.target, (key) => {
+  return `target-${key}`;
+}))
+  .concat(_keywords.build)
+  .concat(_keywords.compiler)
+  .concat(_keywords.sdk)
+  .concat(_keywords.ide)
+  .concat(_keywords.deploy);
+
+const argvSelectors = Object.keys(_.pick(argv, keywords));
 argvSelectors.push(argv.compiler);
 
+const cache = {};
 const shellReplace = (m) => {
-  if (cache[m]) {
+  if (cache[m] !== undefined) {
+    //  log.debug('cached..', m, '->', cache[m]);
     return cache[m];
   }
-  const commands = m.match(/\$\([^\)\r\n]*\)/g);
+  const commands = m.match(/\$\([^)\r\n]*\)/g);
   if (commands) {
     let interpolated = m;
     _.each(commands, (c) => {
-      interpolated = interpolated.replace(c, sh.get(c.slice(2, -1)));
+      const cmd = c.slice(2, -1);
+      //  log.debug('command..', cmd);
+      interpolated = interpolated.replace(c, sh.get(cmd, false));
     });
+    //  log.debug('cache..', interpolated, '-> cache');
     cache[m] = interpolated;
     return cache[m];
   }
@@ -116,20 +105,23 @@ function objectReplace(m, dict) {
   if (!m.macro) {
     throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
   }
-  const res = _parse(m.macro, dict);
+  const res = parse(m.macro, dict);
   if (m.map) {
     return m.map[res];
   }
   return res;
 }
 
-function replace(m, dict) {
+function replace(m, conf) {
+  let out;
   if (check(m, String)) {
-    return shellReplace(m);
+    //  log.debug('sh..', out || m);
+    out = shellReplace(m);
   } else if (check(m, Object)) {
-    return objectReplace(m, dict);
+    //  log.debug('map..', out || m);
+    out = objectReplace(m, conf);
   }
-  return m;
+  return out || m;
 }
 
 function allStrings(o, fn) {
@@ -144,43 +136,77 @@ function allStrings(o, fn) {
   return mut;
 }
 
-function _parse(_val, dict) {
-  let mut = _.clone(_val);
-  if (dict) {
-    mut = interpolate(mut, dict);
-  }
-  mut = interpolate(mut, macro(dict));
-  return replace(mut, dict);
+function parseString(val, conf) {
+  let mut = val;
+  mut = interpolate(mut, conf);
+  //  log.debug('interpolate..', mut);
+  return replace(mut, conf);
 }
 
-function parse(conf, dict) {
-  if (check(conf, String)) {
-    return _parse(conf, dict);
-  } else if (check(conf, Object)) {
-    // if (conf.macro) {
-    //   return objectReplace(conf, dict || {});
-    // }
-    return allStrings(_.clone(conf), val => {
-      return parse(val, dict || conf);
-    });
-  }
-  return conf;
+function parseObject(conf) {
+  return allStrings(_.clone(conf), val => {
+    return parseString(val, conf);
+  });
 }
 
-function select(base, options) {
-  if (!base) {
-    throw new Error('selecting on empty object');
+function parse(input, conf) {
+  //  log.debug('in:', input);
+  let out;
+  if (check(input, String)) {
+    out = parseString(input, conf);
+  } else if (check(input, Object)) {
+    out = parseObject(input);
   }
-  const mutableOptions = _.clone(options || {});
-  if (mutableOptions.ignore) {
-    mutableOptions.keywords = _.difference(keywords(), options.ignore);
-    mutableOptions.selectors = _.difference(selectors(), options.ignore);
-  }
-  const flattened = cascade.deep(_.clone(base), mutableOptions.keywords, mutableOptions.selectors);
-  return parse(flattened, options.dict);
+  //  log.debug('out:', out || input);
+  return out || input;
 }
 
-// console.log macro, 'cache\n', cache
+class Profile {
+  constructor(conf) {
+    const mutable = diff.clone(conf);
+    if (!mutable || !mutable.profile) {
+      mutable.profile = {
+        host: HOST_ENV,
+        target: DEFAULT_TARGET_ENV
+      };
+    } else {
+      mutable.profile = {
+        host: diff.combine(HOST_ENV, conf.profile.host),
+        target: diff.combine(DEFAULT_TARGET_ENV, conf.profile.target)
+      };
+    }
+    const hostSelectors = parseSelectors(mutable.profile.host, 'host');
+    const targetSelectors = parseSelectors(mutable.profile.target, 'target');
+    this.selectors = hostSelectors.concat(targetSelectors);
+    this.macro = cascade.deep(macros, keywords, this.selectors);
+
+    const localConf = diff.combine(mutable, this.macro);
+    this.conf = cascade.deep(localConf, keywords, this.selectors);
+    this.profile = this.conf.profile;
+  }
+  parse(input, conf) {
+    return parse(input, conf || this.conf, this.macro);
+  }
+  select(base, options) {
+    if (!base) {
+      throw new Error('selecting on empty object');
+    }
+    const mutableOptions = diff.clone(options || {});
+    if (mutableOptions.ignore) {
+      mutableOptions.keywords = _.difference(keywords, options.ignore);
+      mutableOptions.selectors = _.difference(this.selectors, options.ignore);
+    }
+    const flattened = cascade.deep(base, mutableOptions.keywords || keywords, mutableOptions.selectors || this.selectors);
+    return this.parse(flattened, mutableOptions.dict);
+  }
+  force() {
+    return argv.forceAll || (argv.force && (argv.force === this.rawConfig.name));
+  }
+  j() {
+    return this.profile.host.cpu.num;
+  }
+}
+
 function arrayify(val) {
   if (check(val, Array)) {
     return val;
@@ -314,88 +340,19 @@ function replaceInFile(f, r, localDict) {
   }
 }
 
-const defaultCompiler = {
-  mac: 'clang',
-  linux: 'gcc',
-  win: 'msvc'
-};
-
-const HOST_ENDIANNESS = os.endianness();
-const HOST_PLATFORM = platformNames[os.platform()];
-const HOST_ARCHITECTURE = archNames[os.arch()];
-
-const HOST_ENV = {
-  architecture: HOST_ARCHITECTURE,
-  endianness: HOST_ENDIANNESS,
-  compiler: defaultCompiler[HOST_PLATFORM],
-  platform: HOST_PLATFORM
-};
-
-const DEFAULT_TARGET_ENV = {
-  architecture: HOST_ARCHITECTURE,
-  endianness: HOST_ENDIANNESS,
-  platform: HOST_PLATFORM
-};
-
-function parseSelectors(dict, base) {
-  const _selectors = [];
-  const selectables = _.pick(dict, ['platform', 'compiler']);
-  for (const key of Object.keys(selectables)) {
-    _selectors.push(`${base}.${selectables[key]}`);
-  }
-  return _selectors;
-}
-
-function selectors(dep, depProfile) {
-  const _profile = depProfile || profile(dep);
-  const hostSelectors = parseSelectors(_profile.host, 'host');
-  const targetSelectors = parseSelectors(_profile.target, 'target');
-  return hostSelectors.concat(targetSelectors);
-}
-
-function macro(_profile) {
-  const _selectors = selectors(_profile || profile());
-  log.info(_selectors);
-  const _macro = diff.combine(macro, cascade.deep(macros, keywords(), _selectors));
-  log.info(_macro);
-  return _macro;
-}
-
-function profile(dep) {
-  if (!dep || !dep.profile) {
-    return {host: HOST_ENV, target: DEFAULT_TARGET_ENV};
-  }
-  return {
-    host: diff.combine(HOST_ENV, dep.profile.host),
-    target: diff.combine(DEFAULT_TARGET_ENV, dep.profile.target)
-  };
-}
-
-export default {
-  force(dep) {
-    return argv.forceAll || (argv.force && (argv.force === dep.name));
-  },
+export {
+  Profile,
   pathArray,
   globArray,
   pathSetting,
-  parse,
   arrayify,
-  select,
   replaceInFile,
   interpolate,
   iterable,
   iterate,
-  macro,
-  profile,
   cache,
   printRepl,
   replaceAll,
   replace,
-  keywords,
-  selectors,
-  j() {
-    return os
-      .cpus()
-      .length;
-  }
+  keywords
 };

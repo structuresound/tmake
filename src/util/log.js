@@ -7,42 +7,55 @@ import _ from 'lodash';
 import {check} from 'js-object-tools';
 import argv from './argv';
 
-function getMessage(msg) {
+const debug = true;
+
+function getMessage(msg, ...args) {
   if (check(msg, Object)) {
-    return yaml.dump(msg, { sortKeys: true });
+    return [
+      yaml.dump(msg, {sortKeys: true}),
+      ...args
+    ];
   } else if (check(msg, Array)) {
-    return _
-      .map(msg, getMessage)
-      .join(',');
+    return [
+      JSON.stringify(msg, 0, 2),
+      ...args
+    ];
   }
-  return msg;
+  return [
+    msg, ...args
+  ];
 }
 
 export default {
-  verbose(msg, color) {
+  verbose(...args) {
     if (argv.verbose) {
-      return console.log(colors[color || 'gray'](getMessage(msg)));
+      console.log(colors.gray(...getMessage(...args)));
     }
   },
-  quiet(msg, color) {
+  quiet(...args) {
     if (!argv.quiet || argv.verbose) {
-      return console.log(colors[color || 'white'](getMessage(msg)));
+      console.log(colors.white(...getMessage(...args)));
     }
   },
-  info(msg, color) {
-    console.log(colors[color || 'white'](getMessage(msg)));
+  debug(...args) {
+    if (argv.debug || debug) {
+      console.log(...getMessage(...args));
+    }
   },
-  warn(msg, color) {
-    console.log(colors[color || 'yellow'](getMessage(msg)));
+  info(...args) {
+    console.log(colors.blue(...getMessage(...args)));
   },
-  add(msg, color) {
-    console.log(colors[color || 'green'](getMessage(msg)));
+  warn(...args) {
+    console.log(colors.yellow(...getMessage(...args)));
   },
-  error(msg) {
-    return console.log(colors.red(getMessage(msg)));
+  add(...args) {
+    console.log(colors.green(...getMessage(...args)));
   },
-  throw(msg) {
-    console.log(colors.magenta(getMessage(msg)));
+  error(...args) {
+    return console.log(colors.red(...getMessage(...args)));
+  },
+  throw(...args) {
+    console.log(colors.magenta(...getMessage(...args)));
     throw new Error('log wants you to stop and look at the magenta message');
   }
 };

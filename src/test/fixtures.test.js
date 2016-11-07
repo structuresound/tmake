@@ -1,35 +1,36 @@
 const profileTester = {
-  name: 'assert',
-  git: 'hello/world',
+  name: 'testConf',
   profile: {
     target: {
-      platform: 'fakePlatform'
+      platform: 'meta',
+      endianness: 'BE'
     }
   },
   HELLO: 'hello',
   WORLD: 'world',
   CC: '/usr/bin/gcc',
   BSON_BYTE_ORDER: {
-    macro: '{OS_ENDIANNESS}',
+    macro: '{profile.target.endianness}',
     map: {
       LE: 1234,
       BE: 4321
     }
   },
+  TEST_SDK_VERSION: 'meta-1.0',
   OPENSSL_VERSION: '1.0.1',
   configure: {
-    'host-linux': {
-      echo: 'echo linux world'
-    },
-    'host-win': {
-      echo: 'echo win world'
-    },
-    'host-mac target-ios': {
-      with: 'ninja',
-      echo: 'echo apple world',
-      cmd: './Configure {OSX_SDK_VERSION} --openssldir=\'/tmp/openssl-{OPENSSL_VERSION}\''
+    'target-meta': {
+      with: 'meta-ninja',
+      cmd: './Configure {TEST_SDK_VERSION} --openssldir=\'/tmp/openssl-{OPENSSL_VERSION}\''
     },
     keyword: 'don\'t run this'
+  },
+  expect: {
+    BSON_BYTE_ORDER: 4321,
+    configure: {
+      with: 'meta-ninja',
+      cmd: './Configure meta-1.0 --openssldir=\'/tmp/openssl-1.0.1\''
+    }
   }
 };
 

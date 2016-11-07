@@ -24,10 +24,12 @@ sh.Promise = function shPromise(command, cwd, verbose) {
 };
 
 sh.get = function shGet(command, verbose) {
-  sh.exec(command, {
+  return sh
+    .exec(command, {
     silent: !verbose
   })
     .stdout
+    .replace('\r', '')
     .replace('\n', '');
 };
 

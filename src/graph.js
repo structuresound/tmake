@@ -8,7 +8,8 @@ import cascade from './util/cascade';
 import log from './util/log';
 import argv from './util/argv';
 import {startsWith} from './util/string';
-import * as db from './db';
+import {cache as db} from './db';
+import {Profile, keywords} from './profile';
 
 function parsePath(s) {
   if (!check(s, String)) {
@@ -48,7 +49,7 @@ function resolvePaths(dep, profile) {
     if (configPath) {
       log.verbose(`load config from linked directory ${configPath}`);
       const rawConfig = fs.readConfigSync(configPath);
-      _.extend(dep, cascade.deep(rawConfig, profile.keywords(), profile.selectors()));
+      _.extend(dep, cascade.deep(rawConfig, keywords, profile.selectors()));
     }
   }
 
@@ -175,7 +176,7 @@ function resolveDep(_dep, parent) {
     }
   }
 
-  mutable = cascade.deep(mutable, mutable.profile.keywords(), mutable.profile.selectors());
+  mutable = cascade.deep(mutable, keywords, mutable.profile.selectors);
   if (mutable.name == null) {
     mutable.name = resolveDepName(mutable);
   }
@@ -313,4 +314,4 @@ function resolve(root) {
   });
 }
 
-export default {all, deps, resolve};
+export {all, deps, resolve, resolve as graph};

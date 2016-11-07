@@ -2,6 +2,7 @@ import _ from 'lodash';
 import {check, diff} from 'js-object-tools';
 import {replaceAll} from './string';
 import log from './log';
+import {startsWith} from './string';
 
 function deepSearch(object, keywords, selectors, stack) {
   for (const key of diff.keyPaths(object)) {
@@ -68,9 +69,12 @@ function flatten(stack) {
 function parseAnd(input, cssString) {
   if (cssString.indexOf(' ') !== -1) {
     return diff.every(cssString.split(' '), (subCssString) => {
-      return diff.contains(input, subCssString);
-    });
-  }
+      if (startsWith(subCssString, '!')) {
+        return !diff.contains(input, subCssString);
+      } else {
+        return diff.contains(input, subCssString);
+      }
+    });}
   return diff.contains(input, cssString);
 }
 
