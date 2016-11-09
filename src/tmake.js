@@ -7,7 +7,7 @@ import './util/string';
 import fs from './util/fs';
 import profile from './profile';
 import prompt from './prompt';
-import graph from './graph';
+import {graph, resolveDepName} from './graph';
 import cloud from './cloud';
 import configure from './build/configure';
 import build from './build/build';
@@ -128,7 +128,7 @@ function findDepNamed(name, root) {
   for (const dep of root.deps || root.dependencies) {
     if (dep.name === name) {
       return dep;
-    } else if (graph.resolveDepName(dep) === name) {
+    } else if (resolveDepName(dep) === name) {
       return dep;
     }
     const found = findDepNamed(name, dep);
@@ -142,11 +142,11 @@ function resolveRoot(configFile) {
   if (argv._[1]) {
     const dep = findDepNamed(argv._[1], configFile);
     if (dep) {
-      return graph.resolve(dep);
+      return graph(dep);
     }
     throw new Error(`no dependency matching ${argv._[1]}`);
   } else {
-    return graph.resolve(_.extend(configFile, {
+    return graph(_.extend(configFile, {
       d: {
         root: argv.runDir
       }

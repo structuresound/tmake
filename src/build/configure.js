@@ -6,43 +6,17 @@ import {diff, check} from 'js-object-tools';
 import fs from '../util/fs';
 import sh from '../util/sh';
 import log from '../util/log';
-import toolchain from './toolchain';
-import graph from '../graph';
+
+import {graph} from '../graph';
 import fetch from '../util/fetch';
 import argv from '../util/argv';
-import profile from '../profile';
+import {replaceInFile} from '../parse';
 
 import * as db from '../db';
 
 import {jsonStableHash, stringHash} from '../util/hash';
 import cmake from './cmake';
 import ninja from './ninja';
-
-const settings = [
-  'linkerFlags',
-  'cFlags',
-  'cxxFlags',
-  'compilerFlags',
-  'defines',
-  'frameworks',
-  'sources',
-  'headers',
-  'outputFile'
-];
-
-function resolveConfiguration(dep, configureTests) {
-  const filter = ['with', 'ninja', 'xcode', 'cmake', 'make'].concat(settings);
-
-  let _build = _.pick(dep.build, filter);
-  let _configuration = dep.configure;
-
-  if (configureTests && dep.test) {
-    _build = _.pick(dep.test.build, filter);
-    _configuration = dep.test.configure;
-  }
-
-  return _.extend(_build, _configuration);
-}
 
 function functionIterable(dep) {
   return (name, obj) => {
@@ -53,28 +27,28 @@ function functionIterable(dep) {
       case 'any':
       case 'shell':
       default:
-        return Promise.each(profile.iterable(obj), (command) => {
+        return Promise.each(dep.profile.iterable(obj), (command) => {
           const c = check(command, String)
             ? {
               cmd: command
             }
             : command;
-          const setting = profile.pathSetting(c.cwd || dep.d.source, dep);
-          return sh.Promise(profile.parse(c.cmd, dep), setting, !argv.quiet);
+          const setting = dep.profile.pathSetting(c.cwd || dep.d.source, dep);
+          return sh.Promise(dep.profile.parse(c.cmd, dep), setting, !argv.quiet);
         });
       case 'replace':
-        return Promise.each(profile.iterable(obj), (replEntry) => {
-          const pattern = profile.globArray(replEntry.matching, dep);
+        return Promise.each(diff.arrayify(obj), (replEntry) => {
+          const pattern = dep.profile.globArray(replEntry.matching, dep);
           return fs
             .glob(pattern, undefined, dep.d.source)
             .then((files) => {
               return Promise.each(files, (file) => {
-                return profile.replaceInFile(file, replEntry, dep);
+                return replaceInFile(file, replEntry, dep);
               });
             });
         });
       case 'create':
-        return Promise.each(profile.iterable(obj), (e) => {
+        return Promise.each(diff.arrayify(obj), (e) => {
           const filePath = path.join(dep.d.source, e.path);
           const existing = fs.readIfExists(filePath);
           if (existing !== e.string) {
@@ -83,10 +57,10 @@ function functionIterable(dep) {
           }
         });
       case 'copy':
-        return Promise.each(profile.iterable(obj), (e) => {
+        return Promise.each(diff.arrayify(obj), (e) => {
           log.quiet(`copy ${e}`);
-          const fromDir = profile.pathSetting(e.from, dep);
-          return copy(e.matching, fromDir, profile.pathSetting(e.to, dep), false);
+          const fromDir = dep.profile.pathSetting(e.from, dep);
+          return copy(e.matching, fromDir, dep.profile.pathSetting(e.to, dep), false);
         });
     }
   };
@@ -112,7 +86,7 @@ function copy(patterns, options) {
 }
 
 function globHeaders(dep, configuration) {
-  const patterns = profile.globArray(configuration.headers
+  const patterns = dep.profile.globArray(configuration.headers
     ? configuration.headers.matching
     : [
       '**/*.h',
@@ -130,7 +104,7 @@ function globHeaders(dep, configuration) {
 }
 
 function globSources(dep, configuration) {
-  const patterns = profile.globArray(configuration.sources.matching || [
+  const patterns = dep.profile.globArray(configuration.sources.matching || [
     '**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**'
   ], dep);
   return fs.glob(patterns, dep.d.project, dep.d.source);
@@ -138,102 +112,6 @@ function globSources(dep, configuration) {
 
 function globDeps(dep) {
   return graph.deps(dep);
-}
-
-const flags = require('./flags');
-
-const stdCompilerFlags = {
-  clang: {
-    ios: {
-      arch: 'arm64',
-      isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}',
-      'miphoneos-version-min': '={SDK_VERSION}',
-      simulator: {
-        'mios-simulator-version-min': '=6.1',
-        isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}'
-      }
-    }
-  }
-};
-// arch: '{ARCH}'
-
-// stdMmFlags =
-//   'fobjc-abi-version': 2
-
-const stdCxxFlags = {
-  O: 2,
-  mac: {
-    std: 'c++11',
-    stdlib: 'libc++'
-  },
-  linux: {
-    std: 'c++0x',
-    pthread: true
-  }
-};
-
-const stdFrameworks = {
-  mac: {
-    CoreFoundation: true
-  }
-};
-
-const stdLinkerFlags = {
-  // static: true
-  linux: {
-    'lstdc++': true,
-    'lpthread': true
-  },
-  mac: {
-    'lc++': true
-  }
-};
-
-function selectHostToolchain(dep) {
-  let compiler = argv.compiler;
-  if (dep.build) {
-    if (typeof compiler === 'undefined' || compiler === null) {
-      compiler = dep.build.cc;
-    }
-  }
-  if (dep.configure) {
-    if (typeof compiler === 'undefined' || compiler === null) {
-      compiler = dep.configure.cc;
-    }
-  }
-
-  const hostToolchain = toolchain.select(dep.toolchain);
-  log.verbose(hostToolchain);
-  log.verbose(`look for compiler ${compiler}`);
-  const cc = toolchain.pathForTool(hostToolchain[compiler]);
-  return {hostToolchain, compiler, cc};
-}
-
-function resolveJsonFlags(configuration) {
-  return {
-    frameworks: profile.select(configuration.frameworks || stdFrameworks),
-    cFlags: _.omit(_.extend(profile.select(stdCxxFlags), profile.select(configuration.cFlags || configuration.cxxFlags)), ['std', 'stdlib']),
-    cxxFlags: _.extend(profile.select(stdCxxFlags), profile.select(configuration.cxxFlags || configuration.cFlags)),
-    linkerFlags: _.extend(profile.select(stdLinkerFlags), profile.select(configuration.linkerFlags)),
-    compilerFlags: _.extend(profile.select(stdCompilerFlags), profile.select(configuration.compilerFlags))
-  };
-}
-
-function createContext(input) {
-  const output = diff.clone(input);
-  output.configuration = resolveConfiguration(output);
-  const jsonFlags = resolveJsonFlags(output.configuration);
-  output.toolchainConfiguration = {
-    target: output.target,
-    frameworks: flags.parseFrameworks(jsonFlags.frameworks),
-    cFlags: flags.parseC(jsonFlags.cFlags),
-    cxxFlags: flags.parseC(jsonFlags.cxxFlags),
-    linkerFlags: flags.parse(jsonFlags.linkerFlags),
-    compilerFlags: flags.parse(jsonFlags.compilerFlags, {join: ' '})
-  };
-  _.extend(output.toolchainConfiguration, selectHostToolchain());
-  output.configuration = _.clone(output.toolchainConfiguration);
-  return output;
 }
 
 function globFiles(input) {

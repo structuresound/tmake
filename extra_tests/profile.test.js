@@ -2,11 +2,12 @@ import {assert, expect} from 'chai';
 import _ from 'lodash';
 import {diff} from 'js-object-tools';
 
-import {Profile, keywords} from '../lib/profile';
+import {Module, Profile} from '../lib/module';
 import {profileTester} from './fixtures';
 
 describe('profile', function() {
-  const profile = new Profile(profileTester);
+  const module = new Module(profileTester);
+  const profile = new Profile(profileTester.profile);
 
   it('has keywords including compilers', () => {
     assert.ok(diff.contains(keywords, 'clang'));

@@ -5,7 +5,7 @@ import path from 'path';
 import sh from 'shelljs';
 
 import fs from '../util/fs';
-import arrayify from '../util/arrayify';
+import {diff} from 'js-object-tools';
 import ninja from './ninja';
 import {fileHash} from '../util/hash';
 import log from '../util/log';
@@ -136,7 +136,7 @@ function flags() {
 function assets(dep) {
   let copy = '';
   if ((dep.build.cmake || {}).copy) {
-    _.each(arrayify(dep.build.cmake.copy), (ft) => {
+    _.each(diff.arrayify(dep.build.cmake.copy), (ft) => {
       if (fs.existsSync(`${dep.d.project}/${ft.from}`)) {
         copy += `\nfile(COPY \${CMAKE_CURRENT_SOURCE_DIR}/${ft.from} DESTINATION \${CMAKE_CURRENT_BINARY_DIR}/${ft.to})`;
       }

@@ -4,12 +4,12 @@ import Promise from 'bluebird';
 import _ from 'lodash';
 import {check} from 'js-object-tools';
 
-import fs from '../util/fs';
-import log from '../util/log';
-import {stringHash} from '../util/hash';
-import fetch from '../util/fetch';
-import profile from '../profile';
-import {startsWith} from '../util/string';
+import fs from './util/fs';
+import log from './util/log';
+import {stringHash} from './util/hash';
+import fetch from './util/fetch';
+import profile from './profile';
+import {startsWith} from './util/string';
 
 const stdToolchain = {
   'mac ios': {
