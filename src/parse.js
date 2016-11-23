@@ -1,11 +1,8 @@
-import os from 'os';
 import _ from 'lodash';
 import path from 'path';
-import Promise from 'bluebird';
 import {check, diff} from 'js-object-tools';
 import {replaceAll, startsWith} from './util/string';
 import log from './util/log';
-import cascade from './util/cascade';
 import sh from './util/sh';
 import interpolate from './interpolate';
 import fs from './util/fs';
@@ -25,7 +22,7 @@ function fullPath(p, root) {
   if (startsWith(p, '/')) {
     return p;
   }
-  path.join(root, p);
+  return path.join(root, p);
 }
 
 function pathArray(val, root) {

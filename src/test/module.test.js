@@ -7,7 +7,7 @@ import {check} from 'js-object-tools';
 import {Module} from '../lib/module';
 
 describe('module', () => {
-  let config = fs.parseFileSync(path.join(argv.npmDir, '/src/test/configurations/libbson.yaml'));
+  const config = fs.parseFileSync(path.join(argv.npmDir, '/src/test/configurations/libbson.yaml'));
   const module = new Module(config);
 
   it('creates an object of type Module', () => {

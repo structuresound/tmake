@@ -24,7 +24,7 @@
     "node": ">= 0.8.0"
   },
   "scripts": {
-    "test": "grunt && NODE_ENV=test mocha",
+    "test": "grunt && NODE_ENV=test mocha --require source-map-support/register test/",
     "cover": "istanbul cover _mocha",
     "coveralls": "npm run cover -- --report lcovonly && cat ./coverage/lcov.info | coveralls"
   },

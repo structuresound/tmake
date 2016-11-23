@@ -42,6 +42,9 @@ export default {
       console.log(...getMessage(...args));
     }
   },
+  log(...args) {
+    console.log(...getMessage(...args));
+  },
   info(...args) {
     console.log(colors.blue(...getMessage(...args)));
   },
