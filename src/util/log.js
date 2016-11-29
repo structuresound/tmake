@@ -57,7 +57,7 @@ export default {
     }
   },
   error(...args) {
-    return console.log(colors.red(...getMessage(...args)));
+    console.log(colors.red(...getMessage(...args)));
   },
   throw(...args) {
     console.log(colors.magenta(...getMessage(...args)));

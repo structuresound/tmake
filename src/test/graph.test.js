@@ -1,24 +1,23 @@
 /*global it describe*/
 import path from 'path';
-import {assert, expect} from 'chai';
+import {assert} from 'chai';
+import {check} from 'js-object-tools';
 
 import argv from '../lib/util/argv';
-import {check} from 'js-object-tools';
 import {graph} from '../lib/graph';
 import {helloWorld} from './fixtures';
 
-import {Profile} from '../lib/profile';
+import {Module} from '../lib/module';
 
 describe('graph', () => {
-  const profile = new Profile(helloWorld);
   let modules;
   let rootModule;
   before(() => {
-    return graph(profile.conf).then((res) => {
+    return graph(helloWorld).then((res) => {
       modules = res;
       rootModule = modules[modules.length - 1];
       return Promise.resolve(rootModule);
-    })
+    });
   });
 
   it('has a root module', () => {
@@ -37,8 +36,8 @@ describe('graph', () => {
     assert.ok(check(rootModule.d, Object));
   });
 
-  it('source/include', () => {
-    assert.equal(rootModule.d.include, path.join(argv.runDir, `${argv.cachePath}/${rootModule.name}/source/include`));
+  it('install', () => {
+    assert.equal(rootModule.d.includeDirs[0], path.join(argv.runDir, 'source'));
   });
   // it('dynamic includeDirs', () => {
   //   return resolve(depB).then(resolved => {

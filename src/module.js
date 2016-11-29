@@ -10,32 +10,30 @@ import {Configuration} from './configuration';
 import {parse, absolutePath, pathArray} from './parse';
 import {jsonStableHash} from './util/hash';
 
-function getAbsolutePaths(conf, pathOptions) {
+function getAbsolutePaths(module) {
   // if conf.git?.archive
   //   defaultPathOptions.clone = '#{conf.name}-#{conf.git.archive}'
-  const d = diff.clone(conf.d || {});
+  const pathOptions = module.p;
+  const d = diff.clone(module.d || {});
   // fetch
   if (!d.home) {
     d.home = `${argv.runDir}/${argv.cachePath}`;
   } // reference for build tools, should probably remove
   if (!d.root) {
-    d.root = path.join(d.home, conf.name);
+    if (!module.name) {
+      log.error(module);
+      throw new Error('module has no name');
+    }
+    d.root = path.join(d.home, module.name);
   } // lowest level a package should have access to
-  if (!d.temp) {
-    d.temp = path.join(d.root, pathOptions.temp);
-  }
   if (!d.clone) {
     d.clone = path.join(d.root, pathOptions.clone);
   }
   // build
-  if (conf.transform) {
-    d.source = path.join(d.temp, pathOptions.source);
-  } else {
-    d.source = path.join(d.clone, pathOptions.source);
-  }
+  d.source = path.join(d.clone, pathOptions.source);
   d.project = path.join(d.root, pathOptions.project || '');
   // console.log colors.magenta d.project
-  d.includeDirs = pathArray((pathOptions.includeDirs || 'source/include'), d.root);
+  d.includeDirs = pathArray((pathOptions.includeDirs || 'source'), d.root);
   if (d.build == null) {
     d.build = path.join(d.root, pathOptions.build);
   }
@@ -85,7 +83,6 @@ function getPathOptions(conf) {
     headers: '',
     test: 'build_tests',
     clone: 'source',
-    temp: 'transform',
     project: ''
   };
 
@@ -161,11 +158,19 @@ function resolveName(conf) {
       return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
     }
   }
+  log.error(conf);
+  throw new Error('resolveName() failed');
 }
 
 class Module {
   constructor(conf, parent) {
-    this._conf = _.clone(conf);
+    if (!conf) {
+      throw new Error('constructing module with undefined configuration');
+    }
+    if (check(conf, Module)) {
+      return conf;
+    }
+    this._conf = diff.clone(conf);
     if (this._conf.link) {
       const configDir = absolutePath(conf.link);
       const configPath = fs.configExists(configDir);
@@ -176,10 +181,10 @@ class Module {
       }
     }
     diff.extend(this, this._conf);
-    if (this.name == null) {
+    if (!this.name) {
       this.name = resolveName(this);
     }
-    if (this.target == null) {
+    if (!this.target) {
       this.target = 'static';
     }
     if (parent) {
@@ -190,20 +195,19 @@ class Module {
         diff.extend(this, parent.override);
         diff.extend(this.override, parent.override);
       }
+    } else {
+      this.d = {
+        root: argv.runDir
+      };
     }
     this.profile = new Profile(this._conf);
 
     this.configuration = new Configuration(diff.combine(this.build, this.configure), this.profile);
 
     this.p = getPathOptions(this._conf);
-    this.d = getAbsolutePaths(this._conf, this.p);
+    this.d = getAbsolutePaths(this);
 
-    log.add(this);
-  }
-  conf() {
-    return this
-      .profile
-      .select(this._conf);
+    delete this._conf;
   }
   force() {
     return argv.forceAll || (argv.force && (argv.force === this.rawConfig.name));
@@ -229,11 +233,11 @@ class Module {
       .profile
       .select(dict);
   }
-  toJSON() {
+  safe() {
     return JSON.parse(JSON.stringify(this));
   }
-  serialize() {
-    const safe = this.toJSON();
+  serialize(entry) {
+    const safe = diff.combine(this.safe(), _.omit(entry, ['cache', 'libs']));
     if (safe.deps) {
       safe.deps = _.map(safe.deps, (d) => {
         return {name: resolveName(d), hash: jsonStableHash(d)};
@@ -245,6 +249,7 @@ class Module {
     if (safe.user == null) {
       safe.user = 'local';
     }
+    return safe;
   }
 }
 
