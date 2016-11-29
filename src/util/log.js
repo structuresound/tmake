@@ -52,7 +52,9 @@ export default {
     console.log(colors.yellow(...getMessage(...args)));
   },
   add(...args) {
-    console.log(colors.green(...getMessage(...args)));
+    if (argv.add || argv.verbose) {
+      console.log(colors.green(...getMessage(...args)));
+    }
   },
   error(...args) {
     return console.log(colors.red(...getMessage(...args)));

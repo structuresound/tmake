@@ -58,6 +58,9 @@ function objectReplace(m, dict) {
   }
   const res = parse(m.macro, dict);
   if (m.map) {
+    if (!m.map[res]) {
+      throw new Error(`object mapper must have case for ${res}`);
+    }
     return m.map[res];
   }
   return res;
@@ -69,7 +72,6 @@ function replace(m, conf) {
     //  log.debug('sh..', out || m);
     out = shellReplace(m);
   } else if (check(m, Object)) {
-    //  log.debug('map..', out || m);
     out = objectReplace(m, conf);
   }
   return out || m;

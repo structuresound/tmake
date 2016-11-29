@@ -93,9 +93,10 @@ class Profile {
 
     const environment = diff.combine(DEFAULT_ENV, profile.environment);
     this.environment = cascade.deep(environment, keywords, this.selectors);
+    this.macro = diff.combine(this.environment, {host: this.host, target: this.target});
   }
   parse(input, conf) {
-    return parse(input, conf || this.conf, this.macro);
+    return parse(input, conf || this.macro);
   }
   select(base, options) {
     if (!base) {

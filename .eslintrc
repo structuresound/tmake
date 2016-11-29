@@ -29,16 +29,7 @@
     "no-underscore-dangle": ["off"]
   },
   "plugins": [
-    "flowtype-errors",
     "import",
-    "promise",
-    "react"
-  ],
-  "settings": {
-    "import/resolver": {
-      "webpack": {
-        "config": "webpack.config.eslint.js"
-      }
-    }
-  }
+    "promise"
+  ]
 }

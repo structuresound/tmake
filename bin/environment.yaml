@@ -25,3 +25,5 @@ host-mac target-mac:
   PLATFORM: darwin64-x86_64-cc
   SDK_VERSION: '$({XC_RUN} --show-sdk-version)'
   XC_PLATFORM: macosx
+target-meta:
+  TEST_SDK_VERSION: 'meta-1.0'

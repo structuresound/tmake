@@ -5,7 +5,7 @@ import {startsWith} from './util/string';
 import log from './util/log';
 import fs from './util/fs';
 import argv from './util/argv';
-import {Profile} from './profile';
+import {Profile, keywords} from './profile';
 import {Configuration} from './configuration';
 import {parse, absolutePath, pathArray} from './parse';
 import {jsonStableHash} from './util/hash';
@@ -42,7 +42,6 @@ function getAbsolutePaths(conf, pathOptions) {
 
   d.install = {
     binaries: _.map(diff.arrayify(pathOptions.install.binaries), (ft) => {
-      log.info(`ft: ${ft}`);
       return {
         matching: ft.matching,
         from: path.join(d.root, ft.from),
@@ -77,9 +76,6 @@ function getAbsolutePaths(conf, pathOptions) {
   }
 
   d.resolved = true;
-
-  log.log(d);
-
   return d;
 }
 
@@ -124,7 +120,6 @@ function getPathOptions(conf) {
     pathOptions.install.binaries.to = 'bin';
   }
 
-  log.log(pathOptions);
   return pathOptions;
 }
 
@@ -197,6 +192,7 @@ class Module {
       }
     }
     this.profile = new Profile(this._conf);
+
     this.configuration = new Configuration(diff.combine(this.build, this.configure), this.profile);
 
     this.p = getPathOptions(this._conf);
@@ -265,4 +261,4 @@ class Module {
 //   return string;
 // }
 
-export {Module, Profile};
+export {Module, Profile, keywords};
