@@ -21,7 +21,6 @@
     "react/jsx-no-bind": "off",
     "react/jsx-filename-extension": ["error", { "extensions": [".js", ".jsx"] }],
     "react/prefer-stateless-function": "off",
-    "flowtype-errors/show-errors": 2,
     // 1e1f
     "new-cap": ["error", { "capIsNewExceptions": ["Promise", "Map", "List", "Record"]}],
     "object-curly-spacing": ['error', 'never'],

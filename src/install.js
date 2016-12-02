@@ -9,7 +9,7 @@ import log from './util/log';
 import {stringHash, fileHash} from './util/hash';
 import argv from './util/argv';
 import * as db from './db';
-import {startsWith} from '../util/string';
+import {startsWith} from './util/string';
 
 const vinyl = {
   symlink: _vinyl.symlink,
@@ -31,8 +31,9 @@ const copy = (patterns, from, to, opt) => {
     cwd: from,
     followSymlinks: opt.followSymlinks
   }).pipe(fs.map((file, emit) => {
+    const mut = file;
     if (opt.flatten) {
-      file.base = path.dirname(file.path);
+      mut.base = path.dirname(file.path);
     }
     const newPath = path.join(to, path.relative(file.base, file.path));
     filePaths.push(path.relative(opt.relative, newPath));
@@ -48,8 +49,9 @@ function symlink(patterns, from, to, opt) {
     cwd: from,
     followSymlinks: opt.followSymlinks
   }).pipe(fs.map((file, emit) => {
+    const mut = file;
     if (opt.flatten) {
-      file.base = path.dirname(file.path);
+      mut.base = path.dirname(file.path);
     }
     const newPath = path.join(to, path.relative(file.base, file.path));
     filePaths.push(path.relative(opt.relative, newPath));

@@ -202,7 +202,7 @@ class Module {
     }
     this.profile = new Profile(this._conf);
 
-    this.configuration = new Configuration(diff.combine(this.build, this.configure), this.profile);
+    this.configuration = new Configuration(this.profile, diff.combine(this.build, this.configure));
 
     this.p = getPathOptions(this._conf);
     this.d = getAbsolutePaths(this);

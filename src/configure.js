@@ -3,18 +3,18 @@ import Promise from 'bluebird';
 import path from 'path';
 import {diff, check} from 'js-object-tools';
 
-import fs from '../util/fs';
-import sh from '../util/sh';
-import log from '../util/log';
+import fs from './util/fs';
+import sh from './util/sh';
+import log from './util/log';
 
-import {graph} from '../graph';
-import fetch from '../util/fetch';
-import argv from '../util/argv';
-import {replaceInFile} from '../parse';
+import {graph} from './graph';
+import fetch from './util/fetch';
+import argv from './util/argv';
+import {replaceInFile} from './parse';
 
-import * as db from '../db';
+import * as db from './db';
 
-import {jsonStableHash, stringHash} from '../util/hash';
+import {jsonStableHash, stringHash} from './util/hash';
 import cmake from './cmake';
 import ninja from './ninja';
 

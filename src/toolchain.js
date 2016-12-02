@@ -4,25 +4,12 @@ import Promise from 'bluebird';
 import _ from 'lodash';
 import {check} from 'js-object-tools';
 
+import argv from './util/argv';
 import fs from './util/fs';
 import log from './util/log';
 import {stringHash} from './util/hash';
-import fetch from './util/fetch';
-import profile from './profile';
+import {fetch} from './util/fetch';
 import {startsWith} from './util/string';
-
-const stdToolchain = {
-  'mac ios': {
-    clang: {
-      bin: '$(which gcc)'
-    }
-  },
-  linux: {
-    gcc: {
-      bin: '$(which gcc)'
-    }
-  }
-};
 
 // customToolchain =
 //   'mac ios':
@@ -42,32 +29,12 @@ const stdToolchain = {
 //       url: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz'
 //       signature: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz.sig'
 
-function sanityCheck() {
-  if (!argv.userCache) {
-    throw new Error('no userCache specified');
-  }
-}
-
-function fetchAndUnarchive(tool) {
-  sanityCheck();
-  const rootDir = path.join(argv.userCache, 'toolchain', tool.name);
-  if (!fs.existsSync(rootDir)) {
-    sh.mkdir('-p', rootDir);
-  }
-  const tempDir = path.join(argv.userCache, 'temp', stringHash(tool.url));
-  const toolpath = pathForTool(tool);
-  return fetch(tool.url).then(function(archivePath) {
-    const tooldir = path.join(argv.userCache, 'toolchain', tool.name, stringHash(tool.url));
-    return fs.unarchive(archivePath, tempDir, tooldir, toolpath);
-  });
-}
-
-const buildSystems = ['cmake', 'ninja'];
-const compilers = ['clang', 'gcc', 'msvc'];
-
 function toolPaths(toolchain) {
   const tools = {};
-  _.each(Object.keys(toolchain), name => tools[name] = pathForTool(toolchain[name]));
+  _.each(Object.keys(toolchain), name => {
+    tools[name] = pathForTool(toolchain[name]);
+    return tools[name];
+  });
   return tools;
 }
 
@@ -86,6 +53,26 @@ function pathForTool(tool) {
   }
   const hash = stringHash(tool.url);
   return path.join(argv.userCache, 'toolchain', tool.name, hash, tool.bin);
+}
+
+function sanityCheck() {
+  if (!argv.userCache) {
+    throw new Error('no userCache specified');
+  }
+}
+
+function fetchAndUnarchive(tool) {
+  sanityCheck();
+  const rootDir = path.join(argv.userCache, 'toolchain', tool.name);
+  if (!fs.existsSync(rootDir)) {
+    sh.mkdir('-p', rootDir);
+  }
+  const tempDir = path.join(argv.userCache, 'temp', stringHash(tool.url));
+  const toolpath = pathForTool(tool);
+  return fetch(tool.url).then((archivePath) => {
+    const tooldir = path.join(argv.userCache, 'toolchain', tool.name, stringHash(tool.url));
+    return fs.unarchive(archivePath, tempDir, tooldir, toolpath);
+  });
 }
 
 function fetchToolchain(toolchain) {
@@ -115,26 +102,4 @@ function fetchToolchain(toolchain) {
   });
 }
 
-function select(toolchain) {
-  const selected = profile.select((toolchain || stdToolchain), {
-    ignore: buildSystems.concat(compilers)
-  });
-  _.each(selected, (tool, name) => {
-    if (tool.bin == null) {
-      tool.bin = name;
-    }
-    return tool.name != null
-      ? tool.name
-      : (tool.name = name);
-  });
-  return selected;
-}
-
-export default {
-  pathForTool,
-  fetch : fetchToolchain,
-  tools(toolchain) {
-    return toolPaths(toolchain);
-  },
-  select
-};
+export {fetchToolchain as fetch, pathForTool, toolPaths as tools};

@@ -1,8 +1,10 @@
 import _ from 'lodash';
+import {check} from 'js-object-tools';
+
+import argv from './util/argv';
 import {startsWith} from './util/string';
 import fs from './util/fs';
-import {check} from 'js-object-tools';
-import toolchain from './toolchain';
+import log from './util/log';
 
 function jsonToCFlags(object) {
   const opt = _.clone(object);
@@ -140,34 +142,48 @@ const stdLinkerFlags = {
   // static: true
   linux: {
     'lstdc++': true,
-    'lpthread': true
+    lpthread: true
   },
   mac: {
     'lc++': true
   }
 };
 
-const settings = [
-  'linkerFlags',
-  'cFlags',
-  'cxxFlags',
-  'compilerFlags',
-  'defines',
-  'frameworks',
-  'sources',
-  'headers',
-  'outputFile'
-];
+// const settings = [
+//   'linkerFlags',
+//   'cFlags',
+//   'cxxFlags',
+//   'compilerFlags',
+//   'defines',
+//   'frameworks',
+//   'sources',
+//   'headers',
+//   'outputFile'
+// ];
+//
+// let compiler = argv.compiler;
+// if (typeof compiler === 'undefined' || compiler === null) {
+//   compiler = this.cc;
+// }
+// const hostToolchain = this._profile.toolchain();
+// log.verbose(hostToolchain);
+// log.verbose(`look for compiler ${compiler}`);
+// const cc = this._profile.pathForTool(hostToolchain[compiler]);
+// return {hostToolchain, compiler, cc};
 
-const filter = ['with', 'ninja', 'cmake'].concat(settings);
+// const filter = ['with', 'ninja', 'cmake'].concat(settings);
 
 class Configuration {
-  constructor(options, profile) {
+  constructor(profile, options) {
     this._frameworks = profile.select(options.frameworks || stdFrameworks || {});
-    this._cFlags = _.omit(_.extend(profile.select(stdCxxFlags), profile.select(options.cFlags || options.cxxFlags || {})), ['std', 'stdlib']);
-    this._cxxFlags = _.extend(profile.select(stdCxxFlags), profile.select(options.cxxFlags || options.cFlags || {}));
-    this._linkerFlags = _.extend(profile.select(stdLinkerFlags), profile.select(options.linkerFlags || {}));
-    this._compilerFlags = _.extend(profile.select(stdCompilerFlags), profile.select(options.compilerFlags || {}));
+    const cFlags = profile.select(options.cFlags || options.cxxFlags || {});
+    this._cFlags = _.omit(_.extend(profile.select(stdCxxFlags), cFlags), ['std', 'stdlib']);
+    const cxxFlags = profile.select(options.cxxFlags || options.cFlags || {});
+    this._cxxFlags = _.extend(profile.select(stdCxxFlags), cxxFlags);
+    const linkerFlags = profile.select(options.linkerFlags || {});
+    this._linkerFlags = _.extend(profile.select(stdLinkerFlags), linkerFlags);
+    const compilerFlags = profile.select(options.compilerFlags || {});
+    this._compilerFlags = _.extend(profile.select(stdCompilerFlags), compilerFlags);
   }
   frameworks() {
     return jsonToFrameworks(this.frameworks);
@@ -183,17 +199,6 @@ class Configuration {
   }
   compilerFlags() {
     return jsonToFlags(this.compilerFlags, {join: ' '});
-  }
-  toolchain() {
-    let compiler = argv.compiler;
-    if (typeof compiler === 'undefined' || compiler === null) {
-      compiler = this.cc;
-    }
-    const hostToolchain = toolchain.select(dep.toolchain);
-    log.verbose(hostToolchain);
-    log.verbose(`look for compiler ${compiler}`);
-    const cc = toolchain.pathForTool(hostToolchain[compiler]);
-    return {hostToolchain, compiler, cc};
   }
 }
 

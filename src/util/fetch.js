@@ -188,7 +188,7 @@ function validate(dep) {
   return getSource();
 }
 
-export default {
+export {
   validate,
   findGit,
   fetch,

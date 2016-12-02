@@ -78,7 +78,7 @@ function replace(m, conf) {
 }
 
 function allStrings(o, fn) {
-  const mut = _.clone(o);
+  const mut = o;
   for (const k of Object.keys(mut)) {
     if (check(mut[k], String)) {
       mut[k] = fn(mut[k]);
@@ -96,8 +96,8 @@ function parseString(val, conf) {
   return replace(mut, conf);
 }
 
-function parseObject(conf) {
-  return allStrings(_.clone(conf), val => {
+function parseObject(obj, conf) {
+  return allStrings(_.clone(obj), (val) => {
     return parseString(val, conf);
   });
 }
@@ -108,7 +108,7 @@ function parse(input, conf) {
   if (check(input, String)) {
     out = parseString(input, conf);
   } else if (check(input, Object)) {
-    out = parseObject(input);
+    out = parseObject(input, conf || input);
   }
   //  log.debug('out:', out || input);
   return out || input;

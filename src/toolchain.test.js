@@ -1,23 +1,18 @@
 import {expect} from 'chai';
 import path from 'path';
-import Datastore from 'nedb-promise';
 
+import argv from '../lib/util/argv';
 import fs from '../lib/util/fs';
 import {stringHash} from '../lib/util/hash';
-import platform from '../lib/platform';
-import toolchain from '../lib/build/toolchain';
-
-const db = new Datastore();
+import {Profile} from '../lib/profile';
+import {fetch as fetchToolchain, pathForTool} from '../lib/toolchain';
 
 describe('toolchain', function mocha() {
+  const profile = new Profile({});
+
   this.timeout(120000);
+  const hostChain = profile.selectToolchain();
   const ninjaVersion = 'v1.7.1';
-  const hostChain = toolchain.select({
-    ninja: {
-      version: ninjaVersion,
-      url: 'https://github.com/ninja-build/ninja/releases/download/{ninja.version}/ninja-{HOST_PLATFORM}.zip'
-    }
-  });
 
   it('can parse toolchain correctly', () => {
     expect(hostChain.ninja.name)
@@ -28,34 +23,32 @@ describe('toolchain', function mocha() {
       .equal('ninja');
     return expect(hostChain.ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${platform.name()}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${profile.host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {
-    return toolchain
-      .fetch(hostChain)
-      .then(() => {
-        const ninjaPath = toolchain.pathForTool(hostChain.ninja);
-        return expect(fs.existsSync(ninjaPath))
-          .to
-          .equal(true);
-      });
+    return fetchToolchain(hostChain).then(() => {
+      const ninjaPath = pathForTool(hostChain.ninja);
+      return expect(fs.existsSync(ninjaPath))
+        .to
+        .equal(true);
+    });
   });
 
   it('cached the zip to the right location', () => {
     const hash = stringHash(hostChain.ninja.url);
-    const cachePath = path.join(testArgv.userCache, 'cache', hash);
+    const cachePath = path.join(argv.userCache, 'cache', hash);
     return expect(fs.existsSync(cachePath))
       .to
       .equal(true);
   });
 
   return it('put the executable in the right place', () => {
-    const ninjaPath = toolchain.pathForTool(hostChain.ninja);
+    const ninjaPath = pathForTool(hostChain.ninja);
     const hash = stringHash(hostChain.ninja.url);
     expect(ninjaPath)
       .to
-      .equal(path.join(testArgv.userCache, 'toolchain', 'ninja', hash, 'ninja'));
+      .equal(path.join(argv.userCache, 'toolchain', 'ninja', hash, 'ninja'));
     return expect(fs.existsSync(ninjaPath))
       .to
       .equal(true);

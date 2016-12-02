@@ -2,9 +2,9 @@ import Promise from 'bluebird';
 import path from 'path';
 import {check} from 'js-object-tools';
 
-import fs from '../util/fs';
-import sh from '../util/sh';
-import profile from '../profile';
+import fs from './util/fs';
+import sh from './util/sh';
+import profile from './profile';
 import cmake from './cmake';
 import ninja from './ninja';
 
@@ -84,23 +84,6 @@ function buildWith(dep, system) {
       throw new Error(`bad build system ${system}`);
   }
 }
-
-// hashSourceFolder = ->
-//   cumulativeHash = dep.cache.url
-//   globHeaders()
-//   .then (headers) ->
-//     _p headers, (header) ->
-//       fileHash path.join dep.d.project, header
-//       .then (hash) ->
-//         cumulativeHash = stringHash(cumulativeHash + hash)
-//     globSources()
-//   .then (sources) ->
-//     _p sources, (source) ->
-//       fileHash path.join dep.d.project, source
-//       .then (hash) ->
-//         cumulativeHash = stringHash(cumulativeHash + hash)
-//   .then ->
-//     Promise.resolve cumulativeHash
 
 export default {
   execute(dep) {

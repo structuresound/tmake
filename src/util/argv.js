@@ -5,9 +5,11 @@ import _ from 'lodash';
 import fs from './fs';
 
 const argv = _argv(process.argv.slice(2));
-const homeDir = () => process.env[process.profile === 'win32'
-    ? 'USERPROFILE'
-    : 'HOME'];
+function homeDir() {
+  return process.env[process.profile === 'win32'
+      ? 'USERPROFILE'
+      : 'HOME'];
+}
 
 const runDir = process.cwd();
 if (argv.runDir == null) {
@@ -44,7 +46,7 @@ if (argv.v) {
 if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
   npmDir = process.cwd();
   _.extend(argv, {
-    npmDir: npmDir,
+    npmDir,
     libDir: path.join(npmDir, 'lib'),
     runDir: path.join(npmDir, 'tests'),
     binDir: path.join(npmDir, 'bin'),

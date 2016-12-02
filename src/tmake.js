@@ -4,18 +4,19 @@ import path from 'path';
 import colors from 'chalk';
 
 import './util/string';
+import fetch from './util/fetch';
+import log from './util/log';
+import argv from './util/argv';
 import fs from './util/fs';
+
 import profile from './profile';
 import prompt from './prompt';
 import {graph, resolveDepName} from './graph';
 import cloud from './cloud';
-import configure from './build/configure';
-import build from './build/build';
+import configure from './configure';
+import build from './build';
 import install from './install';
-import fetch from './util/fetch';
 import test from './test';
-import log from './util/log';
-import argv from './util/argv';
 import cli from './cli';
 import * as db from './db';
 

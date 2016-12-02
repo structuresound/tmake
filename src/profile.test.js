@@ -1,5 +1,4 @@
 import {assert} from 'chai';
-import _ from 'lodash';
 import {diff} from 'js-object-tools';
 
 import {Profile, keywords} from '../lib/profile';

@@ -1,13 +1,8 @@
 import os from 'os';
 import _ from 'lodash';
 import path from 'path';
-import Promise from 'bluebird';
-import {check, diff} from 'js-object-tools';
-import {replaceAll, startsWith} from './util/string';
-import log from './util/log';
+import {diff} from 'js-object-tools';
 import cascade from './util/cascade';
-import sh from './util/sh';
-import interpolate from './interpolate';
 import fs from './util/fs';
 import argv from './util/argv';
 import {parse} from './parse';
@@ -38,6 +33,8 @@ const HOST_ENDIANNESS = os.endianness();
 const HOST_PLATFORM = platformNames[os.platform()];
 const HOST_ARCHITECTURE = archNames[os.arch()];
 const HOST_CPU = os.cpus();
+
+const ninjaVersion = 'v1.7.1';
 
 const HOST_ENV = {
   architecture: HOST_ARCHITECTURE,
@@ -93,24 +90,69 @@ class Profile {
 
     const environment = diff.combine(DEFAULT_ENV, profile.environment);
     this.environment = cascade.deep(environment, keywords, this.selectors);
-    this.macro = diff.combine(this.environment, {host: this.host, target: this.target});
+    this.macro = diff.combine(this.environment, {
+      host: this.host,
+      target: this.target
+    });
+
+    const stdChain = {
+      ninja: {
+        version: ninjaVersion,
+        url: 'https://github.com/ninja-build/ninja/releases/download/{host.toolchain.ninja.version}/ninja-{host.platform}.zip'
+      },
+      'host-mac': {
+        clang: {
+          bin: '$(which gcc)'
+        }
+      },
+      'host-linux': {
+        gcc: {
+          bin: '$(which gcc)'
+        }
+      }
+    };
+
+    this.host.toolchain = diff.combine(stdChain, this.host.toolchain);
   }
   parse(input, conf) {
+    if (conf) {
+      console.log('parsing with conf', conf);
+    }
     return parse(input, conf || this.macro);
   }
-  select(base, options) {
+  select(base, options = {
+    ignore: {}
+  }) {
     if (!base) {
       throw new Error('selecting on empty object');
     }
-    const mutableOptions = diff.combine({
-      ignore: {}
-    }, options);
+    const mutableOptions = diff.clone(options);
 
     mutableOptions.keywords = _.difference(keywords, mutableOptions.ignore.keywords);
     mutableOptions.selectors = _.difference(this.selectors, mutableOptions.ignore.selectors);
 
     const flattened = cascade.deep(base, mutableOptions.keywords, mutableOptions.selectors);
-    return this.parse(flattened, mutableOptions.dict);
+    const parsed = this.parse(flattened, mutableOptions.dict);
+    return parsed;
+  }
+  selectToolchain() {
+    const buildSystems = ['cmake', 'ninja'];
+    const compilers = ['clang', 'gcc', 'msvc'];
+    const selectedToolchain = this.select(this.host.toolchain, {
+      ignore: {
+        keywords: buildSystems.concat(compilers)
+      }
+    });
+    for (const name of Object.keys(selectedToolchain)) {
+      const tool = selectedToolchain[name];
+      if (tool.bin == null) {
+        tool.bin = name;
+      }
+      if (tool.name == null) {
+        tool.name = name;
+      }
+    }
+    return selectedToolchain;
   }
   force() {
     return argv.forceAll || (argv.force && (argv.force === this.rawConfig.name));

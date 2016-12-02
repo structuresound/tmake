@@ -1,5 +1,5 @@
-import {expect, assert} from 'chai';
-import cascade from '../lib/util/cascade.js';
+import {assert} from 'chai';
+import cascade from '../lib/util/cascade';
 
 const keywords = [
   'win',
@@ -137,10 +137,10 @@ const testBExpected = [
 
 const testObjC = {
   clang: {
-    'ios': {
+    ios: {
       arch: 'arm64'
     },
-    'arch': 'x86'
+    arch: 'x86'
   }
 };
 

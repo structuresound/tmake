@@ -10,7 +10,7 @@ import map from 'map-stream';
 import {check} from 'js-object-tools';
 
 import log from './log';
-import {unarchive} from './archive';
+import unarchive from './archive';
 
 fs.nuke = (folderPath) => {
   if (!folderPath || (folderPath === '/')) {

@@ -3,7 +3,7 @@ import sh from 'shelljs';
 import _ from 'lodash';
 import Promise from 'bluebird';
 import nbg from 'ninja-build-gen';
-import log from '../util/log';
+import log from './util/log';
 import toolchain from './toolchain';
 // fs = require('../util/fs')
 // colors = require ('chalk')

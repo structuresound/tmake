@@ -7,7 +7,7 @@ import argv from '../lib/util/argv';
 describe('fs', () => {
   it('can parse a yaml file', () => {
     return fs
-      .parseFileAsync(path.join(argv.npmDir, '/src/test/configurations/libbson.yaml'))
+      .parseFileAsync(path.join(argv.npmDir, '/src/test/libbson.yaml'))
       .then((config) => {
         if (check(config, Error)) {
           throw config;
