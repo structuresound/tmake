@@ -8,7 +8,7 @@ import argv from './util/argv';
 import fs from './util/fs';
 import log from './util/log';
 import {stringHash} from './util/hash';
-import {fetch} from './util/fetch';
+import {download} from './util/fetch';
 import {startsWith} from './util/string';
 
 // customToolchain =
@@ -69,7 +69,7 @@ function fetchAndUnarchive(tool) {
   }
   const tempDir = path.join(argv.userCache, 'temp', stringHash(tool.url));
   const toolpath = pathForTool(tool);
-  return fetch(tool.url).then((archivePath) => {
+  return download(tool.url).then((archivePath) => {
     const tooldir = path.join(argv.userCache, 'toolchain', tool.name, stringHash(tool.url));
     return fs.unarchive(archivePath, tempDir, tooldir, toolpath);
   });

@@ -4,27 +4,24 @@ import _ from 'lodash';
 import Promise from 'bluebird';
 import nbg from 'ninja-build-gen';
 import log from './util/log';
-import toolchain from './toolchain';
-// fs = require('../util/fs')
-// colors = require ('chalk')
+import {fetch, select, pathForTool} from './toolchain';
 const ninjaVersion = '1.6.0';
 
 function getNinja() {
-  const resolved = toolchain.select({
+  const resolved = select({
     ninja: {
       version: ninjaVersion,
       url: ' https: //github.com/ninja-build/ninja/releases/download/v{ninja.version}/ninja-{HOST_PLATFORM}.zip'
     }
   });
-  return toolchain
-    .fetch(resolved)
+  return fetch(resolved)
     .then(() => {
-      return Promise.resolve(toolchain.pathForTool(resolved.ninja));
+      return Promise.resolve(pathForTool(resolved.ninja));
     });
 }
 
 function verifyToolchain(dep) {
-  return toolchain.fetch(dep.configuration.hostToolchain);
+  return fetch(dep.configuration.hostToolchain);
 }
 
 function getRule(ext) {

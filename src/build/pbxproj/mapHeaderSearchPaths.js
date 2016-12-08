@@ -6,7 +6,7 @@
  * use $(TARGET_NAME) for PRODUCT_NAME, but sets it manually so that method will skip
  * that target.
  *
- * To workaround that issue and make it more bulconst-proof for different names,
+ * To workaround that issue and make it more bullet-proof for different names,
  * we iterate over all configurations and look if React is already there. If it is,
  * we assume we want to modify that section either
  *

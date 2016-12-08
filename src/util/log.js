@@ -2,8 +2,6 @@
 
 import yaml from 'js-yaml';
 import colors from 'chalk';
-import _ from 'lodash';
-
 import {check} from 'js-object-tools';
 import argv from './argv';
 

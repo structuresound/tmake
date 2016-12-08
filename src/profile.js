@@ -79,16 +79,16 @@ const argvSelectors = Object.keys(_.pick(argv, keywords));
 argvSelectors.push(argv.compiler);
 
 class Profile {
-  constructor(profile) {
-    this.host = diff.combine(HOST_ENV, profile.host);
-    this.target = diff.combine(DEFAULT_TARGET, profile.target);
+  constructor(configuration) {
+    this.host = diff.combine(HOST_ENV, configuration.host);
+    this.target = diff.combine(DEFAULT_TARGET, configuration.target);
 
     const hostSelectors = parseSelectors(this.host, 'host');
     const targetSelectors = parseSelectors(this.target, 'target');
 
     this.selectors = hostSelectors.concat(targetSelectors);
 
-    const environment = diff.combine(DEFAULT_ENV, profile.environment);
+    const environment = diff.combine(DEFAULT_ENV, configuration.environment);
     this.environment = cascade.deep(environment, keywords, this.selectors);
     this.macro = diff.combine(this.environment, {
       host: this.host,

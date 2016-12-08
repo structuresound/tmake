@@ -21,10 +21,10 @@
     "react/jsx-no-bind": "off",
     "react/jsx-filename-extension": ["error", { "extensions": [".js", ".jsx"] }],
     "react/prefer-stateless-function": "off",
-    // 1e1f
     "new-cap": ["error", { "capIsNewExceptions": ["Promise", "Map", "List", "Record"]}],
     "object-curly-spacing": ['error', 'never'],
-    "arrow-body-style": ["error", "always"],
+    "arrow-body-style": off,
+    "func-names": ["error", "never"],
     "no-underscore-dangle": ["off"]
   },
   "plugins": [

@@ -7,7 +7,7 @@ import {stringHash} from '../lib/util/hash';
 import {Profile} from '../lib/profile';
 import {fetch as fetchToolchain, pathForTool} from '../lib/toolchain';
 
-describe('toolchain', function mocha() {
+describe('toolchain', function () {
   const profile = new Profile({});
 
   this.timeout(120000);

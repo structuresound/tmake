@@ -1,4 +1,4 @@
-import * as db from './db';
+import {cache as db} from './db';
 
 export default {
   execute(dep) {

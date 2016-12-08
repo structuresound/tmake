@@ -9,7 +9,7 @@ import fs from './util/fs';
 import ninja from './ninja';
 import {fileHash} from './util/hash';
 import log from './util/log';
-import * as db from './db';
+import {cache as db} from './db';
 import {startsWith} from './util/string';
 
 function run(dep, ninjaPath) {

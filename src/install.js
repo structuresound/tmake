@@ -8,7 +8,7 @@ import log from './util/log';
 // { jsonStableHash } = require './util/hash'
 import {stringHash, fileHash} from './util/hash';
 import argv from './util/argv';
-import * as db from './db';
+import {cache as db} from './db';
 import {startsWith} from './util/string';
 
 const vinyl = {

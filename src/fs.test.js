@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 import path from 'path';
-import {check, diff as __} from 'js-object-tools';
+import {check} from 'js-object-tools';
 import fs from '../lib/util/fs';
 import argv from '../lib/util/argv';
 

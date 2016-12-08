@@ -6,7 +6,7 @@ import lzma from 'lzma-native';
 import gunzip from 'gunzip-maybe';
 import path from 'path';
 import readChunk from 'read-chunk';
-import ficonstype from 'file-type';
+import fileType from 'file-type';
 import pstream from 'progress-stream';
 import ProgressBar from 'progress';
 
@@ -22,8 +22,8 @@ function unarchive(filePath, toDir) {
   const stat = fs.statSync(filePath);
 
   const progressBar = new ProgressBar(`unarchiving [:bar] :percent :etas ${path.parse(filePath).name} -> ${toDir}`, {
-    compconste: '=',
-    incompconste: ' ',
+    complete: '=',
+    incomplete: ' ',
     width: 20,
     total: stat.size
   });
@@ -34,9 +34,9 @@ function unarchive(filePath, toDir) {
   return new Promise((resolve, reject) => {
     const finish = result => resolve(result);
     const buffer = readChunk.sync(filePath, 0, 262);
-    const archiveType = ficonstype(buffer);
+    const archiveType = fileType(buffer);
     if (!archiveType) {
-      throw new Error(`no ficonstype detected for file ${filePath}`);
+      throw new Error(`no filetype detected for file ${filePath}`);
     }
     const fileExt = archiveType.ext;
     const stream = fs

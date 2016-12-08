@@ -12,9 +12,9 @@ import {stringHash} from './hash';
 import argv from './argv';
 
 import profile from '../profile';
-import * as db from '../db';
+import {cache as db} from '../db';
 
-function download(url, cacheDir) {
+function download(url, cacheDir = path.join(argv.userCache, 'cache')) {
   if (!fs.existsSync(cacheFile)) {
     sh.mkdir('-p', cacheDir);
   }
@@ -31,15 +31,15 @@ function download(url, cacheDir) {
     }).on('progress', (state) => {
       if (!progressBar && state.size.total) {
         progressBar = new ProgressBar(`downloading [:bar] :percent :etas ${url}`, {
-          compconste: '=',
-          incompconste: ' ',
+          complete: '=',
+          incomplete: ' ',
           width: 20,
           total: state.size.total
         });
       } else if (!progressBar) {
         progressBar = new ProgressBar(`downloading ${url} :elapsed`, {
-          compconste: '=',
-          incompconste: ' ',
+          complete: '=',
+          incomplete: ' ',
           width: 20,
           total: 100000000
         });
@@ -83,35 +83,31 @@ function parsePath(s) {
   return path.join(argv.runDir, s);
 }
 
-function fetch(url) {
-  return download(url, path.join(argv.userCache, 'cache'));
-}
-
 function unarchiveSource(filePath, toDir) {
   const tempDir = path.join(argv.userCache, 'temp', stringHash(filePath));
   return fs.unarchive(filePath, tempDir, toDir);
 }
 
-function resolveUrl(dep) {
-  let config = dep.git || dep.fetch || {};
-  if (dep.git) {
+function resolveUrl(node) {
+  let config = node.git || node.fetch || {};
+  if (node.git) {
     if (typeof config === 'string') {
       config = {
-        repository: dep.git
+        repository: node.git
       };
     }
     if (!config.repository) {
       throw new Error('dependency has git configuration, but no repository was specified');
     }
     const base = `https://github.com/${config.repository}`;
-    const archive = config.archive || config.tag || config.branch || dep.tag || 'master';
+    const archive = config.archive || config.tag || config.branch || node.tag || 'master';
     return `${base}/archive/${archive}.tar.gz`;
-  } else if (dep.link) {
-    return parsePath(dep.link);
-  } else if (dep.fetch) {
+  } else if (node.link) {
+    return parsePath(node.link);
+  } else if (node.fetch) {
     if (typeof config === 'string') {
       config = {
-        archive: dep.fetch
+        archive: node.fetch
       };
     }
     if (!config.archive) {
@@ -121,27 +117,27 @@ function resolveUrl(dep) {
   }
   return 'rootConfig';
 }
-// throw new Error 'unable to resolve url for dependency #{dep.name}: #{JSON.stringify(dep,0,2)}'
+// throw new Error 'unable to resolve url for dependency #{node.name}: #{JSON.stringify(node,0,2)}'
 
-function getSource(dep) {
+function getSource(node) {
   return fs
-    .existsAsync(dep.d.clone)
+    .existsAsync(node.d.clone)
     .then((exists) => {
-      const url = resolveUrl();
+      const url = resolveUrl(node);
       const hash = stringHash(url);
-      if (exists && dep.cache.url === hash && !profile.force(dep)) {
+      if (exists && node.cache.url === hash && !profile.force(node)) {
         if (argv.verbose) {
           log.warn('using cache');
         }
         return Promise.resolve();
       }
-      sh.mkdir('-p', dep.d.root);
-      return fetch(url).then((file) => {
-        return unarchiveSource(file, dep.d.clone);
+      sh.mkdir('-p', node.d.root);
+      return download(url).then((file) => {
+        return unarchiveSource(file, node.d.clone);
       }).then(() => {
-        log.add(`insert new record ${dep.name}`);
+        log.add(`insert new record ${node.name}`);
         return db.update({
-          name: dep.name
+          name: node.name
         }, {
           $set: {
             'cache.url': hash
@@ -151,29 +147,29 @@ function getSource(dep) {
     });
 }
 
-function linkSource(dep) {
-  const url = resolveUrl();
+function linkSource(node) {
+  const url = resolveUrl(node);
   log.add('link source from', url);
-  log.warn('to', dep.d.root);
+  log.warn('to', node.d.root);
   return fs
-    .existsAsync(dep.d.clone)
+    .existsAsync(node.d.clone)
     .then((exists) => {
       if (exists) {
         return Promise.resolve();
       }
       return new Promise((resolve, reject) => {
-        fs.symlink(url, dep.d.root, 'dir', (err) => {
+        fs.symlink(url, node.d.root, 'dir', (err) => {
           if (err) {
             reject(err);
           }
           return db.update({
-            name: dep.name
+            name: node.name
           }, {
             $set: {
               'cache.url': stringHash(url)
             }
           }, {upsert: true}).then((res) => {
-            log.verbose(`inserted new record ${dep.name}`);
+            log.verbose(`inserted new record ${node.name}`);
             return resolve(res);
           });
         });
@@ -181,17 +177,17 @@ function linkSource(dep) {
     });
 }
 
-function validate(dep) {
-  if (fs.existsSync(dep.d.clone) && !profile.force(dep)) {
+function validate(node) {
+  if (fs.existsSync(node.d.clone) && !profile.force(node)) {
     return Promise.resolve();
   }
-  return getSource();
+  return getSource(node);
 }
 
 export {
   validate,
   findGit,
-  fetch,
+  download,
   resolveUrl,
   getSource,
   linkSource

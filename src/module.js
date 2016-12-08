@@ -164,6 +164,8 @@ function resolveName(conf) {
 
 class Module {
   constructor(conf, parent) {
+    // load conf, extend if link
+
     if (!conf) {
       throw new Error('constructing module with undefined configuration');
     }
@@ -180,6 +182,8 @@ class Module {
         diff.extend(this._conf, rawConfig);
       }
     }
+
+    // defaults
     diff.extend(this, this._conf);
     if (!this.name) {
       this.name = resolveName(this);
@@ -187,12 +191,14 @@ class Module {
     if (!this.target) {
       this.target = 'static';
     }
+    if (!this.override) {
+      this.override = {};
+    }
+
+    // overrides
     if (parent) {
-      if (parent.profile) {
-        this.profile = diff.combine(this.profile, parent.profile);
-      }
+      this.profile = parent.profile;
       if (parent.override) {
-        diff.extend(this, parent.override);
         diff.extend(this.override, parent.override);
       }
     } else {
@@ -200,10 +206,13 @@ class Module {
         root: argv.runDir
       };
     }
-    this.profile = new Profile(this._conf);
+    diff.extend(this, this.override);
 
+    // calculate paths + configuration sections
+    if (!this.profile) {
+      this.profile = new Profile(this);
+    }
     this.configuration = new Configuration(this.profile, diff.combine(this.build, this.configure));
-
     this.p = getPathOptions(this._conf);
     this.d = getAbsolutePaths(this);
 
@@ -266,4 +275,4 @@ class Module {
 //   return string;
 // }
 
-export {Module, Profile, keywords};
+export {Module, resolveName, Profile, keywords};

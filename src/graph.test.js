@@ -1,14 +1,12 @@
-/*global it describe*/
 import path from 'path';
 import {assert} from 'chai';
 import {check} from 'js-object-tools';
 
 import argv from '../lib/util/argv';
 import {graph} from '../lib/graph';
-import {helloWorld} from './fixtures';
+import fs from '../lib/util/fs';
 
-import {Module} from '../lib/module';
-
+const helloWorld = fs.parseFileSync(path.join(argv.npmDir, '/src/test/hello.yaml'));
 describe('graph', () => {
   let modules;
   let rootModule;

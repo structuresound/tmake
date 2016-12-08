@@ -9,10 +9,11 @@ import vinyl from 'vinyl-fs';
 import map from 'map-stream';
 import {check} from 'js-object-tools';
 
-import log from './log';
 import unarchive from './archive';
 
-fs.nuke = (folderPath) => {
+const that = fs;
+
+that.nuke = (folderPath) => {
   if (!folderPath || (folderPath === '/')) {
     throw new Error("don't nuke everything");
   } else if (fs.existsSync(folderPath)) {
@@ -29,7 +30,7 @@ fs.nuke = (folderPath) => {
   }
 };
 
-fs.prune = (folderPath) => {
+that.prune = (folderPath) => {
   if (fs.existsSync(folderPath)) {
     const files = fs.readdirSync(folderPath);
     if (files.length) {
@@ -52,9 +53,9 @@ fs.prune = (folderPath) => {
   }
 };
 
-fs.src = vinyl.src;
-fs.dest = vinyl.dest;
-fs.wait = function wait(stream, readOnly) {
+that.src = vinyl.src;
+that.dest = vinyl.dest;
+that.wait = (stream, readOnly) => {
   return (resolve, reject) => {
     stream.on('error', reject);
     if (readOnly) {
@@ -64,15 +65,15 @@ fs.wait = function wait(stream, readOnly) {
   };
 };
 
-fs.deleteAsync = filePath => new Promise((resolve, reject) => fs.unlink(filePath, (err) => {
+that.deleteAsync = filePath => new Promise((resolve, reject) => fs.unlink(filePath, (err) => {
   if (err) {
     return reject(err);
   }
   return resolve(1);
 }));
 
-fs.map = map;
-fs._glob = function _glob(srcPattern, relative, cwd) {
+that.map = map;
+function _glob(srcPattern, relative, cwd) {
   return new Promise((resolve, reject) => {
     return glob(srcPattern, {
       cwd: cwd || process.cwd(),
@@ -93,23 +94,23 @@ fs._glob = function _glob(srcPattern, relative, cwd) {
       return reject('no files found');
     });
   });
-};
+}
 
-fs.glob = (patternS, relative, cwd) => {
+that.glob = (patternS, relative, cwd) => {
   let patterns = [];
   if (check(patternS, String)) {
     patterns.push(patternS);
   } else if (check(patternS, Array)) {
     patterns = patternS;
   }
-  return fs._glob(patterns, relative, cwd);
+  return _glob(patterns, relative, cwd);
 };
 
-fs.existsAsync = function fsExistsAsync(filePath) {
+that.existsAsync = (filePath) => {
   return new Promise((resolve) => fs.exists(filePath, exists => resolve(exists)));
 };
 
-fs.readFileAsync = function readFileAsync(filePath, format) {
+that.readFileAsync = (filePath, format) => {
   return new Promise((resolve, reject) => fs.readFile(filePath, format, (err, data) => {
     if (err) {
       reject(err);
@@ -118,7 +119,7 @@ fs.readFileAsync = function readFileAsync(filePath, format) {
   }));
 };
 
-fs.writeFileAsync = function writeFileAsync(filePath, data, options) {
+that.writeFileAsync = (filePath, data, options) => {
   return new Promise((resolve, reject) => {
     fs.writeFile(filePath, data, options, (err) => {
       if (err) {
@@ -129,8 +130,8 @@ fs.writeFileAsync = function writeFileAsync(filePath, data, options) {
   });
 };
 
-fs.findAsync = fs.glob;
-fs.findOneAsync = (srcPattern, relative, cwd) => fs
+that.findAsync = that.glob;
+that.findOneAsync = (srcPattern, relative, cwd) => fs
   .findAsync(srcPattern, relative, cwd)
   .then((array) => {
     if (array.length) {
@@ -141,7 +142,7 @@ fs.findOneAsync = (srcPattern, relative, cwd) => fs
 
 const defaultConfig = 'tmake';
 
-fs.configExists = function configExists(configDir) {
+that.configExists = (configDir) => {
   const exts = ['yaml', 'json', 'cson'];
   for (const ext of exts) {
     const filePath = `${configDir}/${defaultConfig}.${ext}`;
@@ -149,19 +150,18 @@ fs.configExists = function configExists(configDir) {
       return filePath;
     }
   }
-  log.error(`no tmake.{yaml, json, cson} file present at ${configDir}`);
   return false;
 };
 
-fs.findConfigAsync = configDir => Promise.resolve(fs.configExists(configDir));
+that.findConfigAsync = configDir => Promise.resolve(that.configExists(configDir));
 
-fs.readConfigAsync = function readConfigAsync(configDir) {
+that.readConfigAsync = (configDir) => {
   return fs
     .findConfigAsync(configDir)
-    .then((configPath) => fs.parseFileAsync(configPath));
+    .then((configPath) => that.parseFileAsync(configPath));
 };
 
-fs.parseFileAsync = function parseFileAsync(configPath) {
+that.parseFileAsync = (configPath) => {
   if (configPath) {
     return fs
       .readFileAsync(configPath, 'utf8')
@@ -181,7 +181,7 @@ fs.parseFileAsync = function parseFileAsync(configPath) {
   return Promise.resolve(undefined);
 };
 
-fs.parseFileSync = function parseFileSync(configPath) {
+that.parseFileSync = (configPath) => {
   const data = fs.readFileSync(configPath, 'utf8');
   switch (path.extname(configPath)) {
     case '.cson':
@@ -195,25 +195,25 @@ fs.parseFileSync = function parseFileSync(configPath) {
   }
 };
 
-fs.readIfExists = function fsReadIfExists(filePath) {
+that.readIfExists = (filePath) => {
   if (fs.existsSync(filePath)) {
     return fs.readFileSync(filePath, 'utf8');
   }
 };
 
-fs.readConfigSync = function fsReadConfigSync(configDir) {
-  const configPath = fs.configExists(configDir);
+that.readConfigSync = (configDir) => {
+  const configPath = that.configExists(configDir);
   if (configPath) {
-    return fs.parseFileSync(configPath);
+    return that.parseFileSync(configPath);
   }
   return {};
 };
 
-fs.unarchive = function fsUnarchive(archive, tempDir, toDir, toPath) {
+that.unarchive = (archive, tempDir, toDir, toPath) => {
   return unarchive(archive, tempDir).then(() => fs.moveArchive(tempDir, toDir, toPath));
 };
 
-fs.moveArchive = (tempDir, toDir, toPath) => {
+that.moveArchive = (tempDir, toDir, toPath) => {
   const files = fs.readdirSync(tempDir);
   if (files.length === 1) {
     let resolvedToPAth = toPath;
@@ -221,7 +221,7 @@ fs.moveArchive = (tempDir, toDir, toPath) => {
     const fullPath = `${tempDir}/${file}`;
     if (fs.lstatSync(fullPath).isDirectory()) {
       if (fs.existsSync(toDir)) {
-        fs.nuke(toDir);
+        that.nuke(toDir);
       }
       return sh.mv(fullPath, toDir);
     }
@@ -245,4 +245,4 @@ fs.moveArchive = (tempDir, toDir, toPath) => {
   });
 };
 
-export default fs;
+export default that;

@@ -12,7 +12,7 @@ import fetch from './util/fetch';
 import argv from './util/argv';
 import {replaceInFile} from './parse';
 
-import * as db from './db';
+import {cache as db} from './db';
 
 import {jsonStableHash, stringHash} from './util/hash';
 import cmake from './cmake';

@@ -12,39 +12,44 @@ function homeDir() {
 }
 
 const runDir = process.cwd();
-if (argv.runDir == null) {
+if (!argv.runDir) {
   argv.runDir = runDir;
 }
-const binDir = path.dirname(fs.realpathSync(__filename));
-if (argv.binDir == null) {
+
+
+const npmDir = path.join(path.dirname(fs.realpathSync(__filename)), '../../');
+const binDir = path.join(npmDir, 'bin');
+
+console.log('binDir', binDir);
+
+if (!argv.binDir) {
   argv.binDir = binDir;
 }
 const libDir = path.join(argv.binDir, '../lib');
-if (argv.libDir == null) {
+if (!argv.libDir) {
   argv.libDir = libDir;
 }
-let npmDir = path.join(argv.binDir, '../');
-if (argv.npmDir == null) {
+
+if (!argv.npmDir) {
   argv.npmDir = npmDir;
 }
 
-if (argv.cachePath == null) {
+if (!argv.cachePath) {
   argv.cachePath = 'trie_modules';
 }
-if (argv.program == null) {
+if (!argv.program) {
   argv.program = 'tmake';
 }
-if (argv.userCache == null) {
+if (!argv.userCache) {
   argv.userCache = `${homeDir()}/.tmake`;
 }
 if (argv.v) {
-  if (argv.verbose == null) {
+  if (!argv.verbose) {
     argv.verbose = argv.v;
   }
 }
 
 if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
-  npmDir = process.cwd();
   _.extend(argv, {
     npmDir,
     libDir: path.join(npmDir, 'lib'),
