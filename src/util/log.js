@@ -3,7 +3,7 @@
 import yaml from 'js-yaml';
 import colors from 'chalk';
 import {check} from 'js-object-tools';
-import argv from './argv';
+import environment from './_args';
 
 const debug = true;
 
@@ -26,17 +26,17 @@ function getMessage(msg, ...args) {
 
 export default {
   verbose(...args) {
-    if (argv.verbose) {
+    if (environment.verbose) {
       console.log(colors.gray(...getMessage(...args)));
     }
   },
   quiet(...args) {
-    if (!argv.quiet || argv.verbose) {
+    if (!environment.quiet || environment.verbose) {
       console.log(colors.white(...getMessage(...args)));
     }
   },
   debug(...args) {
-    if (argv.debug || debug) {
+    if (environment.debug || debug) {
       console.log(...getMessage(...args));
     }
   },
@@ -50,7 +50,7 @@ export default {
     console.log(colors.yellow(...getMessage(...args)));
   },
   add(...args) {
-    if (argv.add || argv.verbose) {
+    if (environment.add || environment.verbose) {
       console.log(colors.green(...getMessage(...args)));
     }
   },

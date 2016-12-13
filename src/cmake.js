@@ -5,21 +5,42 @@ import path from 'path';
 import sh from 'shelljs';
 import {diff} from 'js-object-tools';
 
-import fs from './util/fs';
-import ninja from './ninja';
+import fs from 'fs';
 import {fileHash} from './util/hash';
 import log from './util/log';
 import {cache as db} from './db';
 import {startsWith} from './util/string';
+import {fetch} from './toolchain';
 
-function run(dep, ninjaPath) {
-  const command = ninjaPath;
+function doConfiguration(node, ninja) {
+  const cMakeDefines = _.extend({
+    LIBRARY_OUTPUT_PATH: node.d.install.libraries[0].from
+  }, (node.configure || {}).defines);
+  let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${ninja} ${node.d.project}`;
+  Object
+    .keys(cMakeDefines)
+    .forEach((key) => {
+      let value = cMakeDefines[key];
+      if (typeof value === 'string' || value instanceof String) {
+        if (startsWith(value, '~/')) {
+          value = `${node
+            .d
+            .home}/${value
+            .slice(2)}`;
+        }
+      }
+      command += ` -D${key}=${value}`;
+    });
+  return cmake(node, command);
+}
+
+function cmake(node, command) {
   log.quiet(command);
   return new Promise((resolve, reject) => {
-    sh.cd(dep.d.build);
+    sh.cd(node.d.build);
     return sh.exec(command, (code, stdout, stderr) => {
       if (code) {
-        return reject(new Error(`cmake exited with code ${code}\nfull command: ${command} \nfolder: ${dep.d.build}`));
+        return reject(new Error(`cmake exited with code ${code}\nfull command: ${command} \nfolder: ${node.d.build}`));
       } else if (stdout) {
         return resolve(stdout);
       } else if (stderr) {
@@ -29,43 +50,36 @@ function run(dep, ninjaPath) {
   });
 }
 
-function doConfiguration(dep, ninjaPath) {
-  const cMakeDefines = _.extend({
-    LIBRARY_OUTPUT_PATH: dep.d.install.libraries[0].from
-  }, (dep.configure || {}).defines);
-  let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${ninjaPath} ${dep.d.project}`;
-  Object
-    .keys(cMakeDefines)
-    .forEach((key) => {
-      let value = cMakeDefines[key];
-      if (typeof value === 'string' || value instanceof String) {
-        if (startsWith(value, '~/')) {
-          value = `${dep
-            .d
-            .home}/${value
-            .slice(2)}`;
-        }
-      }
-      command += ` -D${key}=${value}`;
-    });
-  log.quiet(command);
-  return run(command);
-}
-
-function configure(dep, ninjaPath) {
-  const buildFile = path.join(dep.d.project, dep.cache.buildFile);
+function configure(node) {
+  const buildFile = path.join(node.d.project, node.cache.buildFile);
   return fileHash(buildFile).then((configHash) => {
-    if (dep.cache.configuration === configHash) {
+    if (node.cache.configuration === configHash) {
       return Promise.resolve();
     }
-    return doConfiguration(ninjaPath).then(() => {
-      return db.update({
-        name: dep.name
-      }, {
-        $set: {
-          'cache.configuration': configHash
-        }
+    const hostChain = node
+      .profile
+      .selectToolchain();
+    return fetch(hostChain).then((toolpaths) => {
+      return doConfiguration(node, toolpaths.ninja).then(() => {
+        return db.update({
+          name: node.name
+        }, {
+          $set: {
+            'cache.configuration': configHash
+          }
+        });
       });
+    });
+  });
+}
+
+function build(node) {
+  return configure(node).then(() => {
+    const hostChain = node
+      .profile
+      .selectToolchain();
+    return fetch(hostChain).then((toolpaths) => {
+      return cmake(node, `${toolpaths.ninja}`);
     });
   });
 }
@@ -133,14 +147,14 @@ function flags() {
     .join(' ')}')`;
 }
 
-function assets(dep) {
+function assets(node) {
   let copy = '';
-  if ((dep.build.cmake || {}).copy) {
-    _.each(diff.arrayify(dep.build.cmake.copy), (ft) => {
-      if (fs.existsSync(`${dep.d.project}/${ft.from}`)) {
+  if ((node.build.cmake || {}).copy) {
+    _.each(diff.arrayify(node.build.cmake.copy), (ft) => {
+      if (fs.existsSync(`${node.d.project}/${ft.from}`)) {
         copy += `\nfile(COPY \${CMAKE_CURRENT_SOURCE_DIR}/${ft.from} DESTINATION \${CMAKE_CURRENT_BINARY_DIR}/${ft.to})`;
       }
-      throw new Error(`@CMake gen -> file doesn't exist @ ${dep.d.project}/${ft.from}`);
+      throw new Error(`@CMake gen -> file doesn't exist @ ${node.d.project}/${ft.from}`);
     });
   }
   return copy;
@@ -188,33 +202,17 @@ function generateLists(funcs, context) {
   });
 }
 
-export default {
-  generate(dep) {
-    return generateLists([
-      header,
-      boost,
-      includeDirectories,
-      sources,
-      flags,
-      target,
-      link,
-      assets
-    ], dep.configuration);
-  },
-  configure(dep) {
-    return ninja
-      .getNinja()
-      .then(ninjaPath => {
-        return configure(dep, ninjaPath);
-      });
-  },
-  build(dep) {
-    return ninja
-      .getNinja()
-      .then(ninjaPath => {
-        return configure(dep, ninjaPath).then(() => {
-          return run(dep, ninjaPath);
-        });
-      });
-  }
-};
+function generate(node) {
+  return generateLists([
+    header,
+    boost,
+    includeDirectories,
+    sources,
+    flags,
+    target,
+    link,
+    assets
+  ], node.configuration);
+}
+
+export {generate, configure, build};

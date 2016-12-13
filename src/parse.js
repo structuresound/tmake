@@ -1,12 +1,14 @@
 import _ from 'lodash';
 import path from 'path';
 import {check, diff} from 'js-object-tools';
+import fs from 'fs';
+
 import {replaceAll, startsWith} from './util/string';
 import log from './util/log';
-import sh from './util/sh';
+import {exec} from './util/sh';
 import interpolate from './interpolate';
-import fs from './util/fs';
-import argv from './util/argv';
+import file from './util/file';
+import args from './util/args';
 
 function absolutePath(s) {
   if (!check(s, String)) {
@@ -15,7 +17,7 @@ function absolutePath(s) {
   if (startsWith(s, '/')) {
     return s;
   }
-  return path.join(argv.runDir, s);
+  return path.join(args.runDir, s);
 }
 
 function fullPath(p, root) {
@@ -30,7 +32,6 @@ function pathArray(val, root) {
     return fullPath(v, root);
   });
 }
-
 const shellCache = {};
 const shellReplace = (m) => {
   if (shellCache[m] !== undefined) {
@@ -43,7 +44,7 @@ const shellReplace = (m) => {
     for (const c of commands) {
       const cmd = c.slice(2, -1);
       //  log.debug('command..', cmd);
-      interpolated = interpolated.replace(c, sh.get(cmd, false));
+      interpolated = interpolated.replace(c, exec(cmd, {silent: true}));
     }
     //  log.debug('cache..', interpolated, '-> cache');
     shellCache[m] = interpolated;
@@ -136,7 +137,7 @@ function replaceInFile(f, r, localDict) {
     if (r.directive) {
       parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
     }
-    if (argv.verbose) {
+    if (args.verbose) {
       if (stringFile.includes(parsedKey)) {
         log.add(`[ replace ] ${parsedKey} : ${parsedVal}`);
       }
@@ -166,7 +167,7 @@ function replaceInFile(f, r, localDict) {
   }
   if (existingString !== stringFile) {
     // console.log 'replaced some strings in', newPath
-    return fs.writeFileAsync(newPath, stringFile, {encoding: 'utf8'});
+    return file.writeFileAsync(newPath, stringFile, {encoding: 'utf8'});
   }
 }
 

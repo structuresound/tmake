@@ -1,29 +1,39 @@
-/*  eslint object-shorthand: "off"*/
-
 import _ from 'lodash';
+import {diff, check} from 'js-object-tools';
 import Promise from 'bluebird';
-import {check} from 'js-object-tools';
 
-function iterate(confObject, fn, ignore) {
-  let mutableConf = _.clone(confObject);
-  if (check(mutableConf, String)) {
-    mutableConf = [mutableConf];
+function iterable(val) {
+  if (check(val, Array)) {
+    return val;
+  } else if (check(val, Object)) {
+    return _.map(val, (v) => {
+      return v;
+    });
   }
-  const validCommands = [];
-  for (const k of mutableConf) {
-    let key = k;
-    if (check(k, Number)) {
-      key = 'shell';
-    } else if (!_.contains(ignore, key)) {
-      validCommands.push({obj: mutableConf[key], key: key});
-    }
-  }
-  return Promise.each(validCommands, (i) => {
-    if (fn(i.key)) {
-      return fn(i.key, i.obj);
-    }
-    return fn('any', i.obj);
-  });
+  return [val];
 }
 
-export default iterate;
+function getCommands(it, ignore) {
+  const validCommands = [];
+  if (check(it, String)) {
+    validCommands.push({arg: it, cmd: 'shell'});
+  } else if (check(it, Array)) {
+    for (const statement of it) {
+      validCommands.push({arg: statement, cmd: 'shell'});
+    }
+  } else if (check(it, Object)) {
+    for (const k of Object.keys(it)) {
+      if (!diff.contains(ignore, k)) {
+        validCommands.push({arg: it[k], cmd: k});
+      }
+    }
+  }
+  return validCommands;
+}
+
+function iterate(obj, fn) {
+  const it = iterable(obj);
+  return Promise.each(it, fn);
+}
+
+export {iterable, iterate, getCommands};

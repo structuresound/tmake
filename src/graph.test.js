@@ -2,11 +2,11 @@ import path from 'path';
 import {assert} from 'chai';
 import {check} from 'js-object-tools';
 
-import argv from '../lib/util/argv';
+import args from '../lib/util/args';
 import {graph} from '../lib/graph';
-import fs from '../lib/util/fs';
+import file from '../lib/util/file';
 
-const helloWorld = fs.parseFileSync(path.join(argv.npmDir, '/src/test/hello.yaml'));
+const helloWorld = file.parseFileSync(path.join(args.npmDir, '/src/test/hello.yaml'));
 describe('graph', () => {
   let modules;
   let rootModule;
@@ -35,14 +35,14 @@ describe('graph', () => {
   });
 
   it('install', () => {
-    assert.equal(rootModule.d.includeDirs[0], path.join(argv.runDir, 'source'));
+    assert.equal(rootModule.d.includeDirs[0], path.join(args.runDir, 'source'));
   });
   // it('dynamic includeDirs', () => {
   //   return resolve(depB).then(resolved => {
   //     return expect(resolved.d.includeDirs)
   //       .to
   //       .deep
-  //       .equal([path.join(argv.runDir, `${testArgv.cachePath}/${helloWorld.name}/testIncludeDir`)]);
+  //       .equal([path.join(args.runDir, `${testArgv.cachePath}/${helloWorld.name}/testIncludeDir`)]);
   //   });
   // });
 });

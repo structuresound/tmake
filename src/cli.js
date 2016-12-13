@@ -6,8 +6,8 @@ import yaml from 'js-yaml';
 import {check} from 'js-object-tools';
 
 import log from './util/log';
-import argv from './util/argv';
-import fs from './util/fs';
+import args from './util/args';
+import file from './util/file';
 import {execute, list, clean, link, unlink, push, parse} from './tmake';
 import {cache as db} from './db';
 import {graph} from './graph';
@@ -132,7 +132,7 @@ function createPackage() {
   return Promise.resolve(defaultPackage);
 }
 
-function tmake(rootConfig, positionalArgs = argv._) {
+function tmake(rootConfig, positionalArgs = args._) {
   const resolvedName = positionalArgs[1] || rootConfig.name || graph.resolveDepName(rootConfig);
 
   switch (positionalArgs[0]) {
@@ -149,10 +149,10 @@ function tmake(rootConfig, positionalArgs = argv._) {
       return execute(rootConfig, 'clean', resolvedName);
     case 'reset':
     case 'nuke':
-      log.quiet(`nuke cache ${path.join(argv.runDir, argv.cachePath)}`);
-      fs.nuke(path.join(argv.runDir, argv.cachePath));
-      fs.nuke(path.join(argv.runDir, 'bin'));
-      fs.nuke(path.join(argv.runDir, 'build'));
+      log.quiet(`nuke cache ${path.join(args.runDir, args.cachePath)}`);
+      file.nuke(path.join(args.runDir, args.cachePath));
+      file.nuke(path.join(args.runDir, 'bin'));
+      file.nuke(path.join(args.runDir, 'build'));
       return log.quiet('post nuke freshness');
     case 'link':
       return db
@@ -182,7 +182,7 @@ function tmake(rootConfig, positionalArgs = argv._) {
       return execute(rootConfig, 'install');
     case 'example':
     case 'init':
-      return log.error(`there's already a ${argv.program} project file in this directory`);
+      return log.error(`there's already a ${args.program} project file in this directory`);
     case 'path':
       if (positionalArgs[1]) {
         return db
@@ -203,39 +203,39 @@ function tmake(rootConfig, positionalArgs = argv._) {
 }
 
 function init() {
-  if (!fs.findConfigAsync(argv.runDir)) {
+  if (!file.findConfigAsync(args.runDir)) {
     return createPackage()
       .then(config => {
-        return fs.writeFileAync(`${argv.runDir}/tmake.yaml`, yaml.dump(config));
+        return file.writeFileAync(`${args.runDir}/tmake.yaml`, yaml.dump(config));
       });
   }
   return log.quiet('aborting init, this folder already has a package file present');
 }
 
 function run() {
-  return fs
-    .readConfigAsync(argv.runDir)
+  return file
+    .readConfigAsync(args.runDir)
     .then((config) => {
       if (check(config, Error)) {
         throw config;
       }
-      if (argv._[0] == null) {
-        argv._[0] = 'all';
+      if (args._[0] == null) {
+        args._[0] = 'all';
       }
       if (config) {
-        parseArgs(argv);
+        parseArgs(args);
         return tmake(config);
       }
-      const example = argv._[1] || 'served';
-      const examplePath = path.join(argv.npmDir, `examples/${example}`);
-      const targetFolder = argv._[2] || example;
+      const example = args._[1] || 'served';
+      const examplePath = path.join(args.npmDir, `examples/${example}`);
+      const targetFolder = args._[2] || example;
 
-      switch (argv._[0]) {
+      switch (args._[0]) {
         case 'init':
           return init();
         case 'example':
           log.quiet(`copy from ${example} to ${targetFolder}`, 'magenta');
-          return fs.src(['**/*'], {cwd: examplePath}).pipe(fs.dest(path.join(argv.runDir, targetFolder)));
+          return file.src(['**/*'], {cwd: examplePath}).pipe(file.dest(path.join(args.runDir, targetFolder)));
         case 'help':
         case 'man':
         case 'manual':
@@ -247,12 +247,12 @@ function run() {
 }
 
 function parseArgs() {
-  const cmd = argv._[0];
+  const cmd = args._[0];
   if (!check(cmd, String)) {
-    throw manual();
+    throw new Error(manual());
   }
-  if (!check(argv._[1], parseOptions(cmd).type)) {
-    throw usage(cmd);
+  if (!check(args._[1], parseOptions(cmd).type)) {
+    throw new Error(usage(cmd));
   }
 }
 

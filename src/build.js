@@ -2,13 +2,14 @@ import Promise from 'bluebird';
 import path from 'path';
 import {check} from 'js-object-tools';
 
-import fs from './util/fs';
-import sh from './util/sh';
+import fs from 'fs';
+import {execAsync} from './util/sh';
 import profile from './profile';
-import cmake from './cmake';
-import ninja from './ninja';
+import {build as cmake} from './cmake';
+import {build as ninja} from './ninja';
+import {iterate, getCommands} from './iterate';
 
-const settings = [
+const ignore = [
   'linkerFlags',
   'cFlags',
   'cxxFlags',
@@ -17,79 +18,79 @@ const settings = [
   'frameworks',
   'sources',
   'headers',
-  'outputFile'
+  'libs',
+  'includeDirs',
+  'outputFile',
+  'cache'
 ];
 
-function buildFolder(dep) {
-  if (dep.build.buildTests) {
-    return dep.d.test;
+function buildFolder(node) {
+  if (node.build.buildTests) {
+    return node.d.test;
   }
-  return dep.d.build;
+  return node.d.build;
 }
 
-function buildFile(dep) {
-  if (dep.build.buildTests) {
-    return path.join(dep.d.project, dep.test.buildFile);
+function buildFile(node) {
+  if (node.build.buildTests) {
+    return path.join(node.d.project, node.test.buildFile);
   }
-  return path.join(dep.d.project, dep.cache.buildFile);
+  return path.join(node.d.project, node.cache.buildFile);
 }
 
-function commandBlock(dep) {
-  return (name, obj) => {
-    switch (name) {
-      case 'ninja':
-      case 'cmake':
-        return buildWith(name);
-      case 'shell':
-        return Promise.each(profile.iterable(obj), (c) => {
-          let lc = check(c, String)
-            ? lc = {
-              cmd: c
-            }
-            : c;
-          const setting = profile.pathSetting(lc.cwd || dep.d.source, dep);
-          return sh.Promise(profile.parse(lc.cmd, dep), setting, true);
-        });
-      case 'any':
-      default:
-        return commandBlock.shell(obj);
-    }
-  };
-}
-
-function ensureBuildFolder(dep) {
-  if (!fs.existsSync(buildFolder(dep))) {
-    return fs.mkdirSync(buildFolder(dep));
+function ensureBuildFolder(node) {
+  if (!fs.existsSync(buildFolder(node))) {
+    return fs.mkdirSync(buildFolder(node));
   }
 }
 
-function ensureBuildFile(dep) {
-  if (!check(buildFile(dep), 'String')) {
+function ensureBuildFile(node) {
+  if (!check(buildFile(node), 'String')) {
     throw new Error('no build file specified');
   }
-  if (!fs.existsSync(buildFile(dep))) {
-    throw new Error(`no build file @ ${buildFile(dep)}`);
+  if (!fs.existsSync(buildFile(node))) {
+    throw new Error(`no build file @ ${buildFile(node)}`);
   }
 }
 
-function buildWith(dep, system) {
-  ensureBuildFolder(dep);
-  ensureBuildFile(dep);
+function buildWith(node, system) {
+  ensureBuildFolder(node);
+  ensureBuildFile(node);
   switch (system) {
     case 'ninja':
-      return ninja.build(dep);
+      return ninja(node);
     case 'cmake':
-      return cmake.build(dep);
+      return cmake(node);
     default:
       throw new Error(`bad build system ${system}`);
   }
 }
 
-export default {
-  execute(dep) {
-    if (!dep.build) {
-      return Promise.resolve();
-    }
-    return profile.iterate(dep.build, commandBlock(dep), settings);
+function build(node) {
+  if (!node.build) {
+    return Promise.resolve();
   }
-};
+  return iterate(getCommands(node.build, ignore), (i) => {
+    switch (i.cmd) {
+      default:
+        throw new Error(`no valid cmd in iterable for ${i.cmd}`);
+      case 'ninja':
+      case 'cmake':
+        return buildWith(node, i.arg);
+      case 'with':
+        return buildWith(node, i.arg);
+      case 'shell':
+        return iterate(i.arg, (c) => {
+          let lc = check(c, String)
+            ? lc = {
+              cmd: c
+            }
+            : c;
+          const setting = profile.pathSetting(lc.cwd || node.d.source, node);
+          return execAsync(profile.parse(lc.cmd, node), setting, true);
+        });
+    }
+  });
+}
+
+export default build;

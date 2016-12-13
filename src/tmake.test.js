@@ -1,86 +1,118 @@
-import {expect} from 'chai';
+import {assert, expect} from 'chai';
 import path from 'path';
-import sh from '../lib/util/sh';
-import fs from '../lib/util/fs';
-import argv from '../lib/util/argv';
-import {execute} from '../lib/tmake';
+import fs from 'fs';
+import {execAsync, mkdir} from '../lib/util/sh';
+import file from '../lib/util/file';
+import args from '../lib/util/args';
+import {graph} from '../lib/graph';
+import {buildPhase} from '../lib/tmake';
 
-const helloWorld = fs.parseFileSync(path.join(argv.npmDir, '/src/test/hello.yaml'));
-describe('tmake', function () {
+const helloWorld = file.parseFileSync(path.join(args.npmDir, '/src/test/hello.yaml'));
+describe('tmake', function() {
   this.timeout(120000);
 
   it('can clean the test folder', () => {
-    fs.nuke(argv.runDir);
-    return expect(fs.existsSync(argv.runDir))
+    file.nuke(args.runDir);
+    return expect(fs.existsSync(args.runDir))
       .to
       .equal(false);
   });
 
-  it('can fetch a source tarball', () => {
-    sh.mkdir('-p', argv.runDir);
-    this.slow(1000);
-    return execute(helloWorld, 'fetch', 'googletest').then(() => {
-      const fp = path.join(argv.runDir, 'trie_modules/googletest/source');
-      const file = fs.existsSync(fp);
-      return expect(file)
+  let googleNode;
+  let helloNode;
+
+  it('resolves dependencies', () => {
+    return graph(helloWorld).then((res) => {
+      googleNode = res[0];
+      helloNode = res[res.length - 1];
+      assert.equal(helloNode.name, 'hello');
+      return expect(googleNode.name)
         .to
-        .equal(true, fp);
+        .equal('googletest');
     });
   });
 
-  // it('can build an existing cmake project', () => {
-  //   this.slow(5000);
-  //   return execute(helloWorld, 'all').then(() => {
-  //     const file = fs.existsSync(path.join(argv.runDir, 'trie_modules/lib/libgtest.a'));
-  //     return expect(file)
-  //       .to
-  //       .equal(true);
-  //   });
-  // });
+  it('can fetch a source tarball', () => {
+    mkdir('-p', args.runDir);
+    this.slow(1000);
+    return buildPhase
+      .fetch(googleNode)
+      .then(() => {
+        const fp = path.join(args.runDir, 'trie_modules/googletest/source');
+        const filePath = fs.existsSync(fp);
+        return expect(filePath)
+          .to
+          .equal(true, fp);
+      });
+  });
 
-  // it('can fetch a git repo', function() {
-  //   this.slow(2000);
-  //   return test({_: ['fetch']}).then(function() {
-  //     const file = fs.existsSync(path.join(testArgv.runDir, 'source/README.md'));
-  //     return expect(file)
-  //       .to
-  //       .equal(true);
-  //   });
-  // });
+  it('can build an existing cmake project', () => {
+    this.slow(5000);
+    return buildPhase
+      .build(googleNode)
+      .then(() => {
+        const filePath = fs.existsSync(path.join(args.runDir, 'trie_modules/googletest/source/build/build.ninja'));
+        return expect(filePath)
+          .to
+          .equal(true);
+      });
+  });
 
-  // it('can configure a ninja build', () => test({_: ['configure']}).then(function() {
-  //   const file = fs.existsSync(path.join(testArgv.runDir, 'build.ninja'));
-  //   return expect(file)
-  //     .to
-  //     .equal(true);
-  // }));
-  //
-  // it('can build configure an xcode project', function() {
-  //   const args = {
-  //     _: ['configure'],
-  //     xcode: true,
-  //     force: helloWorld.name
-  //   };
-  //   if (!_.contains(_tmake.platform.selectors, 'mac')) {
-  //     return this.skip();
-  //   } else {
-  //     return test(args).then(function() {
-  //       const file = fs.existsSync(path.join(testArgv.runDir, `${helloWorld.name}.xcodeproj/project.pbxproj`));
-  //       return expect(file)
+  it('can install a built static lib', () => {
+    this.slow(5000);
+    return buildPhase
+      .install(googleNode)
+      .then(() => {
+        const filePath = fs.existsSync(path.join(args.runDir, 'trie_modules/lib/libgtest.a'));
+        return expect(filePath)
+          .to
+          .equal(true);
+      });
+  });
+
+  it('can fetch a git repo', () => {
+    this.slow(2000);
+    return buildPhase
+      .fetch(helloNode)
+      .then(() => {
+        const fp = path.join(args.runDir, 'source/README.md');
+        const filePath = fs.existsSync(fp);
+        return expect(filePath)
+          .to
+          .equal(true, fp);
+      });
+  });
+
+  it('can configure a ninja build', () => {
+    return buildPhase
+      .configure(helloNode)
+      .then(() => {
+        const filePath = fs.existsSync(path.join(args.runDir, 'build.ninja'));
+        return expect(filePath)
+          .to
+          .equal(true);
+      });
+  });
+
+  // it('can build with ninja', () => {
+  //   return buildPhase
+  //     .build(helloNode)
+  //     .then(() => {
+  //       const filePath = fs.existsSync(path.join(args.runDir, 'bin', `${helloWorld.name}`));
+  //       return expect(filePath)
   //         .to
   //         .equal(true);
   //     });
-  //   }
   // });
   //
-  // it('can build using ninja', () => test({_: ['all']}).then(() => db.findOne({name: helloWorld.name})).then(dep => expect((dep.cache.bin || dep.cache.libs)).to.be.a('String')));
-  //
-  // it('run the built binary', () => sh.Promise(`./${helloWorld.name}`, (path.join(testArgv.runDir, 'bin')), true).then(function(res) {
-  //   const results = res.split('\n');
-  //   return expect(results[results.length - 2])
-  //     .to
-  //     .equal('Hello, world, from Visual C++!');
-  // }));
+  // it('run the built binary', () => {
+  //   return execAsync(`./${helloWorld.name}`, (path.join(args.runDir, 'bin')), true).then((res) => {
+  //     const results = res.split('\n');
+  //     return expect(results[results.length - 2])
+  //       .to
+  //       .equal('Hello, world, from Visual C++!');
+  //   });
+  // });
   //
   // it('can push to the user local db', () => db.findOne({name: helloWorld.name}).then(dep => _tmake.link(dep)).then(() => userDb.findOne({name: helloWorld.name})).then(res => expect(res.name).to.equal(helloWorld.name)));
   //

@@ -2,13 +2,15 @@ import path from 'path';
 import sh from 'shelljs';
 import Promise from 'bluebird';
 import _ from 'lodash';
+import fs from 'fs';
+
 import {check} from 'js-object-tools';
 
-import argv from './util/argv';
-import fs from './util/fs';
+import args from './util/args';
+import file from './util/file';
 import log from './util/log';
 import {stringHash} from './util/hash';
-import {download} from './util/fetch';
+import {download} from './fetch';
 import {startsWith} from './util/string';
 
 // customToolchain =
@@ -52,26 +54,26 @@ function pathForTool(tool) {
     throw new Error(`tool needs a resolved url, ${tool.name}`);
   }
   const hash = stringHash(tool.url);
-  return path.join(argv.userCache, 'toolchain', tool.name, hash, tool.bin);
+  return path.join(args.userCache, 'toolchain', tool.name, hash, tool.bin);
 }
 
 function sanityCheck() {
-  if (!argv.userCache) {
+  if (!args.userCache) {
     throw new Error('no userCache specified');
   }
 }
 
 function fetchAndUnarchive(tool) {
   sanityCheck();
-  const rootDir = path.join(argv.userCache, 'toolchain', tool.name);
+  const rootDir = path.join(args.userCache, 'toolchain', tool.name);
   if (!fs.existsSync(rootDir)) {
     sh.mkdir('-p', rootDir);
   }
-  const tempDir = path.join(argv.userCache, 'temp', stringHash(tool.url));
+  const tempDir = path.join(args.userCache, 'temp', stringHash(tool.url));
   const toolpath = pathForTool(tool);
   return download(tool.url).then((archivePath) => {
-    const tooldir = path.join(argv.userCache, 'toolchain', tool.name, stringHash(tool.url));
-    return fs.unarchive(archivePath, tempDir, tooldir, toolpath);
+    const tooldir = path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
+    return file.unarchive(archivePath, tempDir, tooldir, toolpath);
   });
 }
 
@@ -84,11 +86,11 @@ function fetchToolchain(toolchain) {
     const toolpath = pathForTool(tool);
     log.verbose(`checking for tool: ${name} @ ${toolpath}`);
     if (toolpath) {
-      return fs
+      return file
         .existsAsync(toolpath)
         .then((exists) => {
           if (exists) {
-            log.quiet(`found ${name}`);
+            log.quiet(`have ${name}`);
             return Promise.resolve(toolpath);
           }
           log.verbose(`fetch ${name} binary from ${tool.url}`);
@@ -99,6 +101,8 @@ function fetchToolchain(toolchain) {
           });
         });
     }
+  }).then(() => {
+    return Promise.resolve(toolPaths(toolchain));
   });
 }
 

@@ -1,6 +1,8 @@
 /lib
 node_modules
 .DS_Store
+.tscache
+.vscode
 coverage/
 meteor/
 server/context/CMakeLists.txt

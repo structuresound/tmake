@@ -1,7 +1,7 @@
 import Promise from 'bluebird';
 import util from 'util';
 import log from './util/log';
-import argv from './util/argv';
+import args from './util/args';
 
 const that = {};
 that.done = () => {
@@ -32,7 +32,7 @@ that.start = () => {
 that.onReceived = text => {
   log.verbose(`received data: ${text} ${util.inspect(text)}`);
 };
-that.yes = argv.y || argv.yes;
+that.yes = args.y || args.yes;
 that.ask = (q, expect, skip) => {
   if (that.yes || skip) {
     return Promise.resolve(expect || 'y');

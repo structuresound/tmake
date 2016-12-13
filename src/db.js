@@ -1,19 +1,27 @@
 import Datastore from 'nedb-promise';
-import argv from './util/argv';
+import path from 'path';
+import fs from 'fs';
 
-let _cache;
-let _settings;
+import args from './util/args';
+import log from './util/log';
+import {mkdir} from './util/sh';
+
+let cachePath;
 
 if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
-  _cache = new Datastore();
-  _settings = new Datastore();
+    cachePath = path.join(args.userCache, 'cache.db');
+    if (fs.existsSync(cachePath)){
+        fs.unlinkSync(cachePath);
+    };
 } else {
-  _cache = new Datastore({filename: `${argv.runDir}/${argv.cachePath}/.db`, autoload: true});
-  _settings = new Datastore({filename: `${argv.userCache}/cli.db`, autoload: true});
+    const cacheDir = path.join(args.runDir, args.cachePath);
+    cachePath = path.join(cacheDir, 'cache.db');
 }
-const localRepo = new Datastore({filename: `${argv.userCache}/packages.db`, autoload: true});
 
-const cache = _cache;
-const settings = _settings;
 
-export {cache, localRepo, settings};
+const cache = new Datastore({filename: cachePath, autoload: true});
+
+const localDb = `${args.userCache}/packages.db`
+const localRepo = new Datastore({filename: localDb, autoload: true});
+
+export {cache, localRepo};

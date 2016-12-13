@@ -7,7 +7,7 @@ const projectFile = {
   name: 'testConf',
   profile: {
     target: {
-      platform: 'meta',
+      platform: 'test-platform',
       endianness: 'BE'
     },
     environment: {
@@ -24,8 +24,8 @@ const projectFile = {
     }
   },
   configure: {
-    'target-meta': {
-      with: 'meta-ninja',
+    'test-platform': {
+      with: 'test-platform-ninja',
       cmd: './Configure {TEST_SDK_VERSION} --openssldir=\'/tmp/openssl-{OPENSSL_VERSION}\''
     },
     keyword: 'don\'t run this'
@@ -33,8 +33,8 @@ const projectFile = {
   expect: {
     BSON_BYTE_ORDER: 4321,
     configure: {
-      with: 'meta-ninja',
-      cmd: './Configure meta-1.0 --openssldir=\'/tmp/openssl-1.0.1\''
+      with: 'test-platform-ninja',
+      cmd: './Configure test-platform-1.0 --openssldir=\'/tmp/openssl-1.0.1\''
     }
   }
 };
@@ -46,10 +46,10 @@ describe('profile', () => {
     assert.ok(diff.contains(keywords, 'clang'));
   });
   it('selectors contain a host profile', () => {
-    assert.ok(diff.contains(profile.selectors, ['host-mac', 'host-linux', 'host-win']));
+    assert.ok(diff.contains(profile.selectors, ['host-mac', 'host-linux', 'host-win']), `${profile.selectors.join(', ')}`);
   });
   it('target selectors match configuration target', () => {
-    assert.ok(diff.contains(profile.selectors, ['target-meta']));
+    assert.ok(diff.contains(profile.selectors, ['test-platform']), `${profile.selectors.join(', ')}`);
   });
   it('can interpolate a shell command to a string', () => {
     assert.equal(profile.parse('$(echo hello world)'), 'hello world');

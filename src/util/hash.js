@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import {check, diff} from 'js-object-tools';
-import fs from './fs';
+import fs from 'fs';
 
 function jsonStableHash(obj) {
   if (!check(obj, 'Object')) {

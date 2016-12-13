@@ -3,15 +3,11 @@ import _ from 'lodash';
 import path from 'path';
 import {diff} from 'js-object-tools';
 import cascade from './util/cascade';
-import fs from './util/fs';
-import argv from './util/argv';
-import {parse} from './parse';
+import file from './util/file';
+import args from './util/args';
+import {parse, pathSetting} from './parse';
 
-const defaultCompiler = {
-  mac: 'clang',
-  linux: 'gcc',
-  win: 'msvc'
-};
+const settings = file.parseFileSync(path.join(args.binDir, 'settings.yaml'));
 
 const platformNames = {
   linux: 'linux',
@@ -39,7 +35,7 @@ const ninjaVersion = 'v1.7.1';
 const HOST_ENV = {
   architecture: HOST_ARCHITECTURE,
   endianness: HOST_ENDIANNESS,
-  compiler: defaultCompiler[HOST_PLATFORM],
+  compiler: settings.defaultCompiler[HOST_PLATFORM],
   platform: HOST_PLATFORM,
   cpu: {
     num: HOST_CPU.length,
@@ -53,38 +49,37 @@ const DEFAULT_TARGET = {
   platform: HOST_PLATFORM
 };
 
-function parseSelectors(dict, base) {
+function parseSelectors(dict, prefix) {
   const _selectors = [];
   const selectables = _.pick(dict, ['platform', 'compiler']);
   for (const key of Object.keys(selectables)) {
-    _selectors.push(`${base}-${selectables[key]}`);
+    _selectors.push(`${prefix || ''}${selectables[key]}`);
   }
   return _selectors;
 }
 
-const DEFAULT_ENV = fs.parseFileSync(path.join(argv.binDir, 'environment.yaml'));
-const _keywords = fs.parseFileSync(path.join(argv.binDir, 'keywords.yaml'));
+const DEFAULT_ENV = file.parseFileSync(path.join(args.binDir, 'environment.yaml'));
+const _keywords = file.parseFileSync(path.join(args.binDir, 'keywords.yaml'));
 const keywords = [].concat(_.map(_keywords.host, (key) => {
   return `host-${key}`;
-})).concat(_.map(_keywords.target, (key) => {
-  return `target-${key}`;
 }))
+  .concat(_keywords.target)
   .concat(_keywords.build)
   .concat(_keywords.compiler)
   .concat(_keywords.sdk)
   .concat(_keywords.ide)
   .concat(_keywords.deploy);
 
-const argvSelectors = Object.keys(_.pick(argv, keywords));
-argvSelectors.push(argv.compiler);
+const argvSelectors = Object.keys(_.pick(args, keywords));
+argvSelectors.push(args.compiler);
 
 class Profile {
   constructor(configuration) {
     this.host = diff.combine(HOST_ENV, configuration.host);
     this.target = diff.combine(DEFAULT_TARGET, configuration.target);
 
-    const hostSelectors = parseSelectors(this.host, 'host');
-    const targetSelectors = parseSelectors(this.target, 'target');
+    const hostSelectors = parseSelectors(this.host, 'host-');
+    const targetSelectors = parseSelectors(this.target);
 
     this.selectors = hostSelectors.concat(targetSelectors);
 
@@ -153,9 +148,6 @@ class Profile {
       }
     }
     return selectedToolchain;
-  }
-  force() {
-    return argv.forceAll || (argv.force && (argv.force === this.rawConfig.name));
   }
   j() {
     return this.host.cpu.num;

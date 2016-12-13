@@ -2,48 +2,48 @@ import {DepGraph} from 'dependency-graph';
 import _ from 'lodash';
 import Promise from 'bluebird';
 import log from './util/log';
-import argv from './util/argv';
+import args from './util/args';
 import {cache as db} from './db';
-import {Module} from './module';
+import {Node} from './node';
 
-function resolveDep(_dep, parent) {
-  const module = new Module(_dep, parent);
+function resolveDep(dep, parent) {
+  const node = new Node(dep, parent);
   return db
-    .findOne({name: module.name})
+    .findOne({name: node.name})
     .then((result) => {
       const existing = result || {
         cache: {
           test: {}
         }
       };
-      const entry = module.serialize(existing);
+      const entry = node.serialize(existing);
       if (result) {
         return db.update({
-          name: _dep.name
+          name: dep.name
         }, {$set: entry}).then(() => {
-          return Promise.resolve(module);
+          return Promise.resolve(node);
         });
       }
       return db
         .insert(entry)
         .then(() => {
-          return Promise.resolve(module);
+          return Promise.resolve(node);
         });
     });
 }
 
 function resolveDeps(root, graph, cache) {
   if (root.deps) {
-    return Promise.each(root.deps, dep => {
-      return resolveDep(dep, root).then((module) => {
-        if (module.name === root.name) {
+    return Promise.each(root.deps, (dep) => {
+      return resolveDep(dep, root).then((node) => {
+        if (node.name === root.name) {
           throw new Error('recursive dependency');
         }
-        return _graph(module, graph, cache).then(() => {
-          if (argv.verbose) {
-            log.add(`add dependency ${module.name} >> ${root.name}`);
+        return _graph(node, graph, cache).then(() => {
+          if (args.verbose) {
+            log.add(`add dependency ${node.name} >> ${root.name}`);
           }
-          graph.addDependency(root.name, module.name);
+          graph.addDependency(root.name, node.name);
           return Promise.resolve();
         });
       });
@@ -54,33 +54,38 @@ function resolveDeps(root, graph, cache) {
   return resolveDep(root);
 }
 
-function _graph(root, depGraph, cache) {
+function _graph(root, graph, cache) {
   if (cache[root.name]) {
-    return Promise.resolve(depGraph);
+    return Promise.resolve(graph);
   }
-  depGraph.addNode(root.name);
-  return resolveDeps(root, depGraph, cache).then(() => {
-    const mut = cache;
-    mut[root.name] = root;
-    return _graph(root, depGraph, cache);
+  if (!root.name) {
+    throw new Error(`no name for graph in node ${root}`);
+  }
+  graph.addNode(root.name);
+  return resolveDeps(root, graph, cache).then(() => {
+    cache[root.name] = root;
+    return _graph(root, graph, cache);
   });
 }
 
-function _map(dep, graphType) {
+function _map(node, graphType, graphArg) {
   const cache = {};
-  return _graph(dep, new DepGraph(), cache).then((depGraph) => {
-    return Promise.resolve(_.map(depGraph[graphType](), (name) => {
+  const graph = new DepGraph();
+  return _graph(node, graph, cache).then(() => {
+    const nodeNames = graph[graphType](graphArg);
+    const nodes = _.map(nodeNames, (name) => {
       return cache[name];
-    }));
+    });
+    return Promise.resolve(nodes);
   });
 }
 
-function all(dep) {
-  return _map(dep, 'overallOrder');
+function all(node) {
+  return _map(node, 'overallOrder');
 }
 
-function deps(dep) {
-  return _map(dep, 'dependenciesOf');
+function deps(node) {
+  return _map(node, 'dependenciesOf', node.name);
 }
 
 function resolve(root) {

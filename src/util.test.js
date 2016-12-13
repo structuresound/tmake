@@ -1,1 +1,1 @@
-import './util/fetch';
+import './fetch';

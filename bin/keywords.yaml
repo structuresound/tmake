@@ -12,7 +12,7 @@ target:
   - ios
   - android
   - raspberryPi
-  - meta
+  - test-platform
 build:
   - cmake
   - ninja
