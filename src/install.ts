@@ -10,7 +10,8 @@ import args from './util/args';
 
 import {mv, mkdir} from './util/sh';
 import {stringHash, fileHash} from './util/hash';
-import {cache as db} from './db';
+import {updateNode} from './db';
+
 import {startsWith} from './util/string';
 
 import {Node, InstallOptions} from './node';
@@ -77,14 +78,13 @@ function bin(node: Node) {
     let cumulativeHash = '';
     return Promise.each(binaries, (binPath) => {
       log.quiet('hash binary', binPath);
-      return fileHash(path).then((hash) => {
+      return fileHash(binPath).then((hash) => {
         cumulativeHash = stringHash(cumulativeHash + hash);
         return Promise.resolve(cumulativeHash);
       });
     }).then(() => {
-      return db.update({
-        name: node.name
-      }, {
+      return updateNode(
+       node, {
         $set: {
           'cache.bin': cumulativeHash,
           'cache.target': cumulativeHash
@@ -106,13 +106,11 @@ function assets(node: Node) {
         followSymlinks: true
       });
     }).then(assetPaths => {
-      return db.update({
-        name: node.name
-      }, {
+      return updateNode(node, {
         $set: {
-          assets: _.flatten(assetPaths)
+          'cache.assets': _.flatten(assetPaths)
         }
-      }, {});
+      });
     });
   }
   return Promise.resolve('assets');
@@ -139,12 +137,9 @@ function libs(node: Node) {
         fileHash(path.join(node.d.home, libPath));
       }).then((hash) => {
         cumulativeHash = stringHash(cumulativeHash + hash);
-        node.libs = _.flatten(libPaths);
-        return db.update({
-          name: node.name
-        }, {
+        return updateNode(node, {
           $set: {
-            libs: node.libs,
+            libs: _.flatten(libPaths),
             'cache.libs': cumulativeHash,
             'cache.target': cumulativeHash
           }
@@ -159,7 +154,7 @@ function headers(node: Node) {
   if (diff.contains([
     'static', 'dynamic'
   ], node.target)) {
-    return Promise.map(node.d.install.headers, (ft) => {
+    return Promise.each(node.d.install.headers, (ft) => {
       const patterns = ft.matching || ['**/*.h', '**/*.hpp', '**/*.ipp'];
       if (args.verbose) {
         log.add('[ install headers ] matching', patterns, '\nfrom', ft.from, '\nto', ft.to);
@@ -170,10 +165,10 @@ function headers(node: Node) {
         relative: node.d.home
       });
     }).then(() => {
-      return Promise.resolve('headers');
-    });
+      return Promise.resolve();
+    })
   }
-  return Promise.resolve('headers');
+  return Promise.resolve();
 }
 
 function install(node: Node) {
@@ -190,13 +185,11 @@ function install(node: Node) {
     if (args.verbose) {
       log.add('installed');
     }
-    return db.update({
-      name: node.name
-    }, {
+    return updateNode(node, {
       $set: {
         'cache.installed': true
       }
-    }, {});
+    });
   });
 }
 

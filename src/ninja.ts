@@ -44,6 +44,7 @@ function getRule(ext: string) {
 }
 
 function generate(node: Node, fileName: string) {
+  log.add('generate new ninja config');
   const ninjaConfig = ninja_build_gen(ninjaVersion, 'build');
   const includeString = _.map(node.configuration.includeDirs, (dir) => {
     return `-I${dir}`;

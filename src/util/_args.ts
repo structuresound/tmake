@@ -9,12 +9,16 @@ interface Args {
   binDir: string;
   libDir: string;
   cachePath: string;
+  compiler: string;
   program: string;
   verbose: boolean;
   quiet: boolean;
   forceAll: boolean;
+  nodeps: boolean;
   force: string;
   v: boolean;
+  y: boolean;
+  yes: boolean;
   test: boolean;
   userCache: string;
   _: string[];

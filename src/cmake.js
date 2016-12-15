@@ -6,9 +6,11 @@ import sh from 'shelljs';
 import {diff} from 'js-object-tools';
 
 import fs from 'fs';
+
+import {updateNode} from './db';
 import {fileHash} from './util/hash';
 import log from './util/log';
-import {cache as db} from './db';
+
 import {startsWith} from './util/string';
 import {fetch} from './toolchain';
 
@@ -61,13 +63,10 @@ function configure(node) {
       .selectToolchain();
     return fetch(hostChain).then((toolpaths) => {
       return doConfiguration(node, toolpaths.ninja).then(() => {
-        return db.update({
-          name: node.name
-        }, {
+        return updateNode(node, {
           $set: {
             'cache.configuration': configHash
-          }
-        });
+          }});
       });
     });
   });

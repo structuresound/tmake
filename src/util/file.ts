@@ -52,8 +52,8 @@ function prune(folderPath: string): boolean {
   }
 };
 
-function wait(stream: any, readOnly?: boolean) {
-  return new Promise((resolve: Function, reject: Function) => {
+function wait(stream: any, readOnly?: boolean): Promise<void> {
+  return new Promise<void>((resolve: Function, reject: Function) => {
     stream.on('error', reject);
     if (readOnly) {
       return stream.on('finish', resolve);
@@ -106,8 +106,13 @@ function glob(patternS: any, relative: string, cwd: string) {
   return _glob(patterns, relative, cwd);
 };
 
-function existsAsync(filePath: string) {
-  return new Promise((resolve: Function) => fs.exists(filePath, (exists: boolean) => resolve(exists)));
+function existsAsync(filePath: string): Promise<boolean> {
+  return new Promise<boolean>((resolve: Function, reject: Function) => {
+    if (!filePath) {
+      reject(new Error('no specified clone directory'));
+    }
+    fs.exists(filePath, (exists: boolean) => { resolve(exists); });
+  });
 };
 
 function readFileAsync(filePath: string, format: string = 'utf8') {
@@ -209,7 +214,7 @@ function readConfigSync(configDir: string): Object {
   return {};
 };
 
-function unarchive(archive: string, tempDir: string, toDir: string, toPath: string) {
+function unarchive(archive: string, tempDir: string, toDir: string, toPath?: string) {
   return _unarchive(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
 };
 

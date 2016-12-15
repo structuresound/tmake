@@ -8,7 +8,15 @@ import {check} from 'js-object-tools';
 import log from './util/log';
 import args from './util/args';
 import file from './util/file';
-import {execute, list, clean, link, unlink, push, parse} from './tmake';
+import {
+  execute,
+  list,
+  clean,
+  link,
+  unlink,
+  push,
+  parse
+} from './tmake';
 import {cache as db} from './db';
 import {graph} from './graph';
 
@@ -196,7 +204,14 @@ function tmake(rootConfig, positionalArgs = args._) {
       break;
     case 'ls':
     case 'list':
-      return list();
+      return (() => {
+        if (positionalArgs[1] === 'local') {
+          return list('user', {name: positionalArgs[2]}).then(nodes => log.info(nodes));
+        } else if (positionalArgs[1]) {
+          return list('cache', {name: positionalArgs[1]})
+        }
+        return list('cache', {});
+      })().then(nodes => log.info(nodes));
     default:
       log.quiet(manual());
   }
@@ -204,10 +219,9 @@ function tmake(rootConfig, positionalArgs = args._) {
 
 function init() {
   if (!file.findConfigAsync(args.runDir)) {
-    return createPackage()
-      .then(config => {
-        return file.writeFileAync(`${args.runDir}/tmake.yaml`, yaml.dump(config));
-      });
+    return createPackage().then(config => {
+      return file.writeFileAync(`${args.runDir}/tmake.yaml`, yaml.dump(config));
+    });
   }
   return log.quiet('aborting init, this folder already has a package file present');
 }

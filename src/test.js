@@ -1,9 +1,7 @@
-import {cache as db} from './db';
+import {updateNode} from './db';
 
 function test(dep) {
-  return db.update({
-    name: dep.name
-  }, {
+  return updateNode(dep, {
     $set: {
       'cache.test.success': true
     }

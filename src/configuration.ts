@@ -230,7 +230,7 @@ class Configuration {
     return JSON.parse(JSON.stringify(this));
   }
   serialize() {
-    return this.safe();
+    return _.omit(this.safe(), ['cache', 'includeDirs', 'cc', 'libs', 'source', 'headers']);
   }
   hash() {
     return jsonStableHash(this.serialize());

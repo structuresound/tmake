@@ -16,8 +16,8 @@ declare module 'js-object-tools' {
   function contains(set: any, match: any): any;
   function containsAll(set: any, match: any): any;
   function containsAny(set: any, match: any): any;
-  function diffToModifier(prev: any, doc: any, fieldsToIgnore: any,
-                          pruneEmptyObjects: any): any;
+  function diffToModifier(prev: any, doc: any, fieldsToIgnore?: any,
+                          pruneEmptyObjects?: any): any;
   function every(iterable: any, fn: any): any;
   function extend(target: any, source: any): any;
   function filteredKeyPaths(_keyPaths: any, ignore: any): any;
@@ -34,7 +34,7 @@ declare module 'js-object-tools' {
   function okmap(iterable: any, fn: any): any;
   function prune(obj: any): any;
   function setValueForKeyPath(value: any, keyPath: any, input: any): void;
-  function stringify(json: any, rep: any, ind: any): any;
+  function stringify(json: any, rep?: any[], ind?: any): any;
   function unsetKeyPath(keyPath: any, obj: any): any;
   function update(doc: any, options: any): any;
   function valueForKeyPath(keyPath: any, input: any): any;

@@ -66,7 +66,7 @@ function buildWith(node, system) {
   }
 }
 
-function build(node) {
+function build(node, isTest) {
   if (!node.build) {
     return Promise.resolve();
   }

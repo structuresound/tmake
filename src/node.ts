@@ -8,7 +8,7 @@ import args from './util/args';
 import {Profile, keywords} from './profile';
 import {Configuration, BuildSettings} from './configuration';
 import {parse, absolutePath, pathArray} from './parse';
-import {jsonStableHash} from './util/hash';
+import {jsonStableHash, stringHash} from './util/hash';
 
 interface InstallOptions {
   from: string;
@@ -36,6 +36,52 @@ interface dir_list {
   includeDirs: string[];
 }
 
+interface DebugCache {
+  url?: string;
+  metaConfiguration?: Object
+}
+
+interface NodeCache {
+  configuration?: string;
+  buildFile?: string;
+  metaConfiguration?: string;
+  generatedBuildFile?: string;
+  url?: string;
+  libs?: string;
+  bin?: string;
+  debug?: DebugCache;
+}
+
+interface GitSettings {
+  repository?: string;
+  url?: string;
+  branch?: string;
+  tag?: string;
+  archive?: string;
+}
+
+class TMakeConf {
+  [index: string]: any;
+  name: string;
+  override: TMakeConf;
+  build: BuildSettings;
+  configure: BuildSettings;
+  path: dir_list;
+  deps: TMakeConf[];
+  hash: string;
+  cache: NodeCache;
+  fetch: { url?: string; }
+  link: string;
+  git: GitSettings;
+  profile: Profile;
+  d: dir_list;
+  p: dir_list;
+  target: string;
+  version: string;
+  tag: string;
+  user: string;
+}
+
 function getAbsolutePaths(node: Node): dir_list {
   // if conf.git?.archive
   //   defaultPathOptions.clone = '#{conf.name}-#{conf.git.archive}'
@@ -44,14 +90,14 @@ function getAbsolutePaths(node: Node): dir_list {
   // fetch
   if (!d.home) {
     d.home = `${args.runDir}/${args.cachePath}`;
-  } // reference for build tools, should probably remove
+  }  // reference for build tools, should probably remove
   if (!d.root) {
     if (!node.name) {
       log.error(node);
       throw new Error('node has no name');
     }
     d.root = path.join(d.home, node.name);
-  } // lowest level a package should have access to
+  }  // lowest level a package should have access to
   if (!d.clone) {
     d.clone = path.join(d.root, pathOptions.clone);
   }
@@ -71,34 +117,36 @@ function getAbsolutePaths(node: Node): dir_list {
         from: path.join(d.root, ft.from),
         to: path.join(d.root, (ft.to || 'bin'))
       };
-    }),
+}),
     headers: _.map(diff.arrayify(pathOptions.install.headers), (ft: InstallOptions) => {
-      return {
-        matching: ft.matching,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.home, (ft.to || 'include')),
-        includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
-      };
+  return {
+    matching: ft.matching,
+    from: path.join(d.root, ft.from),
+    to: path.join(d.home, (ft.to || 'include')),
+    includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
+  };
     }),
     libraries: _.map(diff.arrayify(pathOptions.install.libraries), (ft: InstallOptions) => {
-      return {
-        matching: ft.matching,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.home, (ft.to || 'lib'))
-      };
-    })
+  return {
+    matching: ft.matching,
+    from: path.join(d.root, ft.from),
+    to: path.join(d.home, (ft.to || 'lib'))
   };
+    })
+}
+;
 
-  if (pathOptions.install.assets) {
-    d.install.assets = _.map(diff.arrayify(pathOptions.install.assets), (ft: InstallOptions) => {
-      return {
-        matching: ft.matching,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.root, (ft.to || 'bin'))
-      };
-    });
-  }
-  return d;
+if (pathOptions.install.assets) {
+  d.install.assets =
+      _.map(diff.arrayify(pathOptions.install.assets), (ft: InstallOptions) => {
+        return {
+          matching: ft.matching,
+          from: path.join(d.root, ft.from),
+          to: path.join(d.root, (ft.to || 'bin'))
+        };
+      });
+}
+return d;
 }
 
 function getPathOptions(conf: TMakeConf) {
@@ -154,6 +202,8 @@ function resolveVersion(conf: TMakeConf) {
       return conf.git.tag;
     } else if (check(conf.git.branch, String)) {
       return conf.git.branch;
+    } else if (check(conf.git.archive, String)) {
+      return conf.git.archive;
     }
     return 'master';
   }
@@ -164,49 +214,64 @@ function resolveName(conf: TMakeConf): string {
     return conf.name;
   } else if (conf.git) {
     if (check(conf.git, String)) {
-      const str: string = conf.git as string
+      const str: string = conf.git as string;
       return str.slice(str.indexOf('/') + 1);
     } else if (conf.git.repository) {
-      return conf
-        .git
-        .repository
-        .slice(conf.git.repository.indexOf('/') + 1);
+      return conf.git.repository.slice(conf.git.repository.indexOf('/') + 1);
     } else if (conf.git.url) {
-      const lastPathComponent = conf
-        .git
-        .url
-        .slice(conf.git.url.lastIndexOf('/') + 1);
+      const lastPathComponent =
+          conf.git.url.slice(conf.git.url.lastIndexOf('/') + 1);
       return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
     }
   }
   throw new Error('resolveName() failed');
 }
 
-class TMakeConf {
-  name: string;
-  override: TMakeConf;
-  build: BuildSettings;
-  configure: BuildSettings;
-  path: dir_list;
-  cache: {
-    configuration?: Object;
-    buildFile?: string;
-    metaConfiguration?: string;
-    url?: string;
-  };
-  git: {
-    repository?: string;
-    url?: string;
-    branch?: string;
-    tag?: string;
-  };
-  profile: Profile;
-  d: dir_list;
-  p: dir_list;
-  link: Object;
-  target: string;
-  version: string;
-  tag: string;
+function mergeNodes(a: any, b: any) {
+  for (const k of Object.keys(b)) {
+    if (!a[k]) {
+      a[k] = b[k];
+    }
+  }
+  if (a.cache && b.cache) {
+    mergeNodes(a.cache, b.cache);
+  }
+}
+
+function parsePath(s: string) {
+  if (startsWith(s, '/')) {
+    return s;
+  }
+  return path.join(args.runDir, s);
+}
+
+function resolveUrl(node: Node) {
+  let config: GitSettings = node.git || node.fetch || {};
+  if (node.git) {
+    if (typeof config === 'string') {
+      config = <GitSettings>{repository: node.git as string};
+    }
+    if (!config.repository) {
+      throw new Error(
+          'dependency has git configuration, but no repository was specified');
+    }
+    const base = `https://github.com/${config.repository}`;
+    const archive =
+        config.archive || config.tag || config.branch || node.tag || 'master';
+    return `${base}/archive/${archive}.tar.gz`;
+  } else if (node.link) {
+    return parsePath(node.link);
+  } else if (node.fetch) {
+    if (typeof config === 'string') {
+      config = <GitSettings>{archive: node.fetch as string};
+    }
+    if (!config.archive) {
+      throw new Error(
+          'dependency has fetch configuration, but no archive was specified');
+    }
+    return config.archive;
+  }
+  return 'none';
 }
 
 class Node extends TMakeConf {
@@ -250,12 +315,7 @@ class Node extends TMakeConf {
         diff.extend(this.override, parent.override);
       }
     } else {
-      this.d = <dir_list>{
-        root: args.runDir
-      };
-      // if (!this.target) {
-      //   this.target = 'bin';
-      // }
+      this.d = <dir_list>{root: args.runDir};
     }
     if (!this.target) {
       this.target = 'static';
@@ -266,58 +326,56 @@ class Node extends TMakeConf {
     if (!this.profile) {
       this.profile = new Profile(this);
     }
-    this.configuration = new Configuration(this.profile, diff.combine(this.build, this.configure));
+    if (!this.version) {
+      this.version = resolveVersion(this);
+    }
+    if (!this.user) {
+      this.user = 'local';
+    }
+
+    this.configuration = new Configuration(
+        this.profile, diff.combine(this.build || {}, this.configure || {}));
     this.p = getPathOptions(this._conf);
     this.d = getAbsolutePaths(this);
-    this.cache = {};
 
     delete this._conf;
   }
   force() {
     return args.forceAll || (args.force && (args.force === this._conf.name));
   }
-  j() {
-    return this
-      .profile
-      .j();
-  }
+  j() { return this.profile.j(); }
   fullPath(p: string) {
     if (startsWith(p, '/')) {
       return p;
     }
     return path.join(this.d.root, p);
   }
-  pathSetting(val: string){
-    return this.fullPath(parse(val, this));
-  }
+  pathSetting(val: string) { return this.fullPath(parse(val, this)); }
   globArray(val: any) {
-    return _.map(diff.arrayify(val), (v) => {
-      return parse(v, this);
-    });
+    return _.map(diff.arrayify(val), (v) => { return parse(v, this); });
   }
-  select(dict: Object) {
-    return this
-      .profile
-      .select(dict);
+  select(dict: Object) { return this.profile.select(dict); }
+  url(): string { return resolveUrl(this); }
+  urlHash(): string { return stringHash(this.url()); }
+  configHash(): string {
+    return stringHash(this.urlHash() + this.configuration.hash());
   }
-  safe() {
-    return JSON.parse(JSON.stringify(this));
+  merge(other: TMakeConf): void { mergeNodes(this, other); }
+  toCache(): TMakeConf {
+    return <TMakeConf>_.pick(this, ['cache', 'name', 'libs', 'version']);
   }
-  serialize(entry: TMakeConf) {
-    const safe = diff.combine(this.safe(), _.omit(entry, ['cache', 'libs']));
+  safe(): TMakeConf {
+    const plain = JSON.parse(JSON.stringify(this));
+    const safe = <TMakeConf>_.omit(
+        plain, ['_id', 'profile', 'configuration', 'cache', 'd', 'p']);
     if (safe.deps) {
-      safe.deps = _.map(safe.deps, (d: TMakeConf) => {
-        return { name: resolveName(d), hash: jsonStableHash(d) };
+      safe.deps = <TMakeConf[]>_.map(safe.deps, (d: TMakeConf) => {
+        return {name: resolveName(d), hash: jsonStableHash(d)};
       });
-    }
-    if (safe.version == null) {
-      safe.version = resolveVersion(safe);
-    }
-    if (safe.user == null) {
-      safe.user = 'local';
     }
     return safe;
   }
 }
 
-export {Node, resolveName, Profile, keywords, InstallOptions};
+export {TMakeConf, Node,           resolveName, Profile,
+        keywords,  InstallOptions, NodeCache};

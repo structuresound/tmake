@@ -9,11 +9,10 @@ import {execAsync, ShellOptions} from './util/sh';
 import log from './util/log';
 
 import {deps} from './graph';
-import {resolveUrl} from './fetch';
 import args from './util/args';
 import {replaceInFile} from './parse';
 
-import {cache as db} from './db';
+import {updateNode} from './db';
 
 import {generate as cmake} from './cmake';
 import {generate as ninja} from './ninja';
@@ -84,24 +83,21 @@ function globSources(node: Node) {
   return file.glob(patterns, node.d.project, node.d.source);
 }
 
-function globDeps(node: Node) {
-  return deps(node);
-}
-
 function globFiles(node: Node) {
   return globHeaders(node).then((headers) => {
     node.configuration.headers = headers;
     return globSources(node);
   }).then((sources) => {
     node.configuration.sources = sources;
-    return globDeps(node);
+    return deps(node);
   }).then((depGraph) => {
+    log.verbose(depGraph);
     if (depGraph.length) {
       node.configuration.libs = _
         .chain(depGraph)
-        .map((d: Node) => {
-          return _.map(d.libs, (lib) => {
-            return path.join(d.d.home, lib);
+        .map((dep: Node) => {
+          return _.map(dep.libs, (lib) => {
+            return path.join(dep.d.home, lib);
           });
         })
         .flatten()
@@ -140,9 +136,7 @@ function createBuildFileFor(node: Node, systemName: string) {
         const buildFileName = getBuildFile(node, systemName);
         log.quiet(`using pre-existing build file ${buildFileName}`);
         node.cache.buildFile = buildFileName;
-        return db.update({
-          name: node.name
-        }, {
+        return updateNode(node, {
           $set: {
             'cache.buildFile': node.cache.buildFile
           }
@@ -156,8 +150,8 @@ function createBuildFileFor(node: Node, systemName: string) {
 }
 
 function generateConfig(node: Node, systemName: string) {
-  return globFiles(node).then((conf) => {
-    return generateBuildFile(conf, systemName);
+  return globFiles(node).then(() => {
+    return generateBuildFile(node, systemName);
   }).then(() => {
     return processConfig(node, systemName);
   });
@@ -182,9 +176,7 @@ function generateBuildFile(node: Node, systemName: string) {
 function processConfig(node: Node, systemName: string) {
   const buildFileName = getBuildFile(node, systemName);
   node.cache.buildFile = buildFileName;
-  return db.update({
-    name: node.name
-  }, {
+  return updateNode(node, {
     $set: {
       'cache.buildFile': node.cache.buildFile,
       'cache.generatedBuildFile': node.cache.buildFile
@@ -194,39 +186,41 @@ function processConfig(node: Node, systemName: string) {
   });
 }
 
-function isStale(node: Node, cumulativeHash: string) {
-  if (node.cache.metaConfiguration) {
-    if (cumulativeHash !== node.cache.metaConfiguration) {
-      const url = resolveUrl(node);
-      if (node.cache.url !== stringHash(url)) {
-        log.error(`url is stale, now ${url}`);
-      } else {
-        log.error(`${node.name} configuration is stale ${node.cache.metaConfiguration}, now ${cumulativeHash}`);
-        log.error(node.configuration);
-      }
-      return true;
-    }
+function reportStale(node: Node, current: string){
+  const url = node.url();
+  const urlHash = node.urlHash();
+  if (node.cache.url !== urlHash) {
+    log.error(`hash ${node.cache.url} is stale, now ${urlHash}`);
+    log.error(`url ${node.cache.debug.url} is stale, now ${url}`);
   } else {
-    return true;
+    log.error(`${node.name} configuration ${node.cache.metaConfiguration} is stale, now ${current}`);
+    log.error(node.cache.debug.metaConfiguration)
+    log.add(node.configuration.serialize());
   }
 }
 
-function hashNodeConfiguration(node: Node) {
-  const urlHash = stringHash(resolveUrl(node));
-  return stringHash(urlHash + node.configuration.hash());
+function isStale(node: Node): boolean {
+  const configHash = node.configHash();
+  if (node.cache.metaConfiguration) {
+    if (configHash !== node.cache.metaConfiguration) {
+      reportStale(node, configHash);
+      return true;
+    }
+    return false;
+  }
+  return true;
 }
 
 interface ReplEntry {
   matching: string[];
 }
 
-function configure(node: Node) {
+function configure(node: Node, isTest: boolean) {
   if (!node.configuration) {
     throw new Error('configure without node');
   }
   // const compiler = new Compiler(node.profile, node.configure);
-  const configHash = hashNodeConfiguration(node);
-  if (node.force() || isStale(node, configHash)) {
+  if (node.force() || isStale(node)) {
     const commands: CmdObj[] = node.configuration.getCommands();
     return Promise.each(diff.arrayify(commands), (i: CmdObj) => {
       switch (i.cmd) {
@@ -286,19 +280,27 @@ function configure(node: Node) {
           });
       }
     }).then(() => {
-      return db.update({
-        name: node.name
-      }, {
+      return updateNode(node, {
         $set: {
-          'cache.metaConfiguration': configHash
+          'cache.metaConfiguration': node.configHash(),
+          'cache.debug.metaConfiguration': node.configuration.serialize()
         }
       });
     }).then(() => {
       return Promise.resolve(node);
     });
   }
-  log.verbose(`configuration ${configHash} is current, use --force=${node.name} if you suspect the cache is stale`);
+  log.verbose(`configuration is current, use --force=${node.name} if you suspect the cache is stale`);
   return Promise.resolve(node);
 }
 
-export {hashNodeConfiguration, configure};
+function destroy(node: Node){
+  return updateNode(node, {
+    $unset: {
+      'cache.metaConfiguration': true,
+      'cache.debug.metaConfiguration': true
+    }
+  });
+}
+
+export {isStale, configure, destroy};

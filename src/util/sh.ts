@@ -7,12 +7,12 @@ interface ShellOptions {
   cwd?: string;
 }
 
-function exec(command: string, options: ShellOptions): string {
+function exec(command: string, options: ShellOptions = {}): string {
   const out = _exec(command, options) as ExecOutputReturnValue;
   return out.output.replace('\r', '').replace('\n', '');
 }
 
-function execAsync(command: string, options: ShellOptions): Promise<any> {
+function execAsync(command: string, options: ShellOptions = {}): Promise<any> {
   return new Promise((resolve: Function, reject: Function) => {
   if (options.cwd) cd(options.cwd);
   _exec(command, <ExecOptions>{

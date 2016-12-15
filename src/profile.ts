@@ -1,15 +1,20 @@
-import os from 'os';
-import _ from 'lodash';
-import path from 'path';
+import * as os from 'os';
+import * as _ from 'lodash';
+import * as path from 'path';
 import {diff} from 'js-object-tools';
+
 import cascade from './util/cascade';
 import file from './util/file';
 import args from './util/args';
-import {parse, pathSetting} from './parse';
+import {parse} from './parse';
 
-const settings = file.parseFileSync(path.join(args.binDir, 'settings.yaml'));
+interface Settings {
+  [index: string]: string;
+}
 
-const platformNames = {
+const settings: any = file.parseFileSync(path.join(args.binDir, 'settings.yaml'));
+
+const platformNames: Settings = {
   linux: 'linux',
   darwin: 'mac',
   mac: 'mac',
@@ -19,7 +24,7 @@ const platformNames = {
   android: 'android'
 };
 
-const archNames = {
+const archNames: Settings = {
   x64: 'x86_64',
   arm: 'armv7a',
   arm64: 'arm64'
@@ -49,9 +54,9 @@ const DEFAULT_TARGET = {
   platform: HOST_PLATFORM
 };
 
-function parseSelectors(dict, prefix) {
-  const _selectors = [];
-  const selectables = _.pick(dict, ['platform', 'compiler']);
+function parseSelectors(dict: any, prefix: string) {
+  const _selectors: string[] = [];
+  const selectables: Settings = <Settings>_.pick(dict, ['platform', 'compiler']);
   for (const key of Object.keys(selectables)) {
     _selectors.push(`${prefix || ''}${selectables[key]}`);
   }
@@ -59,7 +64,7 @@ function parseSelectors(dict, prefix) {
 }
 
 const DEFAULT_ENV = file.parseFileSync(path.join(args.binDir, 'environment.yaml'));
-const _keywords = file.parseFileSync(path.join(args.binDir, 'keywords.yaml'));
+const _keywords: any = file.parseFileSync(path.join(args.binDir, 'keywords.yaml'));
 const keywords = [].concat(_.map(_keywords.host, (key) => {
   return `host-${key}`;
 }))
@@ -74,12 +79,18 @@ const argvSelectors = Object.keys(_.pick(args, keywords));
 argvSelectors.push(args.compiler);
 
 class Profile {
-  constructor(configuration) {
+  host: any;
+  target: any;
+  selectors: string[];
+  environment: any;
+  macro: any;
+
+  constructor(configuration: any) {
     this.host = diff.combine(HOST_ENV, configuration.host);
     this.target = diff.combine(DEFAULT_TARGET, configuration.target);
 
     const hostSelectors = parseSelectors(this.host, 'host-');
-    const targetSelectors = parseSelectors(this.target);
+    const targetSelectors = parseSelectors(this.target, undefined);
 
     this.selectors = hostSelectors.concat(targetSelectors);
 
@@ -109,13 +120,13 @@ class Profile {
 
     this.host.toolchain = diff.combine(stdChain, this.host.toolchain);
   }
-  parse(input, conf) {
+  parse(input: any, conf: any) {
     if (conf) {
       console.log('parsing with conf', conf);
     }
     return parse(input, conf || this.macro);
   }
-  select(base, options = {
+  select(base: any, options = {
     ignore: {}
   }) {
     if (!base) {

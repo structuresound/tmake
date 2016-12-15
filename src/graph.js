@@ -6,36 +6,30 @@ import args from './util/args';
 import {cache as db} from './db';
 import {Node} from './node';
 
-function resolveDep(dep, parent) {
-  const node = new Node(dep, parent);
-  return db
+function loadCache(node){
+return db
     .findOne({name: node.name})
     .then((result) => {
       const existing = result || {
         cache: {
+          debug: {},
           test: {}
         }
       };
-      const entry = node.serialize(existing);
-      if (result) {
-        return db.update({
-          name: dep.name
-        }, {$set: entry}).then(() => {
-          return Promise.resolve(node);
-        });
-      }
-      return db
-        .insert(entry)
-        .then(() => {
-          return Promise.resolve(node);
-        });
+      node.merge(existing);
+      return Promise.resolve(node);
     });
+}
+
+function createNode(dep, parent) {
+  const node = new Node(dep, parent);
+  return loadCache(node);
 }
 
 function resolveDeps(root, graph, cache) {
   if (root.deps) {
     return Promise.each(root.deps, (dep) => {
-      return resolveDep(dep, root).then((node) => {
+      return createNode(dep, root).then((node) => {
         if (node.name === root.name) {
           throw new Error('recursive dependency');
         }
@@ -48,10 +42,10 @@ function resolveDeps(root, graph, cache) {
         });
       });
     }).then(() => {
-      return resolveDep(root);
+      return createNode(root);
     });
   }
-  return resolveDep(root);
+  return createNode(root);
 }
 
 function _graph(root, graph, cache) {
@@ -90,11 +84,11 @@ function deps(node) {
 
 function resolve(root) {
   if (!root) {
-    throw new Error('resolving without a profile');
+    throw new Error('resolving without a root node');
   }
-  return resolveDep(root).then((resolved) => {
+  return createNode(root).then((resolved) => {
     return all(resolved);
   });
 }
 
-export {all, deps, resolve, resolve as graph};
+export {all, deps, createNode, loadCache, resolve as graph};
