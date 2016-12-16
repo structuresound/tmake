@@ -12,6 +12,106 @@ import {src as _src, dest, symlink} from 'vinyl-fs';
 import _unarchive from './archive';
 import {startsWith} from './string';
 
+interface BuildSettings {
+  cFlags: Object;
+  cxxFlags: Object;
+  compilerFlags: Object;
+  linkerFlags: Object;
+  defines: Object;
+  frameworks: Object;
+  sources: Object;
+  headers: Object;
+  libs: Object;
+  includeDirs: Object;
+  outputFile: string;
+}
+
+interface InstallOptions {
+  from: string;
+  to?: string;
+  matching?: string[];
+  includeFrom?: string;
+}
+
+interface install_list {
+  binaries?: InstallOptions[];
+  headers?: InstallOptions[];
+  libs?: InstallOptions[];
+  assets?: InstallOptions[];
+  libraries?: InstallOptions[];
+}
+
+interface DirList {
+  root: string;
+  home: string;
+  clone: string;
+  project: string;
+  source: string;
+  build: string;
+  install: install_list;
+  includeDirs: string[];
+}
+
+interface DebugCache {
+  url?: string;
+  metaConfiguration?: Object
+}
+
+interface Cache {
+  configuration?: string;
+  buildFile?: string;
+  metaConfiguration?: string;
+  generatedBuildFile?: string;
+  url?: string;
+  libs?: string;
+  bin?: string;
+  debug?: DebugCache;
+}
+
+interface GitSettings {
+  repository?: string;
+  url?: string;
+  branch?: string;
+  tag?: string;
+  archive?: string;
+}
+
+class Configuration {
+  [index: string]: any;
+  name: string;
+  override: Configuration;
+  build: BuildSettings;
+  configure: BuildSettings;
+  path: DirList;
+  deps: Configuration[];
+  hash: string;
+  cache: Cache;
+  fetch: { url?: string; }
+  link: string;
+  git: GitSettings;
+  profile: any;
+  d: DirList;
+  p: DirList;
+  target: string;
+  version: string;
+  tag: string;
+  user: string;
+}
+
+interface VinylFile {
+  path: string;
+  base: string;
+  cwd?: string;
+}
+
+interface CopyOptions {
+  followSymlinks?: boolean;
+  flatten?: boolean;
+  relative?: string;
+  from?: string;
+  to?: string;
+}
+
 function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
     throw new Error("don't nuke everything");
@@ -52,8 +152,8 @@ function prune(folderPath: string): boolean {
   }
 };
 
-function wait(stream: any, readOnly?: boolean): Promise<void> {
-  return new Promise<void>((resolve: Function, reject: Function) => {
+function wait(stream: any, readOnly?: boolean) {
+  return new Promise<any>((resolve: Function, reject: Function) => {
     stream.on('error', reject);
     if (readOnly) {
       return stream.on('finish', resolve);
@@ -63,40 +163,43 @@ function wait(stream: any, readOnly?: boolean): Promise<void> {
 };
 
 function deleteAsync(filePath: string) {
-  return new Promise((resolve: Function, reject: Function) => {
+  return new Promise<boolean>((resolve: Function, reject: Function) => {
     fs.unlink(filePath, (err) => {
       if (err) {
-        return reject(err);
+    reject(err);
       }
-      return resolve(1);
-    })
-  });
+      resolve(1);
+})
+});
 }
 
-function _glob(srcPattern: string[], relative: string, cwd: string) {
+function _glob(srcPattern: string[], relative: string,
+               cwd: string): Promise<any> {
   return new Promise((resolve: Function, reject: Function) => {
-    return globAll(srcPattern, {
-      cwd: cwd || process.cwd(),
-      root: relative || process.cwd(),
-      nonull: false
-    }, (err: Error, results: string[]) => {
-      if (err) {
-        return reject(err);
-      } else if (results) {
-        return resolve(_.map(results, (file: string) => {
-          const filePath = path.join(cwd, file);
-          if (relative) {
-            return path.relative(relative, filePath);
-          }
-          return filePath;
-        }));
-      }
-      return reject('no files found');
-    });
+    return globAll(srcPattern,
+                   {
+                     cwd: cwd || process.cwd(),
+                     root: relative || process.cwd(),
+                     nonull: false
+                   },
+                   (err: Error, results: string[]) => {
+                     if (err) {
+                       reject(err);
+                     } else if (results) {
+                       resolve(_.map(results, (file: string) => {
+                         const filePath = path.join(cwd, file);
+                         if (relative) {
+                           return path.relative(relative, filePath);
+                         }
+                         return filePath;
+                       }));
+                     }
+                     reject('no files found');
+                   });
   });
 }
 
-function glob(patternS: any, relative: string, cwd: string) {
+function glob(patternS: any, relative: string, cwd: string): Promise<any> {
   let patterns: string[] = [];
   if (check(patternS, String)) {
     patterns.push(patternS);
@@ -116,15 +219,17 @@ function existsAsync(filePath: string): Promise<boolean> {
 };
 
 function readFileAsync(filePath: string, format: string = 'utf8') {
-  return new Promise((resolve: Function, reject: Function) => fs.readFile(filePath, format, (err: Error, data: string) => {
-    if (err) {
-      reject(err);
-    }
-    return resolve(data);
-  }));
+  return new Promise((resolve: Function, reject: Function) => fs.readFile(
+                         filePath, format, (err: Error, data: string) => {
+                           if (err) {
+                             reject(err);
+                           }
+                           return resolve(data);
+                         }));
 };
 
-function writeFileAsync(filePath: string, data: string, options?: Object): Promise<any> {
+function writeFileAsync(filePath: string, data: string,
+                        options?: Object): Promise<any> {
   return new Promise((resolve: Function, reject: Function) => {
     fs.writeFile(filePath, data, options, (err) => {
       if (err) {
@@ -135,14 +240,15 @@ function writeFileAsync(filePath: string, data: string, options?: Object): Promi
   });
 };
 
-function findOneAsync(srcPattern: string[], relative: string, cwd: string): Promise<string> {
+function findOneAsync(srcPattern: string[], relative: string,
+                      cwd: string): Promise<string> {
   return glob(srcPattern, relative, cwd)
-    .then((array: string[]) => {
-      if (array.length) {
-        return Promise.resolve(array[0]);
-      }
-      return Promise.resolve(undefined);
-    });
+      .then((array: string[]) => {
+        if (array.length) {
+          return Promise.resolve(array[0]);
+        }
+        return Promise.resolve(undefined);
+      });
 }
 
 const defaultConfig = 'tmake';
@@ -162,35 +268,35 @@ function findConfigAsync(configDir: string): Promise<string> {
   return Promise.resolve(configExists(configDir));
 }
 
-function readConfigAsync(configDir: string): Promise<string> {
+function readConfigAsync(configDir: string): Promise<Configuration> {
   return findConfigAsync(configDir)
-    .then((configPath: string) => parseFileAsync(configPath));
+      .then((configPath: string) => parseFileAsync(configPath));
 };
 
-function parseFileAsync(configPath: string): Promise<string> {
+function parseFileAsync(configPath: string): Promise<Configuration> {
   if (configPath) {
     return readFileAsync(configPath, 'utf8')
-      .then((data: string) => {
-        switch (path.extname(configPath)) {
-          case '.cson':
-            return Promise.resolve(CSON.parse(data));
-          case '.json':
-            return Promise.resolve(JSON.parse(data));
-          case '.yaml':
-            return Promise.resolve(yaml.load(data));
-          default:
-            return Promise.reject(`unknown config type ${configPath}`);
-        }
-      });
+        .then((data: string) => {
+          switch (path.extname(configPath)) {
+            case '.cson':
+              return Promise.resolve(CSON.parse(data));
+            case '.json':
+              return Promise.resolve(JSON.parse(data));
+            case '.yaml':
+              return Promise.resolve(yaml.load(data));
+            default:
+              return Promise.reject(`unknown config type ${configPath}`);
+          }
+        });
   }
   return Promise.resolve(undefined);
 };
 
-function parseFileSync(configPath: string): Object {
+function parseFileSync(configPath: string): Configuration {
   const data = fs.readFileSync(configPath, 'utf8');
   switch (path.extname(configPath)) {
     case '.cson':
-      return CSON.parse(data);
+      return CSON.parse(data) as Configuration;
     case '.json':
       return JSON.parse(data);
     case '.yaml':
@@ -200,13 +306,13 @@ function parseFileSync(configPath: string): Object {
   }
 };
 
-function readIfExists(filePath: string): string {
+function readIfExists(filePath: string) {
   if (fs.existsSync(filePath)) {
     return fs.readFileSync(filePath, 'utf8');
   }
 };
 
-function readConfigSync(configDir: string): Object {
+function readConfigSync(configDir: string) {
   const configPath = configExists(configDir);
   if (configPath) {
     return parseFileSync(configPath);
@@ -214,8 +320,10 @@ function readConfigSync(configDir: string): Object {
   return {};
 };
 
-function unarchive(archive: string, tempDir: string, toDir: string, toPath?: string) {
-  return _unarchive(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
+function unarchive(archive: string, tempDir: string, toDir: string,
+                   toPath?: string) {
+  return _unarchive(archive, tempDir)
+      .then(() => moveArchive(tempDir, toDir, toPath));
 };
 
 function src(glob: string[], opt: Object) {
@@ -260,13 +368,15 @@ function moveArchive(tempDir: string, toDir: string, toPath: string) {
   });
 };
 
-export default {
+export {
   nuke,
   glob,
   unarchive,
   moveArchive,
   existsAsync,
+  findConfigAsync,
   readConfigSync,
+  readConfigAsync,
   readIfExists,
   configExists,
   parseFileSync,
@@ -277,5 +387,15 @@ export default {
   map,
   prune,
   wait,
-  symlink
+  symlink,
+  InstallOptions,
+  install_list,
+  BuildSettings,
+  Configuration,
+  Cache,
+  DirList,
+  DebugCache,
+  GitSettings,
+  VinylFile,
+  CopyOptions
 };

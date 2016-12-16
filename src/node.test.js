@@ -7,15 +7,15 @@ import file from '../lib/util/file';
 import args from '../lib/util/args';
 import {Node} from '../lib/node';
 
-describe('module', () => {
+describe('node', () => {
   const config = file.parseFileSync(path.join(args.npmDir, '/src/test/libbson.yaml'));
-  const module = new Node(config);
+  const node = new Node(config);
 
   it('creates an object of type Node', () => {
-    assert.ok(check(module, Node));
+    assert.ok(check(node, Node));
   });
 
   it('creates folder locations', () => {
-    assert.ok(check(module.d, Object));
+    assert.ok(check(node.d, Object));
   });
 });

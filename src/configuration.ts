@@ -1,11 +1,13 @@
 import * as _ from 'lodash';
 import * as fs from 'fs';
-
 import {diff, check} from 'js-object-tools';
+
+import * as file from './util/file';
 import {startsWith} from './util/string';
 import {jsonStableHash} from './util/hash';
 import {getCommands} from './iterate';
 import {Profile} from './profile';
+
 
 function jsonToCFlags(object: any) {
   const opt = _.clone(object);
@@ -166,19 +168,7 @@ const ignore = [
   'cache'
 ];
 
-interface BuildSettings {
-  cFlags: Object;
-  cxxFlags: Object;
-  compilerFlags: Object;
-  linkerFlags: Object;
-  defines: Object;
-  frameworks: Object;
-  sources: Object;
-  headers: Object;
-  libs: Object;
-  includeDirs: Object;
-  outputFile: string;
-}
+
 
 interface CmdObj {
   cmd: string;
@@ -187,29 +177,29 @@ interface CmdObj {
 }
 
 class Configuration {
-  cache: BuildSettings;
+  cache: file.BuildSettings;
   includeDirs: string[];
   cc: string;
   libs: string[];
   sources: any;
   headers: any;
 
-  constructor(profile: Profile, configuration: BuildSettings) {
+  constructor(profile: Profile, configuration: file.BuildSettings) {
     if (!configuration) {
-      throw new Error('constructing module with undefined configuration');
+      throw new Error('constructing node with undefined configuration');
     }
-    diff.extend(this, configuration);
     const cFlags = profile.select(configuration.cFlags || configuration.cxxFlags || {});
     const cxxFlags = profile.select(configuration.cxxFlags || configuration.cFlags || {});
     const linkerFlags = profile.select(configuration.linkerFlags || {});
     const compilerFlags = profile.select(configuration.compilerFlags || {});
-    this.cache = <BuildSettings>{
+    this.cache = <file.BuildSettings>{
       compilerFlags: _.extend(profile.select(stdCompilerFlags), compilerFlags),
       linkerFlags: _.extend(profile.select(stdLinkerFlags), linkerFlags),
       cxxFlags: _.extend(profile.select(stdCxxFlags), cxxFlags),
       cFlags: _.omit(_.extend(profile.select(stdCxxFlags), cFlags), ['std', 'stdlib']),
       frameworks: profile.select(configuration.frameworks || stdFrameworks || {})
     };
+    diff.extend(this, _.omit(configuration, ['cFlags', 'cxxFlags', 'linkerFlags', 'compilerFlags']));
   }
   frameworks() {
     return jsonToFrameworks(this.cache.frameworks);
@@ -236,9 +226,8 @@ class Configuration {
     return jsonStableHash(this.serialize());
   }
   getCommands(): CmdObj[] {
-    const it = this.safe();
-    return getCommands(it, ignore);
+    return getCommands(this.safe(), ignore);
   }
 }
 
-export {Configuration, BuildSettings, jsonToCFlags, CmdObj};
+export {Configuration, jsonToCFlags, CmdObj};

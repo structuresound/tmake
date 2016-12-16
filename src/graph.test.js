@@ -18,7 +18,7 @@ describe('graph', () => {
     });
   });
 
-  it('has a root module', () => {
+  it('has a root node', () => {
     assert.ok(check(rootModule, Object));
   });
 

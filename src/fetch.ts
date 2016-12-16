@@ -6,7 +6,7 @@ import * as ProgressBar from 'progress';
 import * as fs from 'fs';
 import {diff} from 'js-object-tools';
 
-import file from './util/file';
+import * as file from './util/file';
 import log from './util/log';
 import args from './util/args';
 import {mkdir, which, exit} from './util/sh';

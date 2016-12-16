@@ -78,8 +78,8 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
     userCache: path.join(npmDir, 'tests_cache'),
     cachePath: 'trie_modules',
     pgname: 'tmake',
-    quiet: true,
-    verbose: false,
+    quiet: false,
+    verbose: true,
     test: true,
     yes: true,
     _: []

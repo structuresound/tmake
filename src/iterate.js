@@ -6,9 +6,7 @@ function iterable(val) {
   if (check(val, Array)) {
     return val;
   } else if (check(val, Object)) {
-    return _.map(val, (v) => {
-      return v;
-    });
+    return _.map(val, (v) => { return v; });
   }
   return [val];
 }

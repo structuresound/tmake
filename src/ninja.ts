@@ -9,7 +9,7 @@ import {Node} from './node';
 
 const ninjaVersion = '1.6.0';
 
-function build(node: Node) {
+function build(node: Node): Promise<any> {
   const hostChain = node
     .profile
     .selectToolchain();
@@ -43,7 +43,7 @@ function getRule(ext: string) {
   }
 }
 
-function generate(node: Node, fileName: string) {
+function generate(node: Node, fileName: string): void {
   log.add('generate new ninja config');
   const ninjaConfig = ninja_build_gen(ninjaVersion, 'build');
   const includeString = _.map(node.configuration.includeDirs, (dir) => {
@@ -128,7 +128,7 @@ function generate(node: Node, fileName: string) {
     .from(linkInput)
     .using('link');
 
-  return ninjaConfig.save(fileName);
+  ninjaConfig.save(fileName);
 }
 
 export {generate, build};

@@ -8,11 +8,11 @@ import {diff} from 'js-object-tools';
 import {fetch, linkSource, destroy as destroySource} from './fetch';
 import log from './util/log';
 import args from './util/args';
-import file from './util/file';
+import * as file from './util/file';
 import profile from './profile';
 import prompt from './prompt';
 import {createNode, graph} from './graph';
-import {Node, TMakeConf} from './node';
+import {Node} from './node';
 import cloud from './cloud';
 import {isStale, configure, destroy as destroyConfiguration} from './configure';
 import build from './build';
@@ -26,40 +26,48 @@ class Build {
   fetch(node: Node) { return fetch(node); }
   configure(node: Node, isTest: boolean) {
     function doConfigure(node: Node) {
+      log.quiet(`>> configure >>`);
       return configure(node, isTest)
-          .then(() => { return installHeaders(node); });
+          .then((): Promise<any >=> { return installHeaders(node); });
     }
     return this.fetch(node).then(() => {
       if (isStale(node)) {
         return destroyConfiguration(node)
-            .then(() => { return doConfigure(node); });
+            .then((): Promise<any >=> { return doConfigure(node); });
       }
       return doConfigure(node);
-    })
+    });
   }
   build(node: Node, isTest: boolean) {
     return this.configure(node, isTest)
-        .then<any>(() => { return build(node, isTest); });
+        .then((): Promise<any >=> {
+          log.quiet(`>> build >>`);
+          return build(node, isTest);
+        });
   }
-  install(node: Node, isTest: boolean) {
-    return this.build(node, isTest).then(() => install(node));
+  install(node: Node, isTest: boolean): Promise<any> {
+    return this.build(node, isTest)
+        .then((): Promise<any >=> {
+          log.quiet(`>> install >>`);
+          return install(node);
+        });
   }
   clean(node: Node, isTest: boolean) { return cleanDep(node); }
   test(node: Node) { return this.build(node, true).then(() => test(node)); }
   link(node: Node) {
     return this.install(node, false)
-        .then(() => {
-          const doc: TMakeConf = node.safe();
+        .then((): Promise<any >=> {
+          const doc: file.Configuration = node.safe();
           const query = {name: doc.name, tag: doc.tag || 'master'};
           return userDb.update(query, {$set: doc}, {upsert: true});
         });
   }
 }
 
-function execute(conf: TMakeConf, phase: string) {
+function execute(conf: file.Configuration, phase: string) {
   let root: Node;
   return graph(_.extend(conf, {d: {root: args.runDir}}))
-      .then((nodes: Node[]) =>
+      .then((nodes: Node[]): Promise<any>=>
             {
               root = nodes[nodes.length - 1];
               if (!args.quiet) {
@@ -77,16 +85,13 @@ function processDep(node: Node, phase: string) {
   if (!args.quiet) {
     log.log(`<< ${node.name} >>`);
   }
-  if (args.verbose) {
-    log.quiet(`>> ${phase} >>`);
-  }
   process.chdir(args.runDir);
   return new Build()[phase](node);
 }
 
-function unlink(config: TMakeConf) {
+function unlink(config: file.Configuration) {
   const query = {name: config.name, tag: config.tag || 'master'};
-  return userDb.findOne(query).then<any>((doc: TMakeConf) => {
+  return userDb.findOne(query).then((doc: file.Configuration): Promise<any >=> {
     if (doc) {
       return userDb.remove(query);
     }
@@ -94,19 +99,19 @@ function unlink(config: TMakeConf) {
   });
 }
 
-function push(config: TMakeConf) {
+function push(config: file.Configuration) {
   prompt
       .ask(colors.green(
           `push will do a clean, full build, test and if successful will upload to the ${colors.yellow('public repository')}\n${colors.yellow('do that now?')} ${colors.gray('(yy = disable this warning)')}`))
-      .then((res: boolean) =>
+      .then((res: boolean): Promise<any>=>
             {
               if (res) {
                 return execute(config, 'install');
               }
               return Promise.reject('user aborted push command');
             })
-      .then(() => { return cache.findOne({name: config.name}); })
-      .then((json: any) => {
+      .then((): Promise<any>=> { return cache.findOne({name: config.name}); })
+      .then((json: any): Promise<any>=> {
         if (json.cache.bin || json.cache.libs) {
           return cloud.post(json).then((res) => {
             if (args.v) {
@@ -120,20 +125,29 @@ function push(config: TMakeConf) {
       });
 }
 
-function list(repo: string, selector: Object) {
+function list(repo: string, selector: Object): Promise<file.Configuration[]> {
   switch (repo) {
     default:
     case 'cache':
-      return cache.find(selector);
+      return cache.find(selector) as Promise<file.Configuration[]>;
     case 'user':
-      return userDb.find(selector);
+      return userDb.find(selector) as Promise<file.Configuration[]>;
   }
 }
 
-function parse(config: TMakeConf) {
-  const node = new Node(config, undefined);
-  log.quiet(`parsing with selectors:\n ${node.profile.selectors}`);
-  log.quiet(graph(module));
+function parse(config: file.Configuration, aspect: string): Promise<any> {
+  return createNode(config, undefined)
+      .then((node): Promise<any >=> {
+        log.quiet(
+            `parsing ${aspect} with selectors:\n ${node.profile.selectors}`);
+        switch (aspect) {
+          case 'node':
+            log.log(node.safe());
+          default:
+            log.log(diff.plain(node[aspect]));
+        }
+        return Promise.resolve();
+      });
 }
 
 function cleanDep(node: Node) {
@@ -167,7 +181,7 @@ function cleanDep(node: Node) {
   //   }
   // });
   return cache.update(node, modifier)
-      .then(() => {
+      .then((): Promise<any >=> {
         if (node.cache.generatedBuildFile) {
           const generatedBuildFile =
               path.join(node.d.project, node.cache.buildFile);
@@ -192,13 +206,13 @@ function cleanDep(node: Node) {
 
 function findAndClean(depName: string) {
   return cache.findOne({name: depName})
-      .then((node: Node) => {
+      .then((node: Node): Promise<any>=> {
         if (node) {
           return createNode(node, undefined)
-              .then(cleanDep)
-              .then(() => cache.findOne({name: depName})
-                              .then((cleaned: TMakeConf) =>
-                                        log.verbose(cleaned)));
+              .then((): Promise<any >=> { return cleanDep(node); })
+              .then((): Promise<any >=>cache.findOne({name: depName})
+                        .then((cleaned: file.Configuration) =>
+                                  log.verbose(cleaned)));
         }
         return Promise.reject(`didn't find node for ${depName}`);
       });

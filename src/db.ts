@@ -35,9 +35,9 @@ interface $Unset {
   'cache.libs'?: boolean;
   'cache.bin'?: boolean;
   'cache.assets'?: boolean;
-  'cache.buildFile'?:boolean;
+  'cache.buildFile'?: boolean;
   'cache.target'?: boolean;
-  'cache.generatedBuildFile'?:boolean;
+  'cache.generatedBuildFile'?: boolean;
   'cache.installed'?: boolean;
 
   'cache.debug.url'?: boolean;

@@ -4,7 +4,7 @@ import * as path from 'path';
 import {diff} from 'js-object-tools';
 import * as fs from 'fs';
 
-import file from './util/file';
+import * as file from './util/file';
 import log from './util/log';
 import args from './util/args';
 
@@ -14,25 +14,14 @@ import {updateNode} from './db';
 
 import {startsWith} from './util/string';
 
-import {Node, InstallOptions} from './node';
+import {Node} from './node';
 
-interface VinylFile {
-  path: string;
-  base: string;
-}
-
-interface VinylOptions {
-  followSymlinks?: boolean;
-  flatten?: boolean;
-  relative?: string;
-}
-
-function copy(patterns: string[], from: string, to: string, opt: VinylOptions){
+function copy(patterns: string[], from: string, to: string, opt: file.CopyOptions){
   const filePaths: string[] = [];
   const stream = file.src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(file.map((data: VinylFile, callback: Function) => {
+  }).pipe(file.map((data: file.VinylFile, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
@@ -46,12 +35,12 @@ function copy(patterns: string[], from: string, to: string, opt: VinylOptions){
   });
 };
 
-function symlink(patterns: string[], from: string, toPath: string, opt: VinylOptions) {
+function symlink(patterns: string[], from: string, toPath: string, opt: file.CopyOptions) {
   const filePaths: string[] = [];
   return file.wait(file.src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(file.map((data: VinylFile, callback: Function) => {
+  }).pipe(file.map((data: file.VinylFile, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
@@ -68,7 +57,7 @@ function bin(node: Node) {
   if (diff.contains(['bin'], node.target)) {
     mkdir('-p', path.join(args.runDir, 'bin'));
     const binaries: string[] = [];
-    _.each(node.d.install.binaries, (ft: InstallOptions) => {
+    _.each(node.d.install.binaries, (ft: file.InstallOptions) => {
       const from = path.join(ft.from, node.name);
       const to = path.join(ft.to, node.name);
       log.verbose(`[ install bin ] from ${from} to ${to}`);
@@ -97,7 +86,7 @@ function bin(node: Node) {
 
 function assets(node: Node) {
   if (node.d.install.assets) {
-    return Promise.map(node.d.install.assets, (ft: InstallOptions) => {
+    return Promise.map(node.d.install.assets, (ft: file.InstallOptions) => {
       const patterns = ft.matching || ['**/*.*'];
       log.verbose(`[ install assets ] from ${ft.from} to ${ft.to}`);
       return copy(patterns, ft.from, ft.to, {

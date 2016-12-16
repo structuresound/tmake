@@ -1,16 +1,16 @@
-import _ from 'lodash';
-import path from 'path';
+import * as _ from 'lodash';
+import * as path from 'path';
+import * as fs from 'fs';
 import {check, diff} from 'js-object-tools';
-import fs from 'fs';
 
 import {replaceAll, startsWith} from './util/string';
 import log from './util/log';
 import {exec} from './util/sh';
 import interpolate from './interpolate';
-import file from './util/file';
+import * as file from './util/file';
 import args from './util/args';
 
-function absolutePath(s) {
+function absolutePath(s: string) {
   if (!check(s, String)) {
     throw new Error(`${s} is not a string`);
   }
@@ -20,20 +20,21 @@ function absolutePath(s) {
   return path.join(args.runDir, s);
 }
 
-function fullPath(p, root) {
+function fullPath(p: string, root: string) {
   if (startsWith(p, '/')) {
     return p;
   }
   return path.join(root, p);
 }
 
-function pathArray(val, root) {
+function pathArray(val: string | string[], root: string): string[] {
   return _.map(diff.arrayify(val), (v) => {
     return fullPath(v, root);
   });
 }
-const shellCache = {};
-const shellReplace = (m) => {
+
+const shellCache: {[index: string]: string} = {};
+const shellReplace = (m: string) => {
   if (shellCache[m] !== undefined) {
     //  log.debug('cached..', m, '->', cache[m]);
     return shellCache[m];
@@ -53,7 +54,7 @@ const shellReplace = (m) => {
   return m;
 };
 
-function objectReplace(m, dict) {
+function objectReplace(m: {macro: string, map: {[index: string]: string}}, dict: Object) {
   if (!m.macro) {
     throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
   }
@@ -67,8 +68,8 @@ function objectReplace(m, dict) {
   return res;
 }
 
-function replace(m, conf) {
-  let out;
+function replace(m: any, conf?: Object) {
+  let out: string;
   if (check(m, String)) {
     //  log.debug('sh..', out || m);
     out = shellReplace(m);
@@ -78,7 +79,7 @@ function replace(m, conf) {
   return out || m;
 }
 
-function allStrings(o, fn) {
+function allStrings(o: {[index: string]: any}, fn: Function) {
   const mut = o;
   for (const k of Object.keys(mut)) {
     if (check(mut[k], String)) {
@@ -90,22 +91,22 @@ function allStrings(o, fn) {
   return mut;
 }
 
-function parseString(val, conf) {
+function parseString(val: string, conf: Object) {
   let mut = val;
-  mut = interpolate(mut, conf);
+  mut = interpolate(mut, conf, undefined);
   //  log.debug('interpolate..', mut);
   return replace(mut, conf);
 }
 
-function parseObject(obj, conf) {
-  return allStrings(_.clone(obj), (val) => {
+function parseObject(obj: Object, conf: Object) {
+  return allStrings(_.clone(obj), (val: string) => {
     return parseString(val, conf);
   });
 }
 
-function parse(input, conf) {
+function parse(input: any, conf: Object) {
   //  log.debug('in:', input);
-  let out;
+  let out: any;
   if (check(input, String)) {
     out = parseString(input, conf);
   } else if (check(input, Object)) {
@@ -115,18 +116,18 @@ function parse(input, conf) {
   return out || input;
 }
 
-function replaceInFile(f, r, localDict) {
+function replaceInFile(f: string, r: any, localDict?: Object) {
   if (!fs.existsSync(f)) {
     throw new Error(`no file at ${f}`);
   }
   if (!r.inputs) {
-    throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, 0, 2)}`);
+    throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
   }
   let stringFile = fs.readFileSync(f, 'utf8');
   for (const k of r.inputs) {
     const v = r.inputs(k);
-    let parsedKey;
-    let parsedVal;
+    let parsedKey: string;
+    let parsedVal: string;
     if (Array.isArray(v)) {
       parsedKey = v[0];
       parsedVal = v[1];
@@ -138,17 +139,18 @@ function replaceInFile(f, r, localDict) {
       parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
     }
     if (args.verbose) {
-      if (stringFile.includes(parsedKey)) {
+      if ((<any>stringFile).includes(parsedKey)) { // https://github.com/Microsoft/TypeScript/issues/3920
         log.add(`[ replace ] ${parsedKey} : ${parsedVal}`);
       }
     }
     stringFile = replaceAll(stringFile, parsedKey, parsedVal);
   }
-  const format = {
+  const format: path.ParsedPath = {
     ext: path.extname(f),
     name: path.basename(f, path.extname(f)),
     dir: path.dirname(f),
-    base: path.basename(f)
+    base: path.basename(f),
+    root: ''
   };
   if (format.ext === '.in') {
     const parts = f.split('.');
