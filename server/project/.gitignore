@@ -1,0 +1,5 @@
+/libbson/*
+!/libbson/tmake.yaml
+/main/*
+!/main/source
+!/main/tmake.yaml
