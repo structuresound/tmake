@@ -59,7 +59,6 @@ function configure(node) {
       return Promise.resolve();
     }
     const hostChain = node
-      .profile
       .selectToolchain();
     return fetch(hostChain).then((toolpaths) => {
       return doConfiguration(node, toolpaths.ninja).then(() => {
@@ -75,7 +74,6 @@ function configure(node) {
 function build(node) {
   return configure(node).then(() => {
     const hostChain = node
-      .profile
       .selectToolchain();
     return fetch(hostChain).then((toolpaths) => {
       return cmake(node, `${toolpaths.ninja}`);
@@ -115,10 +113,10 @@ function boost() {
 }
 
 function includeDirectories() {
-  switch (this.target) {
+  switch (this.outputType) {
     case 'static':
     case 'dynamic':
-    case 'bin':
+    case 'executable':
     default:
       return `\n
         include_directories(${cmakeArrayToQuotedList(this.includeDirs)})`;
@@ -160,11 +158,11 @@ function assets(node) {
 }
 
 function target() {
-  switch (this.target) {
+  switch (this.outputType) {
     case 'static':
     default:
       return `\nadd_library(${this.name} STATIC \${SOURCE_FILES})`;
-    case 'bin':
+    case 'executable':
       return `\nadd_executable(${this.name} \${SOURCE_FILES})`;
   }
 }
@@ -174,9 +172,6 @@ function link() {
   const frameworks = cmakeArrayToQuotedList(this.frameworks);
   if (this.boost) {
     libs += ' ${Boost_LIBRARIES}';
-  }
-  if (this.target === 'node') {
-    libs += ' ${CMAKE_JS_LIB}';
   }
   if (libs.length) {
     return `\ntarget_link_libraries(\${PROJECT_NAME} ${libs} ${frameworks} ${this

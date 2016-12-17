@@ -1,9 +1,9 @@
 ---
 name: hello
 git: structuresound/hello
-target: bin
 build:
   with: ninja
+outputType: executable
 deps:
 - git:
     repository: google/googletest

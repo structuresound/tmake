@@ -4,7 +4,6 @@ import {check} from 'js-object-tools';
 
 import fs from 'fs';
 import {execAsync} from './util/sh';
-import profile from './profile';
 import {build as cmake} from './cmake';
 import {build as ninja} from './ninja';
 import {iterate, getCommands} from './iterate';
@@ -86,8 +85,8 @@ function build(node, isTest) {
               cmd: c
             }
             : c;
-          const setting = profile.pathSetting(lc.cwd || node.d.source, node);
-          return execAsync(profile.parse(lc.cmd, node), setting, true);
+          const setting = node.pathSetting(lc.cwd || node.d.source, node);
+          return execAsync(node.parse(lc.cmd, node), setting, true);
         });
     }
   });

@@ -6,7 +6,7 @@ import * as file from './util/file';
 import {startsWith} from './util/string';
 import {jsonStableHash} from './util/hash';
 import {getCommands} from './iterate';
-import {Profile} from './profile';
+import {Node} from './node';
 
 
 function jsonToCFlags(object: any) {
@@ -168,8 +168,6 @@ const ignore = [
   'cache'
 ];
 
-
-
 interface CmdObj {
   cmd: string;
   arg: any;
@@ -184,22 +182,23 @@ class Configuration {
   sources: any;
   headers: any;
 
-  constructor(profile: Profile, configuration: file.BuildSettings) {
+  constructor(node: Node, configuration: file.BuildSettings) {
     if (!configuration) {
       throw new Error('constructing node with undefined configuration');
     }
-    const cFlags = profile.select(configuration.cFlags || configuration.cxxFlags || {});
-    const cxxFlags = profile.select(configuration.cxxFlags || configuration.cFlags || {});
-    const linkerFlags = profile.select(configuration.linkerFlags || {});
-    const compilerFlags = profile.select(configuration.compilerFlags || {});
+    const c = node.select(configuration);
+    const cFlags = c.cFlags || c.cxxFlags || {};
+    const cxxFlags = c.cxxFlags || c.cFlags || {};
+    const linkerFlags = c.linkerFlags || {};
+    const compilerFlags = c.compilerFlags || {};
     this.cache = <file.BuildSettings>{
-      compilerFlags: _.extend(profile.select(stdCompilerFlags), compilerFlags),
-      linkerFlags: _.extend(profile.select(stdLinkerFlags), linkerFlags),
-      cxxFlags: _.extend(profile.select(stdCxxFlags), cxxFlags),
-      cFlags: _.omit(_.extend(profile.select(stdCxxFlags), cFlags), ['std', 'stdlib']),
-      frameworks: profile.select(configuration.frameworks || stdFrameworks || {})
+      compilerFlags: _.extend(node.select(stdCompilerFlags), compilerFlags),
+      linkerFlags: _.extend(node.select(stdLinkerFlags), linkerFlags),
+      cxxFlags: _.extend(node.select(stdCxxFlags), cxxFlags),
+      cFlags: _.omit(_.extend(node.select(stdCxxFlags), cFlags), ['std', 'stdlib']),
+      frameworks: node.select(c.frameworks || stdFrameworks || {})
     };
-    diff.extend(this, _.omit(configuration, ['cFlags', 'cxxFlags', 'linkerFlags', 'compilerFlags']));
+    diff.extend(this, _.omit(c, ['cFlags', 'cxxFlags', 'linkerFlags', 'compilerFlags']));
   }
   frameworks() {
     return jsonToFrameworks(this.cache.frameworks);

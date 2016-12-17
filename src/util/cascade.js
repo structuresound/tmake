@@ -31,9 +31,7 @@ function deepSearch(object, keywords, selectors, stack) {
   }
   const flat = {};
   _.each(stack, (priority) => {
-    _.each(priority, (v, k) => {
-      diff.mergeValueAtKeypath(v, k, flat);
-    });
+    _.each(priority, (v, k) => { diff.mergeValueAtKeypath(v, k, flat); });
   });
   return flat;
 }
@@ -49,7 +47,8 @@ function shallowSearch(current, keywords, selectors, stack, height) {
       }
     } else {
       if (check(current[key], Object)) {
-        stack[height][key] = flatten(shallowSearch(current[key], keywords, selectors, [], 0));
+        stack[height][key] =
+            flatten(shallowSearch(current[key], keywords, selectors, [], 0));
       } else {
         stack[height][key] = current[key];
       }
@@ -74,7 +73,8 @@ function parseAnd(input, cssString) {
       } else {
         return diff.contains(input, subCssString);
       }
-    });}
+    });
+  }
   return diff.contains(input, cssString);
 }
 
@@ -105,9 +105,9 @@ function search(tree, keywords, selectors, searchFn) {
 export default {
   shallow(tree, keywords, selectors) {
     return flatten(search(tree, keywords, selectors, shallowSearch));
-  },
-  deep(tree, keywords, selectors) {
+  }
+  , deep(tree, keywords, selectors) {
     return search(tree, keywords, selectors, deepSearch);
-  },
-  select
+  }
+  , select
 };

@@ -21,7 +21,7 @@ function getCommands(it, ignore) {
     }
   } else if (check(it, Object)) {
     for (const k of Object.keys(it)) {
-      if (!diff.contains(ignore, k)) {
+      if (!k.includes(',') && !diff.contains(ignore, k)) {
         validCommands.push({arg: it[k], cmd: k});
       }
     }

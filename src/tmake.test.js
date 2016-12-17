@@ -11,7 +11,6 @@ const helloWorld =
     file.parseFileSync(path.join(args.npmDir, '/src/test/hello.yaml'));
 describe('tmake', function() {
   this.timeout(120000);
-
   it('can clean the test folder', () => {
     file.nuke(args.runDir);
     return expect(fs.existsSync(args.runDir)).to.equal(false);
@@ -82,7 +81,6 @@ describe('tmake', function() {
           const msg = JSON.stringify(entry, 0, 2);
           assert.equal(entry.name, googleNode.name, msg);
           assert.equal(entry.version, 'release-1.7.0', msg);
-          assert.ok(!entry.profile, msg);
           assert.ok(!entry.configutation, msg);
           assert.ok(!entry.d, msg);
           assert.ok(!entry.p, msg);

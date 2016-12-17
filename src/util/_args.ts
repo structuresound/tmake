@@ -13,8 +13,8 @@ interface Args {
   program: string;
   verbose: boolean;
   quiet: boolean;
-  forceAll: boolean;
   nodeps: boolean;
+  f: string;
   force: string;
   v: boolean;
   y: boolean;
@@ -35,7 +35,6 @@ const runDir = process.cwd();
 if (!args.runDir) {
   args.runDir = runDir;
 }
-
 
 const npmDir = path.join(path.dirname(fs.realpathSync(__filename)), '../../');
 const binDir = path.join(npmDir, 'bin');
@@ -68,6 +67,9 @@ if (args.v) {
     args.verbose = args.v;
   }
 }
+if (args.f) {
+  args.force = 'all';
+}
 
 if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
   _.extend(args, {
@@ -78,8 +80,8 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
     userCache: path.join(npmDir, 'tests_cache'),
     cachePath: 'trie_modules',
     pgname: 'tmake',
-    quiet: false,
-    verbose: true,
+    quiet: true,
+    verbose: false,
     test: true,
     yes: true,
     _: []

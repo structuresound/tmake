@@ -17,7 +17,7 @@ const keywords = [
 
 const testAObject = {
   useAccel: 0,
-  win: {
+  'win, linux': {
     useAccel: 1,
     x86: {
       useAccel: 2
@@ -26,7 +26,7 @@ const testAObject = {
       useAccel: 3
     }
   },
-  mac: {
+  'mac, ios': {
     useAccel: 4,
     x86: {
       useAccel: 5

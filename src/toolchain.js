@@ -20,16 +20,20 @@ import {startsWith} from './util/string';
 //       include:
 //         'libc++': 'include/c++/v1'
 //       # libs: ['lib/libc++.']
-//       url: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz'
-//       signature: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz.sig'
+//       url:
+//       'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz'
+//       signature:
+//       'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz.sig'
 //   linux:
 //     gcc:
 //       bin: '$(which gcc)'
 //       url: 'http://www.netgull.com/gcc/releases/gcc-6.2.0/gcc-6.2.0.tar.gz'
 //     clang:
 //       bin: 'bin/clang'
-//       url: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz'
-//       signature: 'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz.sig'
+//       url:
+//       'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz'
+//       signature:
+//       'http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz.sig'
 
 function toolPaths(toolchain) {
   const tools = {};
@@ -72,7 +76,8 @@ function fetchAndUnarchive(tool) {
   const tempDir = path.join(args.userCache, 'temp', stringHash(tool.url));
   const toolpath = pathForTool(tool);
   return download(tool.url).then((archivePath) => {
-    const tooldir = path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
+    const tooldir =
+        path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
     return file.unarchive(archivePath, tempDir, tooldir, toolpath);
   });
 }
@@ -81,29 +86,30 @@ function fetchToolchain(toolchain) {
   if (!check(toolchain, Object)) {
     throw new Error('toolchain not object');
   }
-  return Promise.each(Object.keys(toolchain), (name) => {
-    const tool = toolchain[name];
-    const toolpath = pathForTool(tool);
-    log.verbose(`checking for tool: ${name} @ ${toolpath}`);
-    if (toolpath) {
-      return file
-        .existsAsync(toolpath)
-        .then((exists) => {
-          if (exists) {
-            log.quiet(`have ${name}`);
-            return Promise.resolve(toolpath);
-          }
-          log.verbose(`fetch ${name} binary from ${tool.url}`);
-          return fetchAndUnarchive(tool).then(() => {
-            log.quiet(`chmod 755 ${toolpath}`);
-            fs.chmodSync(`${toolpath}`, 755);
-            return Promise.resolve(toolpath);
-          });
-        });
-    }
-  }).then(() => {
-    return Promise.resolve(toolPaths(toolchain));
-  });
+  return Promise.each(
+                    Object.keys(toolchain),
+                    (name) =>
+                    {
+                      const tool = toolchain[name];
+                      const toolpath = pathForTool(tool);
+                      log.verbose(`checking for tool: ${name} @ ${toolpath}`);
+                      if (toolpath) {
+                        return file.existsAsync(toolpath).then((exists) => {
+                          if (exists) {
+                            log.quiet(`have ${name}`);
+                            return Promise.resolve(toolpath);
+                          }
+                          log.verbose(`fetch ${name} binary from ${tool.url}`);
+                          return fetchAndUnarchive(tool).then(() => {
+                            log.quiet(`chmod 755 ${toolpath}`);
+                            fs.chmodSync(`${toolpath}`, 755);
+                            return Promise.resolve(toolpath);
+                          });
+                        });
+                      }
+                    })
+      .then(() => { return Promise.resolve(toolPaths(toolchain)); });
+  ;
 }
 
 export {fetchToolchain as fetch, pathForTool, toolPaths as tools};

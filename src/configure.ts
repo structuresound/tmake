@@ -10,7 +10,7 @@ import log from './util/log';
 
 import {deps} from './graph';
 import args from './util/args';
-import {replaceInFile} from './parse';
+import {replaceInFile, ReplEntry} from './parse';
 
 import {updateNode} from './db';
 
@@ -188,10 +188,6 @@ function isStale(node: Node): boolean {
   return true;
 }
 
-interface ReplEntry {
-  matching: string[];
-}
-
 function configure(node: Node, isTest: boolean): Promise<any> {
   if (!node.configuration) {
     throw new Error('configure without node');
@@ -221,17 +217,18 @@ function configure(node: Node, isTest: boolean): Promise<any> {
                                           command;
                     const setting = node.pathSetting(c.cwd || node.d.source);
                     return execAsync(
-                        node.profile.parse(c.cmd, node),
+                        node.parse(c.cmd, node),
                         <ShellOptions>{cwd: setting, silent: !args.quiet});
                   });
                 case 'replace':
                   return Promise.each(
                       iterable(i.arg), (replEntry: ReplEntry) => {
+                        console.log(replEntry);
                         const pattern = node.globArray(replEntry.matching);
                         return file.glob(pattern, undefined, node.d.source)
                             .then((files: string[]): Promise<any >=> {
                               return Promise.each(files, (file) => {
-                                return replaceInFile(file, replEntry, node);
+                                return replaceInFile(file, replEntry, node.environment);
                               });
                             });
                       });
@@ -265,9 +262,6 @@ function configure(node: Node, isTest: boolean): Promise<any> {
               'cache.debug.metaConfiguration': node.configuration.serialize()
             }
           });
-        }).catch((e: Error) => {
-          log.error(e);
-          log.log(node.configuration);
         });
   }
   log.verbose(

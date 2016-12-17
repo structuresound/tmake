@@ -15,6 +15,7 @@ import {graph, createNode} from './graph';
 import {resolveName} from './node';
 
 const name = 'tmake';
+Promise.onPossiblyUnhandledRejection(function(error) { throw error; });
 
 function sortKeysBy(obj: any, comparator?: Function) {
   const keys = _.sortBy(_.keys(obj), (key) => {
@@ -75,12 +76,14 @@ function commands(): Commands {
           name: 'example',
           type: ['String', 'Undefined'],
           typeName: 'optional',
-          description: [
-            `copy an ${c.y('example')} to the current directory`,
-            `the default is a c++11 http server: ${c.y('served')}`
-          ]
+          description:
+              [
+                `copy an ${c.y('example')} to the current directory`,
+                `the default is a c++11 http server: ${c.y('served')}`
+              ]
         },
-    ls: packageCommand(`list state of a ${c.y('package')} from the local ${name} database`),
+    ls: packageCommand(
+        `list state of a ${c.y('package')} from the local ${name} database`),
     // path: packageCommand(
     //     `list local directories for a ${c.y('package')} from the local
     //     ${name} database`),
@@ -91,9 +94,12 @@ function commands(): Commands {
     configure: packageCommand(`configure build system ${c.y('package')}`),
     build:
         packageCommand(`build this project or dependency ${c.y('package')}`),
-    push: packageCommand(`upload the current config file to the ${name} package repository`),
-    link: packageCommand(`link the current or specified ${c.y('package')} to your local package repository`),
-    unlink: packageCommand(`remove the current or specified ${c.y('package')} from your local package repository`),
+    push: packageCommand(
+        `upload the current config file to the ${name} package repository`),
+    link: packageCommand(
+        `link the current or specified ${c.y('package')} to your local package repository`),
+    unlink: packageCommand(
+        `remove the current or specified ${c.y('package')} from your local package repository`),
     // clean: packageCommand(`clean project, ${c.y('package')}, or 'all'`),
     reset: {description: 'nuke the cache'},
     nuke: {description: 'nuke the cache'},
@@ -123,8 +129,7 @@ function manual() {
   `;
   _.each(sortKeysBy(commands()), (o: any, cmd: string) => {
     if (o.name) {
-      man +=
-          `           ${colors.green(cmd)} ${colors.yellow(o.name)} ${colors.gray(o.typeName || o.type)}\n`;
+      man += `           ${colors.green(cmd)} ${colors.yellow(o.name)} ${colors.gray(o.typeName || o.type)}\n`;
     } else {
       man += `           ${colors.green(cmd)}\n`;
     }
@@ -141,7 +146,7 @@ function manual() {
 const defaultPackage = {
   name: 'newProject',
   version: '0.0.1',
-  target: 'bin',
+  outputType: 'executable',
   build: {with: 'cmake'}
 };
 
@@ -159,11 +164,10 @@ function tmake(rootConfig: file.Configuration, positionalArgs = args._) {
           .then(() => log.quiet(`cleared cache for ${resolvedName}`));
     case 'reset':
     case 'nuke':
-      log.quiet(`nuke cache ${path.join(args.runDir, args.cachePath)}`);
-      file.nuke(path.join(args.runDir, args.cachePath));
       file.nuke(path.join(args.runDir, 'bin'));
       file.nuke(path.join(args.runDir, 'build'));
-      return log.quiet('post nuke freshness');
+      file.nuke(path.join(args.runDir, args.cachePath));
+      log.quiet(`rm -R bin build ${args.cachePath}`);
     case 'link':
       return execute(rootConfig, 'link');
     case 'unlink':
@@ -190,8 +194,7 @@ function tmake(rootConfig: file.Configuration, positionalArgs = args._) {
       return execute(rootConfig, 'install');
     case 'example':
     case 'init':
-      return log.error(
-          `there's already a ${args.program} project file in this directory`);
+      return log.error(`there's already a ${args.program} project file in this directory`);
     case 'ls':
     case 'list':
       return ((): Promise<file.Configuration[] >=> {
@@ -237,7 +240,8 @@ function run() {
             console.log(usage(cmd));
             return 2;
           }
-          return tmake(config);
+          return tmake(config).catch((e: Error) => { log.error(e, e.stack); });
+          ;
         }
 
         // No config present

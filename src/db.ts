@@ -19,7 +19,6 @@ interface $Set {
   'cache.bin'?: string;
   'cache.assets'?: string[];
   'cache.buildFile'?: string;
-  'cache.target'?: string;
   'cache.generatedBuildFile'?: string;
   'cache.installed'?: boolean;
 
@@ -36,7 +35,6 @@ interface $Unset {
   'cache.bin'?: boolean;
   'cache.assets'?: boolean;
   'cache.buildFile'?: boolean;
-  'cache.target'?: boolean;
   'cache.generatedBuildFile'?: boolean;
   'cache.installed'?: boolean;
 

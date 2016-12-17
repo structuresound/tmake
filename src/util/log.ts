@@ -46,7 +46,7 @@ class Log {
   info(... args: any[]) { console.log(colors.blue(getMessage(... args))); }
   warn(... args: any[]) { console.log(colors.yellow(getMessage(... args))); }
   add(... args: any[]) {
-    if (environment.verbose) {
+    if (!environment.quiet) {
       console.log(colors.green(getMessage(... args)));
     }
   }
@@ -55,6 +55,7 @@ class Log {
     console.log(colors.magenta(getMessage(... args)));
     throw new Error('log wants you to stop and look at the magenta message');
   }
+  parse(... args: any[]) { return getMessage(args); }
 }
 
 export default new Log();

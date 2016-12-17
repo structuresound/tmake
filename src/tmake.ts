@@ -9,7 +9,6 @@ import {fetch, linkSource, destroy as destroySource} from './fetch';
 import log from './util/log';
 import args from './util/args';
 import * as file from './util/file';
-import profile from './profile';
 import prompt from './prompt';
 import {createNode, graph} from './graph';
 import {Node} from './node';
@@ -57,7 +56,7 @@ class Build {
   link(node: Node) {
     return this.install(node, false)
         .then((): Promise<any >=> {
-          const doc: file.Configuration = node.safe();
+          const doc: file.Configuration = node.safe(true);
           const query = {name: doc.name, tag: doc.tag || 'master'};
           return userDb.update(query, {$set: doc}, {upsert: true});
         });
@@ -139,7 +138,7 @@ function parse(config: file.Configuration, aspect: string): Promise<any> {
   return createNode(config, undefined)
       .then((node): Promise<any >=> {
         log.quiet(
-            `parsing ${aspect} with selectors:\n ${node.profile.selectors}`);
+            `parsing ${aspect} with selectors:\n ${node.selectors}`);
         switch (aspect) {
           case 'node':
             log.log(node.safe());
@@ -169,7 +168,6 @@ function cleanDep(node: Node) {
     $unset: {
       'cache.configuration': true,
       'cache.metaConfiguration': true,
-      'cache.target': true,
       'cache.libs': true,
       'cache.bin': true
     }
@@ -225,7 +223,6 @@ export {
   parse,
   push,
   unlink,
-  profile,
   findAndClean,
   Build
 };

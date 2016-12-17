@@ -54,7 +54,7 @@ function symlink(patterns: string[], from: string, toPath: string, opt: file.Cop
 }
 
 function bin(node: Node) {
-  if (diff.contains(['bin'], node.target)) {
+  if (diff.contains(['executable'], node.outputType)) {
     mkdir('-p', path.join(args.runDir, 'bin'));
     const binaries: string[] = [];
     _.each(node.d.install.binaries, (ft: file.InstallOptions) => {
@@ -76,12 +76,11 @@ function bin(node: Node) {
        node, {
         $set: {
           'cache.bin': cumulativeHash,
-          'cache.target': cumulativeHash
         }
       });
     });
   }
-  return Promise.resolve('bin');
+  return Promise.resolve('executable');
 }
 
 function assets(node: Node) {
@@ -108,10 +107,10 @@ function assets(node: Node) {
 function libs(node: Node) {
   if (diff.contains([
     'static', 'dynamic'
-  ], node.target)) {
+  ], node.outputType)) {
     return Promise.map(node.d.install.libraries, (ft) => {
       let patterns = ft.matching || ['*.a'];
-      if (node.target === 'dynamic') {
+      if (node.outputType === 'dynamic') {
         patterns = ft.matching || ['*.dylib', '*.so', '*.dll'];
       }
       log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
@@ -129,8 +128,7 @@ function libs(node: Node) {
         return updateNode(node, {
           $set: {
             libs: _.flatten(libPaths),
-            'cache.libs': cumulativeHash,
-            'cache.target': cumulativeHash
+            'cache.libs': cumulativeHash
           }
         });
       });
@@ -142,7 +140,7 @@ function libs(node: Node) {
 function headers(node: Node) {
   if (diff.contains([
     'static', 'dynamic'
-  ], node.target)) {
+  ], node.outputType)) {
     return Promise.each(node.d.install.headers, (ft) => {
       const patterns = ft.matching || ['**/*.h', '**/*.hpp', '**/*.ipp'];
       if (args.verbose) {

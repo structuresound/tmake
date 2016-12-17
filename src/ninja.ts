@@ -11,7 +11,6 @@ const ninjaVersion = '1.6.0';
 
 function build(node: Node): Promise<any> {
   const hostChain = node
-    .profile
     .selectToolchain();
   return fetch(hostChain).then((toolpaths: any) => {
     const directory = node.d.project;
@@ -78,7 +77,7 @@ function generate(node: Node, fileName: string): void {
   let linkCommand = 'ar rv $out $in';
   let libName = node.build.outputFile;
   let staticLibs = '';
-  switch (node.target) {
+  switch (node.outputType) {
     case 'static':
     default:
       if (node.name.indexOf('lib') === -1) {
@@ -90,7 +89,7 @@ function generate(node: Node, fileName: string): void {
       }
       linkCommand = 'ar rv $out $in';
       break;
-    case 'bin':
+    case 'executable':
       if (!libName) {
         libName = `${node.name}`;
       }

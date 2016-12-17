@@ -1,17 +1,17 @@
 import {expect} from 'chai';
 import path from 'path';
+import fs from 'fs';
 
 import args from '../lib/util/args';
-import fs from 'fs';
 import {stringHash} from '../lib/util/hash';
-import {Profile} from '../lib/profile';
+import {Node} from '../lib/node';
 import {fetch as fetchToolchain, pathForTool} from '../lib/toolchain';
 
 describe('toolchain', function () {
-  const profile = new Profile({});
+  const node = new Node({name: 'toolchain-test'});
 
   this.timeout(120000);
-  const hostChain = profile.selectToolchain();
+  const hostChain = node.selectToolchain();
   const ninjaVersion = 'v1.7.1';
 
   it('can parse toolchain correctly', () => {
@@ -23,7 +23,7 @@ describe('toolchain', function () {
       .equal('ninja');
     return expect(hostChain.ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${profile.host.platform}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${node.host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {

@@ -1,14 +1,83 @@
+import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import {check, diff} from 'js-object-tools';
+import cascade from './util/cascade';
 import {startsWith} from './util/string';
 import log from './util/log';
 import * as file from './util/file';
 import args from './util/args';
-import {Profile, keywords} from './profile';
 import {Configuration} from './configuration';
 import {parse, absolutePath, pathArray} from './parse';
 import {jsonStableHash, stringHash} from './util/hash';
+
+interface Settings {
+  [index: string]: string;
+}
+
+const settings: any =
+    file.parseFileSync(path.join(args.binDir, 'settings.yaml'));
+
+const platformNames: Settings = {
+  linux: 'linux',
+  darwin: 'mac',
+  mac: 'mac',
+  win: 'win',
+  win32: 'win',
+  ios: 'ios',
+  android: 'android'
+};
+
+const archNames: Settings = {x64: 'x86_64', arm: 'armv7a', arm64: 'arm64'};
+
+const HOST_ENDIANNESS = os.endianness();
+const HOST_PLATFORM = platformNames[os.platform()];
+const HOST_ARCHITECTURE = archNames[os.arch()];
+const HOST_CPU = os.cpus();
+
+const ninjaVersion = 'v1.7.1';
+
+const HOST_ENV = {
+  architecture: HOST_ARCHITECTURE,
+  endianness: HOST_ENDIANNESS,
+  compiler: settings.defaultCompiler[HOST_PLATFORM],
+  platform: HOST_PLATFORM,
+  cpu: {num: HOST_CPU.length, speed: HOST_CPU[0].speed}
+};
+
+const DEFAULT_TARGET = {
+  architecture: HOST_ARCHITECTURE,
+  endianness: HOST_ENDIANNESS,
+  platform: HOST_PLATFORM
+};
+
+function parseSelectors(dict: any, prefix: string) {
+  const _selectors: string[] = [];
+  const selectables: Settings =
+      <Settings>_.pick(dict, ['platform', 'compiler']);
+  for (const key of Object.keys(selectables)) {
+    _selectors.push(`${prefix || ''}${selectables[key]}`);
+  }
+  return _selectors;
+}
+
+const DEFAULT_ENV =
+    file.parseFileSync(path.join(args.binDir, 'environment.yaml'));
+const _keywords: any =
+    file.parseFileSync(path.join(args.binDir, 'keywords.yaml'));
+const keywords =
+    []
+        .concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
+        .concat(_keywords.target)
+        .concat(_keywords.build)
+        .concat(_keywords.compiler)
+        .concat(_keywords.sdk)
+        .concat(_keywords.ide)
+        .concat(_keywords.deploy);
+
+const argvSelectors = Object.keys(_.pick(args, keywords));
+argvSelectors.push(args.compiler);
+
 
 function getAbsolutePaths(node: Node): file.DirList {
   // if conf.git?.archive
@@ -196,31 +265,31 @@ function resolveUrl(node: Node) {
 class Node extends file.Configuration {
   _conf: file.Configuration;
   configuration: Configuration;
-  profile: Profile;
   libs: string[];
+  selectors: string[];
 
-  constructor(conf: file.Configuration, parent: Node) {
+  constructor(_conf: file.Configuration, parent: Node) {
     super();
     // load conf, extend if link
-    if (!conf) {
+    if (!_conf) {
       throw new Error('constructing node with undefined configuration');
     }
-    if (check(conf, Node)) {
-      return conf as Node;
+    if (check(_conf, Node)) {
+      return _conf as Node;
     }
-    this._conf = diff.clone(conf);
-    if (this._conf.link) {
-      const configDir = absolutePath(conf.link);
+
+    const mutable = diff.clone(_conf);
+    if (mutable.link) {
+      const configDir = absolutePath(mutable.link);
       const configPath = file.configExists(configDir);
       if (configPath) {
         log.verbose(`load config from linked directory ${configPath}`);
         const rawConfig = file.readConfigSync(configPath);
-        diff.extend(this._conf, rawConfig);
+        diff.extend(mutable, rawConfig);
       }
     }
-
     // defaults
-    diff.extend(this, this._conf);
+    diff.extend(this, mutable);
     if (!this.name) {
       this.name = resolveName(this);
     }
@@ -230,22 +299,17 @@ class Node extends file.Configuration {
 
     // overrides
     if (parent) {
-      this.profile = parent.profile;
       if (parent.override) {
         diff.extend(this.override, parent.override);
       }
     } else {
       this.d = <file.DirList>{root: args.runDir};
     }
-    if (!this.target) {
-      this.target = 'static';
+    if (!this.outputType) {
+      this.outputType = 'static';
     }
     diff.extend(this, this.override);
 
-    // calculate paths + configuration sections
-    if (!this.profile) {
-      this.profile = new Profile(this);
-    }
     if (!this.version) {
       this.version = resolveVersion(this);
     }
@@ -253,18 +317,48 @@ class Node extends file.Configuration {
       this.user = 'local';
     }
 
-    this.configuration = new Configuration(
-        this.profile, <file.BuildSettings>diff.combine(this.build || {},
-                                                       this.configure || {}));
-    this.p = getPathOptions(this._conf);
+    // set up selectors
+    this.host = <file.Platform>diff.combine(HOST_ENV, this.host);
+    const stdChain = {
+      ninja: {
+        version: ninjaVersion,
+        url:
+            'https://github.com/ninja-build/ninja/releases/download/{host.toolchain.ninja.version}/ninja-{host.platform}.zip'
+      },
+      'host-mac': {clang: {bin: '$(which gcc)'}},
+      'host-linux': {gcc: {bin: '$(which gcc)'}}
+    };
+    this.host.toolchain = diff.combine(stdChain, this.host.toolchain);
+    this.target = <file.Platform>diff.combine(DEFAULT_TARGET, this.target);
+
+    const hostSelectors = parseSelectors(this.host, 'host-');
+    const targetSelectors = parseSelectors(this.target, undefined);
+    this.selectors = hostSelectors.concat(targetSelectors);
+
+    this.environment = cascade.deep(diff.combine(DEFAULT_ENV, this.environment),
+                                    keywords, this.selectors);
+
+    // build work paths + recalculate environment
+    this.p = getPathOptions(this);
     this.d = getAbsolutePaths(this);
 
-    delete this._conf;
+    // build toolchain + environment
+    const selectedEnv = cascade.deep(_.omit(diff.plain(this), ['environment']),
+                                     keywords, this.selectors);
+    const parsedEnv = this.parse(selectedEnv, selectedEnv);
+    parsedEnv.host = this.host;
+    parsedEnv.target = this.target;
+    parsedEnv.selectors = this.selectors;
+    diff.extend(this.environment, parsedEnv);
+
+    this.configuration =
+        new Configuration(this, <file.BuildSettings>diff.combine(
+                                    this.build || {}, this.configure || {}));
   }
   force() {
-    return args.forceAll || (args.force && (args.force === this._conf.name));
+    return args.force && ((args.force === this.name) || (args.force === 'all'));
   }
-  j() { return this.profile.j(); }
+  j() { return this.host.cpu.num; }
   fullPath(p: string) {
     if (startsWith(p, '/')) {
       return p;
@@ -275,22 +369,62 @@ class Node extends file.Configuration {
   globArray(val: any) {
     return _.map(diff.arrayify(val), (v) => { return parse(v, this); });
   }
-  select(dict: Object) { return this.profile.select(dict); }
   url(): string { return resolveUrl(this); }
   urlHash(): string { return stringHash(this.url()); }
   configHash(): string {
     return stringHash(this.urlHash() + this.configuration.hash());
+  }
+  parse(input: any, conf: any) {
+    if (conf) {
+      const dict = diff.combine(this.environment,
+                                cascade.deep(conf, keywords, this.selectors));
+      return parse(input, dict);
+    }
+    return parse(input, this.environment);
+  }
+  select(base: any, options: {keywords?:{}, selectors?:{}, dict?:{}, ignore?: {keywords?: string[], selectors?: string[]}} = {ignore: {}}) {
+    if (!base) {
+      throw new Error('selecting on empty object');
+    }
+    const mutableOptions = diff.clone(options);
+
+    mutableOptions.keywords =
+        _.difference(keywords, mutableOptions.ignore.keywords);
+    mutableOptions.selectors =
+        _.difference(this.selectors, mutableOptions.ignore.selectors);
+
+    const flattened =
+        cascade.deep(base, mutableOptions.keywords, mutableOptions.selectors);
+    const parsed = this.parse(flattened, mutableOptions.dict);
+    return parsed;
+  }
+  selectToolchain() {
+    const buildSystems = ['cmake', 'ninja'];
+    const compilers = ['clang', 'gcc', 'msvc'];
+    const selectedToolchain = this.select(this.host.toolchain, {
+      dict: this.environment,
+      ignore: {keywords: buildSystems.concat(compilers)}
+    });
+    for (const name of Object.keys(selectedToolchain)) {
+      const tool = selectedToolchain[name];
+      if (tool.bin == null) {
+        tool.bin = name;
+      }
+      if (tool.name == null) {
+        tool.name = name;
+      }
+    }
+    return selectedToolchain;
   }
   merge(other: file.Configuration): void { mergeNodes(this, other); }
   toCache(): file.Configuration {
     return <file.Configuration>_.pick(this,
                                       ['cache', 'name', 'libs', 'version']);
   }
-  safe(): file.Configuration {
+  safe(stripDeps: boolean): file.Configuration {
     const plain = <file.Configuration>_.omit(
-        diff.plain(this),
-        ['_id', 'profile', 'configuration', 'cache', 'd', 'p']);
-    if (plain.deps) {
+        diff.plain(this), ['_id', 'configuration', 'cache', 'd', 'p']);
+    if (plain.deps && stripDeps) {
       plain.deps =
           <file.Configuration[]>_.map(plain.deps, (d: file.Configuration) => {
             return {name: resolveName(d), hash: jsonStableHash(d)};
@@ -300,4 +434,4 @@ class Node extends file.Configuration {
   }
 }
 
-export {Node, resolveName, Profile, keywords};
+export {Node, resolveName, keywords, argvSelectors};

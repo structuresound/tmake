@@ -31,14 +31,13 @@ function resolveDeps(root, graph, cache) {
     return Promise.each(root.deps, (dep) => {
       return createNode(dep, root).then((node) => {
         if (node.name === root.name) {
-          throw new Error('recursive dependency');
+          throw new Error(`recursive dependency ${root.name}`);
         }
         return _graph(node, graph, cache).then(() => {
           if (args.verbose) {
-            log.add(`add dependency ${node.name} >> ${root.name}`);
+            log.add(`+${node.name}`);
           }
           graph.addDependency(root.name, node.name);
-          return Promise.resolve();
         });
       });
     }).then(() => {

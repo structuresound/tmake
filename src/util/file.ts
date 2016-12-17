@@ -76,6 +76,15 @@ interface GitSettings {
   archive?: string;
 }
 
+interface Platform {
+  architecture: string,
+  endianness: string,
+  compiler: string
+  platform: string,
+  toolchain: any,
+  cpu: {num: number, speed: string}
+}
+
 class Configuration {
   [index: string]: any;
   name: string;
@@ -89,10 +98,12 @@ class Configuration {
   fetch: { url?: string; }
   link: string;
   git: GitSettings;
-  profile: any;
+  host: Platform;
+  target: Platform;
+  environment: any;
   d: DirList;
   p: DirList;
-  target: string;
+  outputType: string;
   version: string;
   tag: string;
   user: string;
@@ -392,6 +403,7 @@ export {
   install_list,
   BuildSettings,
   Configuration,
+  Platform,
   Cache,
   DirList,
   DebugCache,
