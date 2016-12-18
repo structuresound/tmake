@@ -71,17 +71,15 @@ function packageCommand(desc: string): Command {
 
 function commands(): Commands {
   return {
-    example:
-        {
-          name: 'example',
-          type: ['String', 'Undefined'],
-          typeName: 'optional',
-          description:
-              [
-                `copy an ${c.y('example')} to the current directory`,
-                `the default is a c++11 http server: ${c.y('served')}`
-              ]
-        },
+    example: {
+      name: 'example',
+      type: ['String', 'Undefined'],
+      typeName: 'optional',
+      description: [
+        `copy an ${c.y('example')} to the current directory`,
+        `the default is a c++11 http server: ${c.y('served')}`
+      ]
+    },
     ls: packageCommand(
         `list state of a ${c.y('package')} from the local ${name} database`),
     // path: packageCommand(
@@ -129,7 +127,8 @@ function manual() {
   `;
   _.each(sortKeysBy(commands()), (o: any, cmd: string) => {
     if (o.name) {
-      man += `           ${colors.green(cmd)} ${colors.yellow(o.name)} ${colors.gray(o.typeName || o.type)}\n`;
+      man +=
+          `           ${colors.green(cmd)} ${colors.yellow(o.name)} ${colors.gray(o.typeName || o.type)}\n`;
     } else {
       man += `           ${colors.green(cmd)}\n`;
     }
@@ -154,7 +153,8 @@ function createPackage() {
   return Promise.resolve(defaultPackage);
 }
 
-function tmake(rootConfig: file.Configuration, positionalArgs = args._) {
+function tmake(rootConfig: file.Configuration,
+               positionalArgs = args._): Promise<any> {
   const resolvedName =
       positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
 
@@ -194,7 +194,8 @@ function tmake(rootConfig: file.Configuration, positionalArgs = args._) {
       return execute(rootConfig, 'install');
     case 'example':
     case 'init':
-      return log.error(`there's already a ${args.program} project file in this directory`);
+      log.error(
+          `there's already a ${args.program} project file in this directory`);
     case 'ls':
     case 'list':
       return ((): Promise<file.Configuration[] >=> {
@@ -208,6 +209,8 @@ function tmake(rootConfig: file.Configuration, positionalArgs = args._) {
     default:
       log.quiet(manual());
   }
+
+  return Promise.resolve();
 }
 
 function init(): any {

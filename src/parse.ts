@@ -56,8 +56,7 @@ interface MacroObject {
 }
 function objectReplace(m: MacroObject, dict: Object) {
   if (!m.macro) {
-    throw new Error(
-        `object must have macro key and optional map ${JSON.stringify(m)}`);
+    throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
   }
   const res = parse(m.macro, dict);
   if (m.map) {
@@ -92,23 +91,28 @@ function allStrings(o: {[index: string]: any}, fn: Function) {
   return mut;
 }
 
-function parseString(val: string, conf: Object) {
+function parseString(val: string, conf: Object, mustPass?: boolean) {
   if (val) {
-    return replace(interpolate(val, conf), conf);
+    return replace(interpolate(val, conf, mustPass), conf);
   } else {
     return val;
   }
 }
 
-function _parse(input: string | MacroObject, dict: any): any {
+function _parse(input: string | MacroObject, dict: any,
+                localContext?: Object): any {
+  let parsed = input;
   if (check(input, String)) {
-    return parseString(<string>input, dict);
+    if (localContext) {
+      parsed = parseString(<string>parsed, localContext);
+    }
+    return parseString(<string>parsed, dict, true);
   } else if (check(input, Object)) {
     if ((<MacroObject>input).macro) {
       return objectReplace((<MacroObject>input), dict || {});
     } else {
       for (const key of Object.keys(input)) {
-        (<any>input)[key] = _parse((<any>input)[key], dict);
+        (<any>input)[key] = _parse((<any>input)[key], dict, input);
       }
       return input;
     }
@@ -154,8 +158,7 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     throw new Error(`no file at ${f}`);
   }
   if (!r.inputs) {
-    throw new Error(
-        `repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
+    throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
   }
   let stringFile = fs.readFileSync(f, 'utf8');
   for (const k of Object.keys(r.inputs)) {
@@ -170,8 +173,7 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
       parsedVal = parse(v, environment);
     }
     if (r.directive) {
-      parsedKey =
-          `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
+      parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
     }
     if (args.verbose) {
       if ((<any>stringFile)

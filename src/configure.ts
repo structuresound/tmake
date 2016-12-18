@@ -201,15 +201,13 @@ function configure(node: Node, isTest: boolean): Promise<any> {
             {
               log.verbose(`configure >> ${i.cmd}`);
               switch (i.cmd) {
-                default:
-                  return Promise.reject(
-                      new Error(`no valid cmd in iterable for ${i.cmd}`));
                 case 'with':
                   log.verbose(`configure for: ${i.arg}`);
                   return createBuildFileFor(node, i.arg);
                 case 'ninja':
                 case 'cmake':
                   return createBuildFileFor(node, i.cmd);
+                default:
                 case 'shell':
                   return Promise.each(diff.arrayify(i.arg), (command: any) => {
                     const c: CmdObj = check(command, String) ?
@@ -223,12 +221,11 @@ function configure(node: Node, isTest: boolean): Promise<any> {
                 case 'replace':
                   return Promise.each(
                       iterable(i.arg), (replEntry: ReplEntry) => {
-                        console.log(replEntry);
                         const pattern = node.globArray(replEntry.matching);
                         return file.glob(pattern, undefined, node.d.source)
                             .then((files: string[]): Promise<any >=> {
                               return Promise.each(files, (file) => {
-                                return replaceInFile(file, replEntry, node.environment);
+                                return replaceInFile(file, replEntry, node);
                               });
                             });
                       });

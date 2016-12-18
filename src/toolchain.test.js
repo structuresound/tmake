@@ -11,7 +11,7 @@ describe('toolchain', function () {
   const node = new Node({name: 'toolchain-test'});
 
   this.timeout(120000);
-  const hostChain = node.selectToolchain();
+  const hostChain = node.toolchain;
   const ninjaVersion = 'v1.7.1';
 
   it('can parse toolchain correctly', () => {

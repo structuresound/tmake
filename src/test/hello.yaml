@@ -1,5 +1,4 @@
 ---
-name: hello
 git: structuresound/hello
 build:
   with: ninja

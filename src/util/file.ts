@@ -81,8 +81,19 @@ interface Platform {
   endianness: string,
   compiler: string
   platform: string,
-  toolchain: any,
   cpu: {num: number, speed: string}
+}
+
+interface Tool {
+  url: string,
+  version: string,
+  bin?: string,
+  name?: string
+}
+
+interface Toolchain {
+  ninja: Tool;
+  clang: Tool;
 }
 
 class Configuration {
@@ -100,6 +111,7 @@ class Configuration {
   git: GitSettings;
   host: Platform;
   target: Platform;
+  toolchain: Toolchain;
   environment: any;
   d: DirList;
   p: DirList;

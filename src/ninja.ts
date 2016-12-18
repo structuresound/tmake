@@ -10,9 +10,7 @@ import {Node} from './node';
 const ninjaVersion = '1.6.0';
 
 function build(node: Node): Promise<any> {
-  const hostChain = node
-    .selectToolchain();
-  return fetch(hostChain).then((toolpaths: any) => {
+  return fetch(node.toolchain).then((toolpaths: any) => {
     const directory = node.d.project;
     const command = `${toolpaths.ninja} -C ${directory}`;
     log.verbose(command);

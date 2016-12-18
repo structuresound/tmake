@@ -51,6 +51,16 @@ const DEFAULT_TARGET = {
   platform: HOST_PLATFORM
 };
 
+const DEFAULT_TOOLCHAIN = {
+  ninja: {
+    version: ninjaVersion,
+    url:
+        'https://github.com/ninja-build/ninja/releases/download/{version}/ninja-{host.platform}.zip'
+  },
+  'host-mac': {clang: {bin: '$(which gcc)'}},
+  'host-linux': {gcc: {bin: '$(which gcc)'}}
+};
+
 function parseSelectors(dict: any, prefix: string) {
   const _selectors: string[] = [];
   const selectables: Settings =
@@ -200,13 +210,16 @@ function resolveVersion(conf: file.Configuration) {
 function resolveName(conf: file.Configuration): string {
   if (check(conf.name, String)) {
     return conf.name;
-  } else if (conf.git) {
+  }
+  if (conf.git) {
     if (check(conf.git, String)) {
       const str: string = conf.git as string;
-      return str.slice(str.indexOf('/') + 1);
-    } else if (conf.git.repository) {
+      return str.slice(str.lastIndexOf('/') + 1);
+    }
+    if (conf.git.repository) {
       return conf.git.repository.slice(conf.git.repository.indexOf('/') + 1);
-    } else if (conf.git.url) {
+    }
+    if (conf.git.url) {
       const lastPathComponent =
           conf.git.url.slice(conf.git.url.lastIndexOf('/') + 1);
       return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
@@ -277,83 +290,67 @@ class Node extends file.Configuration {
     if (check(_conf, Node)) {
       return _conf as Node;
     }
-
     const mutable = diff.clone(_conf);
-    if (mutable.link) {
-      const configDir = absolutePath(mutable.link);
-      const configPath = file.configExists(configDir);
-      if (configPath) {
-        log.verbose(`load config from linked directory ${configPath}`);
-        const rawConfig = file.readConfigSync(configPath);
-        diff.extend(mutable, rawConfig);
-      }
-    }
-    // defaults
-    diff.extend(this, mutable);
+    const metaDataFields = _.pick(mutable, ['name', 'version', 'user']);
+    diff.extend(this, metaDataFields);
     if (!this.name) {
-      this.name = resolveName(this);
+      this.name = resolveName(mutable);
     }
-    if (!this.override) {
-      this.override = new file.Configuration();
+    if (!mutable.override) {
+      mutable.override = new file.Configuration();
     }
 
-    // overrides
-    if (parent) {
-      if (parent.override) {
-        diff.extend(this.override, parent.override);
-      }
-    } else {
+    // 1. set up selectors + environment
+    this.host = <file.Platform>diff.combine(HOST_ENV, mutable.host);
+    this.target = <file.Platform>diff.combine(DEFAULT_TARGET, mutable.target);
+
+    const hostSelectors = parseSelectors(this.host, 'host-');
+    const targetSelectors = parseSelectors(this.target, undefined);
+    this.selectors = hostSelectors.concat(targetSelectors);
+
+
+    const environment =
+        cascade.deep(diff.combine(DEFAULT_ENV, mutable.environment), keywords,
+                     this.selectors);
+    diff.extend(this, environment);
+
+    // 2. setup paths + directories
+
+    this.path = this.select(mutable.path || {});
+    this.p = getPathOptions(this);
+
+    if (!parent) {
       this.d = <file.DirList>{root: args.runDir};
     }
+    this.d = getAbsolutePaths(this);
+
+    // 3. extend + select all remaining settings
+    const inOutFields = _.pick(mutable, ['git', 'fetch', 'outputType']);
+    diff.extend(this, this.select(inOutFields));
     if (!this.outputType) {
       this.outputType = 'static';
     }
-    diff.extend(this, this.override);
+    this.toolchain = this.selectToolchain(mutable);
 
+    const mainOperations = _.pick(mutable, ['configure', 'build']);
+    diff.extend(this, this.select(mainOperations));
+    this.configuration = new Configuration(
+        this, <file.BuildSettings>diff.combine(_.pick(this.build, ['with']),
+                                               this.configure || {}));
+    // Overrides
+    if (parent) {
+      if (parent.override) {
+        diff.extend(this, parent.override);
+        diff.extend(this.override, parent.override);
+      }
+    }
+    // LAZY Defaults
     if (!this.version) {
       this.version = resolveVersion(this);
     }
     if (!this.user) {
       this.user = 'local';
     }
-
-    // set up selectors
-    this.host = <file.Platform>diff.combine(HOST_ENV, this.host);
-    const stdChain = {
-      ninja: {
-        version: ninjaVersion,
-        url:
-            'https://github.com/ninja-build/ninja/releases/download/{host.toolchain.ninja.version}/ninja-{host.platform}.zip'
-      },
-      'host-mac': {clang: {bin: '$(which gcc)'}},
-      'host-linux': {gcc: {bin: '$(which gcc)'}}
-    };
-    this.host.toolchain = diff.combine(stdChain, this.host.toolchain);
-    this.target = <file.Platform>diff.combine(DEFAULT_TARGET, this.target);
-
-    const hostSelectors = parseSelectors(this.host, 'host-');
-    const targetSelectors = parseSelectors(this.target, undefined);
-    this.selectors = hostSelectors.concat(targetSelectors);
-
-    this.environment = cascade.deep(diff.combine(DEFAULT_ENV, this.environment),
-                                    keywords, this.selectors);
-
-    // build work paths + recalculate environment
-    this.p = getPathOptions(this);
-    this.d = getAbsolutePaths(this);
-
-    // build toolchain + environment
-    const selectedEnv = cascade.deep(_.omit(diff.plain(this), ['environment']),
-                                     keywords, this.selectors);
-    const parsedEnv = this.parse(selectedEnv, selectedEnv);
-    parsedEnv.host = this.host;
-    parsedEnv.target = this.target;
-    parsedEnv.selectors = this.selectors;
-    diff.extend(this.environment, parsedEnv);
-
-    this.configuration =
-        new Configuration(this, <file.BuildSettings>diff.combine(
-                                    this.build || {}, this.configure || {}));
   }
   force() {
     return args.force && ((args.force === this.name) || (args.force === 'all'));
@@ -374,13 +371,13 @@ class Node extends file.Configuration {
   configHash(): string {
     return stringHash(this.urlHash() + this.configuration.hash());
   }
-  parse(input: any, conf: any) {
+  parse(input: any, conf?: any) {
     if (conf) {
-      const dict = diff.combine(this.environment,
-                                cascade.deep(conf, keywords, this.selectors));
+      const dict =
+          diff.combine(this, cascade.deep(conf, keywords, this.selectors));
       return parse(input, dict);
     }
-    return parse(input, this.environment);
+    return parse(input, this);
   }
   select(base: any, options: {keywords?:{}, selectors?:{}, dict?:{}, ignore?: {keywords?: string[], selectors?: string[]}} = {ignore: {}}) {
     if (!base) {
@@ -398,15 +395,21 @@ class Node extends file.Configuration {
     const parsed = this.parse(flattened, mutableOptions.dict);
     return parsed;
   }
-  selectToolchain() {
+  selectToolchain(conf: file.Configuration) {
     const buildSystems = ['cmake', 'ninja'];
     const compilers = ['clang', 'gcc', 'msvc'];
-    const selectedToolchain = this.select(this.host.toolchain, {
-      dict: this.environment,
-      ignore: {keywords: buildSystems.concat(compilers)}
-    });
-    for (const name of Object.keys(selectedToolchain)) {
-      const tool = selectedToolchain[name];
+
+    const toolchain = this.select(
+        DEFAULT_TOOLCHAIN,
+        {dict: this, ignore: {keywords: buildSystems.concat(compilers)}});
+    if (conf.host && conf.toolchain) {
+      const customToolchain = this.select(
+          conf.toolchain,
+          {dict: this, ignore: {keywords: buildSystems.concat(compilers)}});
+      diff.extend(toolchain, conf.toolchain);
+    }
+    for (const name of Object.keys(toolchain)) {
+      const tool = toolchain[name];
       if (tool.bin == null) {
         tool.bin = name;
       }
@@ -414,14 +417,14 @@ class Node extends file.Configuration {
         tool.name = name;
       }
     }
-    return selectedToolchain;
+    return toolchain;
   }
-  merge(other: file.Configuration): void { mergeNodes(this, other); }
+  merge(other: Node | file.Configuration): void { mergeNodes(this, other); }
   toCache(): file.Configuration {
     return <file.Configuration>_.pick(this,
                                       ['cache', 'name', 'libs', 'version']);
   }
-  safe(stripDeps: boolean): file.Configuration {
+  safe(stripDeps?: boolean): file.Configuration {
     const plain = <file.Configuration>_.omit(
         diff.plain(this), ['_id', 'configuration', 'cache', 'd', 'p']);
     if (plain.deps && stripDeps) {

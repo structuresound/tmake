@@ -143,7 +143,7 @@ function parse(config: file.Configuration, aspect: string): Promise<any> {
           case 'node':
             log.log(node.safe());
           default:
-            log.log(diff.plain(node[aspect]));
+            log.log(diff.plain(node[aspect] || {}));
         }
         return Promise.resolve();
       });

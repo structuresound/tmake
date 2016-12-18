@@ -111,14 +111,24 @@ describe('tmake', function() {
     return loadCache(helloNode).then(() => {
       return new Build().build(helloNode).then(() => {
         const filePath = fs.existsSync(
-            path.join(args.runDir, 'build', `${helloWorld.name}`));
+            path.join(args.runDir, 'build', `${helloNode.name}`));
+        return expect(filePath).to.equal(true);
+      });
+    });
+  });
+
+  it('can install a binary', () => {
+    return loadCache(helloNode).then(() => {
+      return new Build().install(helloNode).then(() => {
+        const filePath =
+            fs.existsSync(path.join(args.runDir, 'bin', `${helloNode.name}`));
         return expect(filePath).to.equal(true);
       });
     });
   });
 
   it('run the built binary', () => {
-    return execAsync(path.join(args.runDir, 'build', helloWorld.name))
+    return execAsync(path.join(args.runDir, 'bin', helloNode.name))
         .then((res) => {
           const results = res.split('\n');
           return expect(results[results.length - 2])
@@ -129,17 +139,17 @@ describe('tmake', function() {
   it('can link to the user local db', () => {
     return loadCache(helloNode)
         .then(() => {return new Build().link(helloNode)})
-        .then(() => { return list('user', {name: helloWorld.name}); })
+        .then(() => { return list('user', {name: helloNode.name}); })
         .then((res) => {
           const msg = JSON.stringify(res, 0, 2);
-          return expect(res[0].name).to.equal(helloWorld.name, msg);
+          return expect(res[0].name).to.equal(helloNode.name, msg);
         });
   });
 
   it('can remove a link from the local db', () => {
-    return list('cache', {name: helloWorld.name})
+    return list('cache', {name: helloNode.name})
         .then(res => unlink(res[0]))
-        .then(() => list('user', {name: helloWorld.name}))
+        .then(() => list('user', {name: helloNode.name}))
         .then(res => expect(res.length).to.not.be.ok);
   });
 });

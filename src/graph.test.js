@@ -4,6 +4,7 @@ import {check} from 'js-object-tools';
 
 import args from '../lib/util/args';
 import {graph} from '../lib/graph';
+import {resolveName} from '../lib/node';
 import file from '../lib/util/file';
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/src/test/hello.yaml'));
@@ -27,22 +28,6 @@ describe('graph', () => {
   });
 
   it('build list puts root dep last (order)', () => {
-    assert.equal(rootModule.name, helloWorld.name);
+    assert.equal(rootModule.name, resolveName(helloWorld));
   });
-
-  it('calculates folder locations', () => {
-    assert.ok(check(rootModule.d, Object));
-  });
-
-  it('install', () => {
-    assert.equal(rootModule.d.includeDirs[0], path.join(args.runDir, 'source'));
-  });
-  // it('dynamic includeDirs', () => {
-  //   return resolve(depB).then(resolved => {
-  //     return expect(resolved.d.includeDirs)
-  //       .to
-  //       .deep
-  //       .equal([path.join(args.runDir, `${testArgv.cachePath}/${helloWorld.name}/testIncludeDir`)]);
-  //   });
-  // });
 });

@@ -6,6 +6,8 @@ import fs from 'fs';
 import {execAsync} from './util/sh';
 import {build as cmake} from './cmake';
 import {build as ninja} from './ninja';
+import {build as make} from './make';
+
 import {iterate, getCommands} from './iterate';
 
 const ignore = [
@@ -60,6 +62,8 @@ function buildWith(node, system) {
       return ninja(node);
     case 'cmake':
       return cmake(node);
+    case 'make':
+      return make(node);
     default:
       throw new Error(`bad build system ${system}`);
   }
@@ -71,13 +75,13 @@ function build(node, isTest) {
   }
   return iterate(getCommands(node.build, ignore), (i) => {
     switch (i.cmd) {
-      default:
-        throw new Error(`no valid cmd in iterable for ${i.cmd}`);
       case 'ninja':
       case 'cmake':
+      case 'make':
         return buildWith(node, i.arg);
       case 'with':
         return buildWith(node, i.arg);
+      default:
       case 'shell':
         return iterate(i.arg, (c) => {
           let lc = check(c, String)

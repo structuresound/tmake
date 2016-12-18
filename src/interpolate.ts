@@ -15,14 +15,21 @@ function defaultLookup(key: string, data: {[index: string]: any}) {
   }
 }
 
-function _interpolate(template: string, func: Function | Object, data?: {[index: string]: any}): string {
+interface Options {
+  [index: string]: any;
+  ref?: { [index: string]: any }
+  mustPass?: boolean
+}
+
+function _interpolate(template: string, func: Function | Object,
+                      opt: Options): string {
   const commands = template.match(/{[^}\r\n]*}/g);
   if (commands) {
     if (commands[0].length ===
         template.length) {  // allow for object replacement of single command
       const res = (<Function>func)(commands[0].slice(1, -1));
       if (check(res, String)) {
-        return _interpolate(res, func, data);
+        return _interpolate(res, func, opt);
       }
       return res || template;
     }
@@ -33,32 +40,29 @@ function _interpolate(template: string, func: Function | Object, data?: {[index:
       if (lookup) {
         modified = true;
         interpolated = interpolated.replace(c, lookup);
-      } else {
-        throw new Error(
-            `error in interpolation, no value for keypath ${c} in ${log.parse(data)}`);
+      } else if (opt.mustPass) {
+        throw new Error(`no value for required keypath ${c} in interpolation stack ${log.parse(opt.ref)}`);
       }
     }
     if (modified) {
-      return _interpolate(interpolated, func, data);
+      return _interpolate(interpolated, func, opt);
     }
   }
   return template;
 }
 
-function interpolate(template: string, funcOrData: Function | Object) {
-  if (!template){
+function interpolate(template: string, funcOrData: Function | Object,
+                     mustPass: boolean) {
+  if (!template) {
     throw new Error(`can't interpolate ${template}`);
   }
   if (!funcOrData) {
     throw new Error(`interpolate function or data ${funcOrData}`);
   }
-  if (check(template, String)) {
-    const func = check(funcOrData, Function) ? funcOrData : (key: string) => {
-      return defaultLookup(key, funcOrData);
-  };
-  return _interpolate(template, func, funcOrData);
-}
-return template;
+  const func = check(funcOrData, Function) ? funcOrData : ((key: string) => {
+    return defaultLookup(key, funcOrData);
+  });
+  return _interpolate(template, func, {ref: funcOrData, mustPass: mustPass});
 }
 
 export default interpolate;

@@ -58,9 +58,7 @@ function configure(node) {
     if (node.cache.configuration === configHash) {
       return Promise.resolve();
     }
-    const hostChain = node
-      .selectToolchain();
-    return fetch(hostChain).then((toolpaths) => {
+    return fetch(node.toolchain).then((toolpaths) => {
       return doConfiguration(node, toolpaths.ninja).then(() => {
         return updateNode(node, {
           $set: {
@@ -73,8 +71,7 @@ function configure(node) {
 
 function build(node) {
   return configure(node).then(() => {
-    const hostChain = node
-      .selectToolchain();
+    const hostChain = node.toolchain;
     return fetch(hostChain).then((toolpaths) => {
       return cmake(node, `${toolpaths.ninja}`);
     });
