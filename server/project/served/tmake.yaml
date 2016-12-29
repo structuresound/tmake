@@ -35,19 +35,18 @@ deps:
   build:
     with: ninja
     sources:
-      matching:
+    - re2/*.cc
+    - util/*.cc
+    linux:
+      sources:
       - re2/*.cc
       - util/*.cc
-      linux:
-        matching:
-        - re2/*.cc
-        - util/*.cc
-        - "!util/threadwin.cc"
-      mac:
-        matching:
-        - re2/*.cc
-        - util/*.cc
-        - "!util/threadwin.cc"
+      - "!util/threadwin.cc"
+    mac:
+      sources:
+      - re2/*.cc
+      - util/*.cc
+      - "!util/threadwin.cc"
     cFlags:
       O3: true
       std: c++11

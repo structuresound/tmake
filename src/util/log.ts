@@ -27,6 +27,7 @@ function getMessage(... args: any[]): string {
 }
 
 class Log {
+  getMessage(... args: any[]): string { return getMessage(args); }
   log(... args: any[]) { console.log(colors.white(getMessage(... args))); }
   verbose(... args: any[]) {
     if (environment.verbose) {
@@ -52,8 +53,7 @@ class Log {
   }
   error(... args: any[]) { console.log(colors.red(getMessage(... args))); }
   throw(... args: any[]) {
-    console.log(colors.magenta(getMessage(... args)));
-    throw new Error('log wants you to stop and look at the magenta message');
+    throw new Error(getMessage(... args));
   }
   parse(... args: any[]) { return getMessage(args); }
 }

@@ -148,7 +148,7 @@ function parse(input: string | MacroObject, dict: any): any {
 // }
 
 interface ReplEntry {
-  inputs: any, matching: any, directive: {
+  inputs: any, sources: any, directive: {
     prepost?: string, pre?: string, post?: string
   }
 }

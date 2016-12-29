@@ -29,7 +29,7 @@ interface BuildSettings {
 interface InstallOptions {
   from: string;
   to?: string;
-  matching?: string[];
+  sources?: string[];
   includeFrom?: string;
 }
 
@@ -48,6 +48,7 @@ interface DirList {
   project: string;
   source: string;
   build: string;
+  test: string;
   install: install_list;
   includeDirs: string[];
 }
@@ -111,6 +112,7 @@ class Configuration {
   git: GitSettings;
   host: Platform;
   target: Platform;
+  test: BuildSettings;
   toolchain: Toolchain;
   environment: any;
   d: DirList;
@@ -340,7 +342,7 @@ function readConfigSync(configDir: string) {
   if (configPath) {
     return parseFileSync(configPath);
   }
-  return {};
+  return undefined;
 };
 
 function unarchive(archive: string, tempDir: string, toDir: string,

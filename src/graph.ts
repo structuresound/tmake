@@ -1,8 +1,8 @@
 import * as _ from 'lodash';
 import * as Promise from 'bluebird';
+import * as file from './util/file';
 import {DepGraph} from 'dependency-graph';
 import {diff, check} from 'js-object-tools';
-import file from './util/file';
 import log from './util/log';
 import args from './util/args';
 import {iterable} from './iterate';
@@ -19,8 +19,8 @@ function loadCache(node: Node): Promise<Node> {
       });
 }
 
-function createNode(dep: file.Configuration, parent?: Node): Promise<Node> {
-  const node = new Node(dep, parent);
+function createNode(_conf: file.Configuration, parent?: Node): Promise<Node> {
+  const node = new Node(_conf, parent);
   return loadCache(node);
 }
 
@@ -33,11 +33,9 @@ function graphNode(_conf: file.Configuration, parent: Node, graph: DepGraph,
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link);
-    const configPath = file.configExists(configDir);
-    if (configPath) {
-      log.verbose(`load config from linked directory ${configPath}`);
-      const rawConfig = file.readConfigSync(configPath);
-      conf = <file.Configuration>diff.combine(rawConfig, conf);
+    const linkedConfig = file.readConfigSync(configDir);
+    if (linkedConfig) {
+      conf = <file.Configuration>diff.combine(linkedConfig, conf);
     }
   }
   return createNode(conf, parent)

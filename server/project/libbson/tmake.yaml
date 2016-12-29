@@ -7,8 +7,8 @@ configure:
       path: src/bson/bson-stdint.h
       string: "#include <stdint.h>"
   replace:
-    files:
-      matching:
+    config:
+      sources:
       - src/bson/bson-config.h.in
       - src/bson/bson-version.h.in
       inputs:
@@ -41,7 +41,7 @@ configure:
         prepost: "@"
       ext: "h"
     include_bson:
-      matching:
+      sources:
       - src/**/*.h
       - src/**/*.c
       inputs:
@@ -52,7 +52,7 @@ configure:
         - '#include <bcon.h>'
         - '#include <libbson-1.0/bcon.h>'
     include_bson_compat:
-      matching:
+      sources:
       - src/yajl/*.h
       - src/yajl/*.c
       inputs:
@@ -62,9 +62,8 @@ configure:
 build:
   with: ninja
   sources:
-    matching:
-    - src/bson/**.c
-    - src/yajl/**.c
+  - src/bson/**.c
+  - src/yajl/**.c
   cFlags:
     DBSON_COMPILATION: true
     O3: true

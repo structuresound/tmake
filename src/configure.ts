@@ -28,28 +28,27 @@ function copy(patterns: string[], options: file.CopyOptions): Promise<any> {
   const filePaths: string[] = [];
   return file
       .wait(file.src(patterns, {cwd: options.from, followSymlinks: false})
-                .pipe(file.map(
-                    (data: file.VinylFile, callback: Function) =>
-                    {
-                      const mutable = data;
-                      log.verbose(
-                          `+ ${path.relative(mutable.cwd, mutable.path)}`);
-                      if (options.flatten) {
-                        mutable.base = path.dirname(mutable.path);
-                      }
-                      const newPath =
-                          path.join(options.to,
-                                    path.relative(mutable.base, mutable.path));
-                      filePaths.push(path.relative(options.relative, newPath));
-                      return callback(null, file);
-                    }))
+                .pipe(file.map((data: file.VinylFile, callback: Function) =>
+                               {
+                                 const mutable = data;
+                                 log.verbose(`+ ${path.relative(mutable.cwd, mutable.path)}`);
+                                 if (options.flatten) {
+                                   mutable.base = path.dirname(mutable.path);
+                                 }
+                                 const newPath = path.join(
+                                     options.to,
+                                     path.relative(mutable.base, mutable.path));
+                                 filePaths.push(
+                                     path.relative(options.relative, newPath));
+                                 return callback(null, file);
+                               }))
                 .pipe(file.dest(options.to)))
       .then(() => { return Promise.resolve(filePaths); });
 }
 
 function globHeaders(node: Node): Promise<any> {
   const patterns = node.globArray(
-      node.configuration.headers ? node.configuration.headers.matching : [
+      node.configuration.headers ? node.configuration.headers : [
         '**/*.h',
         '**/*.hpp',
         '**/*.ipp',
@@ -68,7 +67,7 @@ function globHeaders(node: Node): Promise<any> {
 function globSources(node: Node): Promise<any> {
   const patterns = node.globArray(
       node.configuration.sources ?
-          node.configuration.sources.matching :
+          node.configuration.sources :
           ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']);
   return file.glob(patterns, node.d.project, node.d.source);
 }
@@ -82,7 +81,7 @@ function globFiles(node: Node): Promise<any> {
             })
       .then((sources) =>
             {
-              node.configuration.sources = sources;
+              node.s = sources;
               return deps(node);
             })
       .then((depGraph) => {
@@ -169,8 +168,7 @@ function reportStale(node: Node, current: string) {
     log.error(`hash ${node.cache.url} is stale, now ${urlHash}`);
     log.error(`url ${node.cache.debug.url} is stale, now ${url}`);
   } else {
-    log.error(
-        `${node.name} configuration ${node.cache.metaConfiguration} is stale, now ${current}`);
+    log.error(`${node.name} configuration ${node.cache.metaConfiguration} is stale, now ${current}`);
     log.error(node.cache.debug.metaConfiguration)
         log.add(node.configuration.serialize());
   }
@@ -221,7 +219,7 @@ function configure(node: Node, isTest: boolean): Promise<any> {
                 case 'replace':
                   return Promise.each(
                       iterable(i.arg), (replEntry: ReplEntry) => {
-                        const pattern = node.globArray(replEntry.matching);
+                        const pattern = node.globArray(replEntry.sources);
                         return file.glob(pattern, undefined, node.d.source)
                             .then((files: string[]): Promise<any >=> {
                               return Promise.each(files, (file) => {
@@ -243,16 +241,16 @@ function configure(node: Node, isTest: boolean): Promise<any> {
                 case 'copy':
                   return Promise.each(
                       diff.arrayify(i.arg),
-                      (e: {from: string, matching: string[], to: string}) => {
+                      (e: {from: string, sources: string[], to: string}) => {
                         log.quiet(`copy ${e}`);
                         const fromDir = node.pathSetting(e.from);
                         return copy(
-                            e.matching,
+                            e.sources,
                             {from: fromDir, to: node.pathSetting(e.to)});
                       });
               }
             })
-        .then((): Promise<any>=> {
+        .then((): Promise<any >=> {
           return updateNode(node, {
             $set: {
               'cache.metaConfiguration': node.configHash(),
@@ -261,8 +259,7 @@ function configure(node: Node, isTest: boolean): Promise<any> {
           });
         });
   }
-  log.verbose(
-      `configuration is current, use --force=${node.name} if you suspect the cache is stale`);
+  log.verbose(`configuration is current, use --force=${node.name} if you suspect the cache is stale`);
   return Promise.resolve(node);
 }
 
@@ -275,4 +272,4 @@ function destroy(node: Node): Promise<any> {
   });
 }
 
-export {isStale, configure, destroy};
+export {isStale, configure, destroy, getBuildFile};

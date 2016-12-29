@@ -5,7 +5,7 @@ import {diff, check} from 'js-object-tools';
 import * as file from './util/file';
 import {startsWith} from './util/string';
 import {jsonStableHash} from './util/hash';
-import {getCommands} from './iterate';
+import {getCommands, ignore} from './iterate';
 import {Node} from './node';
 
 
@@ -59,7 +59,8 @@ function jsonToFrameworks(object: any) {
       if (fs.existsSync(`/System/Library/Frameworks/${key}.framework`)) {
         flags.push(`/System/Library/Frameworks/${key}.framework/${key}`);
       } else {
-        throw new Error(`can't find framework ${key}.framework in /System/Library/Frameworks`);
+        throw new Error(
+            `can't find framework ${key}.framework in /System/Library/Frameworks`);
       }
     }
   }
@@ -71,7 +72,7 @@ function _jsonToFlags(object: any, options: any) {
   _.each(object, (opt: any, key: string) => {
     if (opt) {
       if ((typeof opt === 'string') || check(opt, Number)) {
-        let {join} = options;
+        let{join} = options;
         if (typeof opt === 'string') {
           if (startsWith(opt, ' ')) {
             join = '';
@@ -96,10 +97,7 @@ function _jsonToFlags(object: any, options: any) {
 }
 
 function jsonToFlags(object: any, options?: any) {
-  const defaultOptions = {
-    prefix: '-',
-    join: '='
-  };
+  const defaultOptions = {prefix: '-', join: '='};
   if (options) {
     _.extend(defaultOptions, options);
   }
@@ -126,51 +124,21 @@ const stdCompilerFlags = {
 
 const stdCxxFlags = {
   O: 2,
-  mac: {
-    std: 'c++11',
-    stdlib: 'libc++'
-  },
-  linux: {
-    std: 'c++0x',
-    pthread: true
-  }
+  mac: {std: 'c++11', stdlib: 'libc++'},
+  linux: {std: 'c++0x', pthread: true}
 };
 
-const stdFrameworks = {
-  mac: {
-    CoreFoundation: true
-  }
-};
+const stdFrameworks = {mac: {CoreFoundation: true}};
 
 const stdLinkerFlags = {
   // static: true
-  linux: {
-    'lstdc++': true,
-    lpthread: true
-  },
-  mac: {
-    'lc++': true
-  }
+  linux: {'lstdc++': true, lpthread: true},
+  mac: {'lc++': true}
 };
-
-const ignore = [
-  'linkerFlags',
-  'cFlags',
-  'cxxFlags',
-  'compilerFlags',
-  'defines',
-  'frameworks',
-  'sources',
-  'headers',
-  'libs',
-  'includeDirs',
-  'outputFile',
-  'cache'
-];
 
 interface CmdObj {
   cmd: string;
-  arg: any;
+  arg?: any;
   cwd?: string;
 }
 
@@ -179,8 +147,8 @@ class Configuration {
   includeDirs: string[];
   cc: string;
   libs: string[];
-  sources: any;
   headers: any;
+  sources:  string[];
 
   constructor(node: Node, configuration: file.BuildSettings) {
     if (!configuration) {
@@ -195,38 +163,26 @@ class Configuration {
       compilerFlags: _.extend(node.select(stdCompilerFlags), compilerFlags),
       linkerFlags: _.extend(node.select(stdLinkerFlags), linkerFlags),
       cxxFlags: _.extend(node.select(stdCxxFlags), cxxFlags),
-      cFlags: _.omit(_.extend(node.select(stdCxxFlags), cFlags), ['std', 'stdlib']),
+      cFlags: _.omit(_.extend(node.select(stdCxxFlags), cFlags),
+                     ['std', 'stdlib']),
       frameworks: node.select(c.frameworks || stdFrameworks || {})
     };
-    diff.extend(this, _.omit(c, ['cFlags', 'cxxFlags', 'linkerFlags', 'compilerFlags']));
+    diff.extend(
+        this,
+        _.omit(c, ['cFlags', 'cxxFlags', 'linkerFlags', 'compilerFlags']));
   }
-  frameworks() {
-    return jsonToFrameworks(this.cache.frameworks);
-  }
-  cFlags() {
-    return jsonToCFlags(this.cache.cFlags);
-  }
-  cxxFlags() {
-    return jsonToCFlags(this.cache.cxxFlags);
-  }
-  linkerFlags() {
-    return jsonToFlags(this.cache.linkerFlags);
-  }
-  compilerFlags() {
-    return jsonToFlags(this.cache.compilerFlags, { join: ' ' });
-  }
-  safe() {
-    return JSON.parse(JSON.stringify(this));
-  }
+  frameworks() { return jsonToFrameworks(this.cache.frameworks); }
+  cFlags() { return jsonToCFlags(this.cache.cFlags); }
+  cxxFlags() { return jsonToCFlags(this.cache.cxxFlags); }
+  linkerFlags() { return jsonToFlags(this.cache.linkerFlags); }
+  compilerFlags() { return jsonToFlags(this.cache.compilerFlags, {join: ' '}); }
+  safe() { return JSON.parse(JSON.stringify(this)); }
   serialize() {
-    return _.omit(this.safe(), ['cache', 'includeDirs', 'cc', 'libs', 'source', 'headers']);
+    return _.omit(this.safe(),
+                  ['cache', 'includeDirs', 'cc', 'libs', 'headers']);
   }
-  hash() {
-    return jsonStableHash(this.serialize());
-  }
-  getCommands(): CmdObj[] {
-    return getCommands(this.safe(), ignore);
-  }
+  hash() { return jsonStableHash(this.serialize()); }
+  getCommands(): CmdObj[] { return getCommands(this.safe(), ignore); }
 }
 
 export {Configuration, jsonToCFlags, CmdObj};

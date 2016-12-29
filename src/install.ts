@@ -86,7 +86,7 @@ function bin(node: Node) {
 function assets(node: Node) {
   if (node.d.install.assets) {
     return Promise.map(node.d.install.assets, (ft: file.InstallOptions) => {
-      const patterns = ft.matching || ['**/*.*'];
+      const patterns = ft.sources || ['**/*.*'];
       log.verbose(`[ install assets ] from ${ft.from} to ${ft.to}`);
       return copy(patterns, ft.from, ft.to, {
         flatten: false,
@@ -109,9 +109,9 @@ function libs(node: Node) {
     'static', 'dynamic'
   ], node.outputType)) {
     return Promise.map(node.d.install.libraries, (ft) => {
-      let patterns = ft.matching || ['*.a'];
+      let patterns = ft.sources || ['*.a'];
       if (node.outputType === 'dynamic') {
-        patterns = ft.matching || ['*.dylib', '*.so', '*.dll'];
+        patterns = ft.sources || ['*.dylib', '*.so', '*.dll'];
       }
       log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
       return symlink(patterns, ft.from, ft.to, {
@@ -142,9 +142,9 @@ function headers(node: Node) {
     'static', 'dynamic'
   ], node.outputType)) {
     return Promise.each(node.d.install.headers, (ft) => {
-      const patterns = ft.matching || ['**/*.h', '**/*.hpp', '**/*.ipp'];
+      const patterns = ft.sources || ['**/*.h', '**/*.hpp', '**/*.ipp'];
       if (args.verbose) {
-        log.add('[ install headers ] matching', patterns, '\nfrom', ft.from, '\nto', ft.to);
+        log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', ft.to);
       }
       return symlink(patterns, ft.from, ft.to, {
         flatten: false,

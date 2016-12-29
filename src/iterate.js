@@ -2,6 +2,21 @@ import _ from 'lodash';
 import {diff, check} from 'js-object-tools';
 import Promise from 'bluebird';
 
+const ignore = [
+  'linkerFlags',
+  'cFlags',
+  'cxxFlags',
+  'compilerFlags',
+  'defines',
+  'frameworks',
+  'sources',
+  'headers',
+  'libs',
+  'includeDirs',
+  'outputFile',
+  'cache'
+];
+
 function iterable(val) {
   if (check(val, Array)) {
     return val;
@@ -34,4 +49,4 @@ function iterate(obj, fn) {
   return Promise.each(it, fn);
 }
 
-export {iterable, iterate, getCommands};
+export {iterable, iterate, getCommands, ignore};

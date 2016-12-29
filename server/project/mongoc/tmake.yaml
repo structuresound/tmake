@@ -4,7 +4,7 @@ git:
 configure:
   replace:
     files:
-      matching:
+      sources:
       - src/mongoc/mongoc-config.h.in
       - src/mongoc/mongoc-version.h.in
       inputs:
@@ -32,7 +32,7 @@ configure:
         prepost: "@"
       ext: "h"
     include_bson:
-      matching:
+      sources:
       - src/**/*.h
       - src/**/*.c
       inputs:
@@ -48,15 +48,14 @@ configure:
 build:
   with: ninja
   sources:
-    matching:
-    - src/mongoc/*.c
-    - "!src/mongoc/mongoc-rand-cng.c"
-    - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"
-    - "!src/mongoc/mongoc-crypto-cng.c"
-    - "!src/mongoc/mongoc-secure-channel.c"
-    - "!src/mongoc/mongoc-secure-transport"
-    - "!src/mongoc/mongoc-crypto-common-crypto"
-    - "!src/mongoc/mongoc-rand-common-crypto"
+  - src/mongoc/*.c
+  - "!src/mongoc/mongoc-rand-cng.c"
+  - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"
+  - "!src/mongoc/mongoc-crypto-cng.c"
+  - "!src/mongoc/mongoc-secure-channel.c"
+  - "!src/mongoc/mongoc-secure-transport"
+  - "!src/mongoc/mongoc-crypto-common-crypto"
+  - "!src/mongoc/mongoc-rand-common-crypto"
   cFlags:
     DMONGOC_COMPILATION: true
     D_GNU_SOURCE: true

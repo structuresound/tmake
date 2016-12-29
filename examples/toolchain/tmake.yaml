@@ -1,0 +1,15 @@
+host:
+  ninja:
+    url: https://github.com/ninja-build/ninja/releases/download/v1.6.0/ninja-{HOST_PLATFORM}.zip
+  cc:
+    'mac ios':
+      url: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz
+      signature: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz.sig
+    linux:
+      ubuntu:
+        14:
+          url: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz.sig
+          signature: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz.sig
+        16:
+          url: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
+          signature: http://llvm.org/releases/3.9.0/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz.sig

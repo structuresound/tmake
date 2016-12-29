@@ -10,6 +10,7 @@ import args from './util/args';
 import {Configuration} from './configuration';
 import {parse, absolutePath, pathArray} from './parse';
 import {jsonStableHash, stringHash} from './util/hash';
+import {ignore as nonIterables} from './iterate';
 
 interface Settings {
   [index: string]: string;
@@ -120,14 +121,14 @@ function getAbsolutePaths(node: Node): file.DirList {
   d.install = <file.install_list>{
     binaries: _.map(diff.arrayify(pathOptions.install.binaries), (ft: file.InstallOptions) => {
       return {
-        matching: ft.matching,
+        sources: ft.sources,
         from: path.join(d.root, ft.from),
         to: path.join(d.root, (ft.to || 'bin'))
       };
 }),
     headers: _.map(diff.arrayify(pathOptions.install.headers), (ft: file.InstallOptions) => {
   return {
-    matching: ft.matching,
+    sources: ft.sources,
     from: path.join(d.root, ft.from),
     to: path.join(d.home, (ft.to || 'include')),
     includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
@@ -135,7 +136,7 @@ function getAbsolutePaths(node: Node): file.DirList {
     }),
     libraries: _.map(diff.arrayify(pathOptions.install.libraries), (ft: file.InstallOptions) => {
   return {
-    matching: ft.matching,
+    sources: ft.sources,
     from: path.join(d.root, ft.from),
     to: path.join(d.home, (ft.to || 'lib'))
   };
@@ -147,7 +148,7 @@ if (pathOptions.install.assets) {
   d.install.assets = _.map(diff.arrayify(pathOptions.install.assets),
                            (ft: file.InstallOptions) => {
                              return {
-                               matching: ft.matching,
+                               sources: ft.sources,
                                from: path.join(d.root, ft.from),
                                to: path.join(d.root, (ft.to || 'bin'))
                              };
@@ -225,7 +226,7 @@ function resolveName(conf: file.Configuration): string {
       return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
     }
   }
-  throw new Error('resolveName() failed');
+  throw new Error(`resolveName() failed on module ${JSON.stringify(conf, [], 2)}`);
 }
 
 function mergeNodes(a: any, b: any) {
@@ -279,11 +280,12 @@ class Node extends file.Configuration {
   _conf: file.Configuration;
   configuration: Configuration;
   libs: string[];
+  s: string[];
   selectors: string[];
 
   constructor(_conf: file.Configuration, parent: Node) {
     super();
-    // load conf, extend if link
+    // load conf
     if (!_conf) {
       throw new Error('constructing node with undefined configuration');
     }
@@ -335,7 +337,7 @@ class Node extends file.Configuration {
     const mainOperations = _.pick(mutable, ['configure', 'build']);
     diff.extend(this, this.select(mainOperations));
     this.configuration = new Configuration(
-        this, <file.BuildSettings>diff.combine(_.pick(this.build, ['with']),
+        this, <file.BuildSettings>diff.combine(_.pick(this.build, ['with'].concat(nonIterables)),
                                                this.configure || {}));
     // Overrides
     if (parent) {
@@ -426,7 +428,7 @@ class Node extends file.Configuration {
   }
   safe(stripDeps?: boolean): file.Configuration {
     const plain = <file.Configuration>_.omit(
-        diff.plain(this), ['_id', 'configuration', 'cache', 'd', 'p']);
+        diff.plain(this), ['_id', 'configuration', 'cache', 'd', 'p', 's']);
     if (plain.deps && stripDeps) {
       plain.deps =
           <file.Configuration[]>_.map(plain.deps, (d: file.Configuration) => {

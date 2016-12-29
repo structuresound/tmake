@@ -63,9 +63,7 @@ const testObjB = {
   build: {
     with: 'error A',
     'mac, ios': {
-      sources: {
-        matching: ['apple.c']
-      }
+      sources: ['apple.c']
     },
     'mac': {
       with: 'cmake'
@@ -109,18 +107,14 @@ const testBExpected = [
     other: 'setting',
     build: {
       with: 'ninja',
-      sources: {
-        matching: ['apple.c']
-      }
+      sources: ['apple.c']
     }
   }, {
     flag: true,
     other: 'setting',
     build: {
       with: 'cmake',
-      sources: {
-        matching: ['apple.c']
-      }
+      sources: ['apple.c']
     }
   }, {
     build: {

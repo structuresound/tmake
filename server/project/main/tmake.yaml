@@ -7,5 +7,5 @@ build:
       ldl: true
   with: ninja
 deps:
-- link: ../mongoc
+- link: ../mongocxx
 - link: ../served

@@ -102,7 +102,7 @@ function generate(node: Node, fileName: string): void {
     .run(linkCommand)
     .description(linkCommand);
 
-  const linkNames = _.map(node.configuration.sources, (filePath: string) => {
+  const linkNames = _.map(node.s, (filePath: string) => {
     // console.log 'process source file', filePath
     const dir = path.dirname(filePath);
     const relative = path.relative(node.p.clone, dir);

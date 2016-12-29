@@ -9,7 +9,7 @@ import log from './util/log';
 import args from './util/args';
 import * as file from './util/file';
 import {execute, list, unlink, push, parse} from './tmake';
-import {cache as db} from './db';
+import {cache, user} from './db';
 import {graph, createNode} from './graph';
 
 import {resolveName} from './node';
@@ -98,7 +98,7 @@ function commands(): Commands {
         `link the current or specified ${c.y('package')} to your local package repository`),
     unlink: packageCommand(
         `remove the current or specified ${c.y('package')} from your local package repository`),
-    // clean: packageCommand(`clean project, ${c.y('package')}, or 'all'`),
+    // clean: packageCommand(`clean ${c.y('package')}, or 'all'`),
     reset: {description: 'nuke the cache'},
     nuke: {description: 'nuke the cache'},
     parse: packageCommand(`parse project, ${c.y('setting')}, or 'package'`),
@@ -111,7 +111,7 @@ function commands(): Commands {
 
 function parseOptions(cmd: string) {
   if (!commands()[cmd]) {
-    throw new Error('unknown command');
+    throw new Error(`unknown command ${cmd}`);
   }
   return commands()[cmd];
 }
@@ -155,23 +155,19 @@ function createPackage() {
 
 function tmake(rootConfig: file.Configuration,
                positionalArgs = args._): Promise<any> {
+  cache.loadDatabase();
+  user.loadDatabase();
   const resolvedName =
       positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
 
   switch (positionalArgs[0]) {
     case 'rm':
-      return db.remove({name: resolvedName})
+      return cache.remove({name: resolvedName})
           .then(() => log.quiet(`cleared cache for ${resolvedName}`));
-    case 'reset':
-    case 'nuke':
-      file.nuke(path.join(args.runDir, 'bin'));
-      file.nuke(path.join(args.runDir, 'build'));
-      file.nuke(path.join(args.runDir, args.cachePath));
-      log.quiet(`rm -R bin build ${args.cachePath}`);
     case 'link':
       return execute(rootConfig, 'link');
     case 'unlink':
-      return db.findOne({name: resolvedName})
+      return cache.findOne({name: resolvedName})
           .then((dep: file.Configuration) => unlink(dep || rootConfig));
     case 'push':
       return execute(rootConfig, 'push');
@@ -192,10 +188,6 @@ function tmake(rootConfig: file.Configuration,
       return execute(rootConfig, 'install');
     case 'all':
       return execute(rootConfig, 'install');
-    case 'example':
-    case 'init':
-      log.error(
-          `there's already a ${args.program} project file in this directory`);
     case 'ls':
     case 'list':
       return ((): Promise<file.Configuration[] >=> {
@@ -207,10 +199,8 @@ function tmake(rootConfig: file.Configuration,
                return list('cache', {});
              })().then(nodes => log.info(nodes));
     default:
-      log.quiet(manual());
+      throw new Error(`unknown command ${positionalArgs[0]}`);
   }
-
-  return Promise.resolve();
 }
 
 function init(): any {
@@ -225,49 +215,74 @@ function init(): any {
 }
 
 function run() {
-  return file.readConfigAsync(args.runDir)
-      .then((config) => {
-        if (check(config, Error)) {
-          throw config;  // as Error
-        }
-        if (args._[0] == null) {
-          args._[0] = 'all';
-        }
-        if (config) {
-          const cmd = args._[0];
-          if (!check(cmd, String)) {
-            console.log(manual());
-            return 1;
-          }
-          if (!check(args._[1], parseOptions(cmd).type)) {
-            console.log(usage(cmd));
-            return 2;
-          }
-          return tmake(config).catch((e: Error) => { log.error(e, e.stack); });
-          ;
-        }
+  if (args._[0] == null) {
+    args._[0] = 'all';
+  }
+  switch (args._[0]) {
+    case 'help':
+    case 'man':
+    case 'manual':
+      log.log(manual());
+      return;
+    default:
+      return file.readConfigAsync(args.runDir)
+          .then(
+              (config) =>
+              {
+                if (check(config, Error)) {
+                  throw config;  // as Error
+                }
+                if (config) {
+                  const cmd = args._[0];
+                  if (!check(cmd, String)) {
+                    log.quiet(manual());
+                  }
+                  switch (args._[0]) {
+                    case 'example':
+                    case 'init':
+                      log.error(
+                          `there's already a ${args.program} project file in this directory`);
+                      return;
+                    case 'reset':
+                    case 'nuke':
+                      file.nuke(path.join(args.runDir, 'bin'));
+                      file.nuke(path.join(args.runDir, 'build'));
+                      file.nuke(path.join(args.runDir, args.cachePath));
+                      log.quiet(`rm -R bin build ${args.cachePath}`);
+                      return;
+                    default:
+                      if (!check(args._[1], parseOptions(cmd).type)) {
+                        log.quiet(usage(cmd));
+                      }
+                      return tmake(config);
+                  }
+                }
 
-        // No config present
+                // No config present
 
-        const example = args._[1] || 'served';
-        const examplePath = path.join(args.npmDir, `examples/${example}`);
-        const targetFolder = args._[2] || example;
+                const example = args._[1] || 'served';
+                const examplePath =
+                    path.join(args.npmDir, `examples/${example}`);
+                const targetFolder = args._[2] || example;
 
-        switch (args._[0]) {
-          case 'init':
-            return init();
-          case 'example':
-            log.quiet(`copy from ${example} to ${targetFolder}`, 'magenta');
-            return file.src(['**/*'], {cwd: examplePath})
-                .pipe(file.dest(path.join(args.runDir, targetFolder)));
-          case 'help':
-          case 'man':
-          case 'manual':
-            console.log(manual());
-          default:
-            console.log(hello());
-        }
-      });
+                switch (args._[0]) {
+                  case 'init':
+                    return init();
+                  case 'example':
+                    log.quiet(`copy from ${example} to ${targetFolder}`,
+                              'magenta');
+                    return file.src(['**/*'], {cwd: examplePath})
+                        .pipe(file.dest(path.join(args.runDir, targetFolder)));
+                  default:
+                    log.log(hello());
+                }
+                return Promise.resolve();
+              })
+          .catch((e: Error) => {
+            if (args.verbose) log.error(e.stack);
+            else log.error(e);
+          });
+  }
 }
 
 function hello() {

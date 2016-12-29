@@ -39,8 +39,6 @@ if (!args.runDir) {
 const npmDir = path.join(path.dirname(fs.realpathSync(__filename)), '../../');
 const binDir = path.join(npmDir, 'bin');
 
-console.log('binDir', binDir);
-
 if (!args.binDir) {
   args.binDir = binDir;
 }

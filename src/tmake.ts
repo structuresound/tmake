@@ -163,13 +163,9 @@ function cleanDep(node: Node) {
       fs.unlinkSync(libFile);
     }
   });
-  file.prune(node.d.root);
   const modifier: NodeModifier = {
     $unset: {
-      'cache.configuration': true,
-      'cache.metaConfiguration': true,
-      'cache.libs': true,
-      'cache.bin': true
+      cache: true
     }
   };
   // const preserve = ['_id', 'cache', 'name'];
@@ -194,7 +190,7 @@ function cleanDep(node: Node) {
               }
             }
           } catch (err) {
-            log.error(err(colors.yellow(err.message || err)));
+            log.error(err.message || err);
           }
           return updateNode(node, unsetter);
         }

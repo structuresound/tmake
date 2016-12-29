@@ -15,11 +15,11 @@ describe('file', () => {
         expect(config.git.repository)
           .to
           .equal('mongodb/libbson');
-        expect(config.build.sources.matching.length)
+        expect(config.build.sources.length)
           .to
           .not
           .equal(0);
-        return expect(config.build.sources.matching[0])
+        return expect(config.build.sources[0])
           .to
           .equal('src/bson/**.c');
       });

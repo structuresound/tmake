@@ -28,6 +28,7 @@ interface $Set {
 
 interface $Unset {
   libs?: boolean;
+  cache?: boolean;
   'cache.configuration'?: boolean;
   'cache.metaConfiguration'?: boolean;
   'cache.url'?: boolean;
@@ -51,7 +52,9 @@ interface NodeModifier {
 
 let cacheDbPath: string;
 
-if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
+const testMode =
+    ((process.env.NODE_ENV === 'test') || process.env.LOADED_MOCHA_OPTS);
+if (testMode) {
   cacheDbPath = path.join(args.userCache, 'cache.db');
   if (fs.existsSync(cacheDbPath)) {
     fs.unlinkSync(cacheDbPath);
@@ -63,8 +66,8 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
 
 const userDbPath: string = `${args.userCache}/packages.db`;
 
-const cache = new Datastore({filename: cacheDbPath, autoload: true});
-const user = new Datastore({filename: userDbPath, autoload: true});
+const cache = new Datastore({filename: cacheDbPath, autoload: testMode});
+const user = new Datastore({filename: userDbPath, autoload: testMode});
 
 function updateNode(node: Node, modifier: NodeModifier) {
   diff.apply(node, modifier);
