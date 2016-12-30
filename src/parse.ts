@@ -1,23 +1,24 @@
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import {check, diff} from 'js-object-tools';
+import { check, diff } from 'js-object-tools';
 
-import {replaceAll, startsWith} from './util/string';
+import { replaceAll, startsWith } from './util/string';
 import log from './util/log';
-import {exec} from './util/sh';
+import { exec } from './util/sh';
 import interpolate from './interpolate';
 import * as file from './util/file';
 import args from './util/args';
 
-function absolutePath(s: string) {
+function absolutePath(s: string, relative?: string) {
   if (!check(s, String)) {
     throw new Error(`${s} is not a string`);
   }
   if (startsWith(s, '/')) {
     return s;
   }
-  return path.join(args.runDir, s);
+  const dir: string = relative || args.runDir;
+  return path.join(dir, s);
 }
 
 function fullPath(p: string, root: string) {
@@ -31,25 +32,26 @@ function pathArray(val: string | string[], root: string): string[] {
   return _.map(diff.arrayify(val), (v) => { return fullPath(v, root); });
 }
 
-const shellCache: {[index: string]: string} = {};
-const shellReplace = (m: string) => {if (shellCache[m] !== undefined) {
-  //  log.debug('cached..', m, '->', cache[m]);
-  return shellCache[m];
-} const commands = m.match(/\$\([^)\r\n]*\)/g);
-if (commands) {
-  let interpolated = m;
-  for (const c of commands) {
-    const cmd = c.slice(2, -1);
-    //  log.debug('command..', cmd);
-    interpolated = interpolated.replace(c, exec(cmd, {silent: true}));
+const shellCache: { [index: string]: string } = {};
+const shellReplace = (m: string) => {
+  if (shellCache[m] !== undefined) {
+    //  log.debug('cached..', m, '->', cache[m]);
+    return shellCache[m];
+  } const commands = m.match(/\$\([^)\r\n]*\)/g);
+  if (commands) {
+    let interpolated = m;
+    for (const c of commands) {
+      const cmd = c.slice(2, -1);
+      //  log.debug('command..', cmd);
+      interpolated = interpolated.replace(c, exec(cmd, { silent: true }));
+    }
+    //  log.debug('cache..', interpolated, '-> cache');
+    shellCache[m] = interpolated;
+    return shellCache[m];
   }
-  //  log.debug('cache..', interpolated, '-> cache');
-  shellCache[m] = interpolated;
-  return shellCache[m];
+  return m;
 }
-return m;
-}
-;
+  ;
 
 interface MacroObject {
   macro: string, map: { [index: string]: string }
@@ -79,7 +81,7 @@ function replace(m: any, conf?: Object) {
   return out || m;
 }
 
-function allStrings(o: {[index: string]: any}, fn: Function) {
+function allStrings(o: { [index: string]: any }, fn: Function) {
   const mut = o;
   for (const k of Object.keys(mut)) {
     if (check(mut[k], String)) {
@@ -100,7 +102,7 @@ function parseString(val: string, conf: Object, mustPass?: boolean) {
 }
 
 function _parse(input: string | MacroObject, dict: any,
-                localContext?: Object): any {
+  localContext?: Object): any {
   let parsed = input;
   if (check(input, String)) {
     if (localContext) {
@@ -177,8 +179,8 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     }
     if (args.verbose) {
       if ((<any>stringFile)
-              .includes(
-                  parsedKey)) {  // https://github.com/Microsoft/TypeScript/issues/3920
+        .includes(
+        parsedKey)) {  // https://github.com/Microsoft/TypeScript/issues/3920
         log.add(`[ replace ] ${parsedKey} : ${parsedVal}`);
       }
     }
@@ -215,9 +217,9 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     } else {
       log.error('overwrite file', newPath);
     }
-    return file.writeFileAsync(newPath, stringFile, {encoding: 'utf8'});
+    return file.writeFileAsync(newPath, stringFile, { encoding: 'utf8' });
   }
   return Promise.resolve();
 }
 
-export {parse, absolutePath, pathArray, fullPath, replaceInFile, ReplEntry};
+export { parse, absolutePath, pathArray, fullPath, replaceInFile, ReplEntry };

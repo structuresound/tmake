@@ -1,0 +1,17 @@
+ninja_required_version = 1.6.0
+builddir=build
+rule c
+  command = gcc  -MMD -MF $out.d -O2 -c $in -o $out -I/Users/leif/tmake/tmake/server/project/trie_modules/include -I/Users/leif/tmake/tmake/server/project/source
+  description = gcc  -MMD -MF $out.d -O2 -c $in -o $out -I/Users/leif/tmake/tmake/server/project/trie_modules/include -I/Users/leif/tmake/tmake/server/project/source
+  depfile = $out.d
+  deps = gcc
+rule cxx
+  command = gcc  -MMD -MF $out.d -std=c++11 -stdlib=libc++ -O2 -c $in -o $out -I/Users/leif/tmake/tmake/server/project/trie_modules/include -I/Users/leif/tmake/tmake/server/project/source
+  description = gcc  -MMD -MF $out.d -std=c++11 -stdlib=libc++ -O2 -c $in -o $out -I/Users/leif/tmake/tmake/server/project/trie_modules/include -I/Users/leif/tmake/tmake/server/project/source
+  depfile = $out.d
+  deps = gcc
+rule link
+  command = gcc -o $out $in /Users/leif/tmake/tmake/server/project/trie_modules/lib/libserved.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libre2.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libboost_system.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libmongo-cxx-driver.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libmongoc-1.0.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libssl.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libcrypto.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libbson-1.0.a -lc++
+  description = gcc -o $out $in /Users/leif/tmake/tmake/server/project/trie_modules/lib/libserved.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libre2.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libboost_system.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libmongo-cxx-driver.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libmongoc-1.0.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libssl.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libcrypto.a /Users/leif/tmake/tmake/server/project/trie_modules/lib/libbson-1.0.a -lc++
+build build/served.o: cxx source/served.cpp
+build build/tmake_server: link build/served.o

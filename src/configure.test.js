@@ -1,11 +1,10 @@
 import {expect, assert} from 'chai';
 import path from 'path';
 import fs from 'fs';
-import {check} from 'js-object-tools';
 import file from '../lib/util/file';
 import args from '../lib/util/args';
 
-import {createNode, graph} from '../lib/graph';
+import {graph} from '../lib/graph';
 import {fetch} from '../lib/fetch';
 import {configure} from '../lib/configure';
 

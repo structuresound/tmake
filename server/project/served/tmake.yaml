@@ -19,7 +19,7 @@ configure:
 build:
   with: cmake
 deps:
-- git: boostorg/asio
+- link: ../boost
 - git:
     repository: google/re2
     archive: "2016-10-01"

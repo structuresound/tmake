@@ -6,11 +6,11 @@ import * as path from 'path';
 import * as CSON from 'cson';
 import map = require('map-stream');
 import globAll = require('glob-all');
-import {check} from 'js-object-tools';
-import {src as _src, dest, symlink} from 'vinyl-fs';
+import { check } from 'js-object-tools';
+import { src as _src, dest, symlink } from 'vinyl-fs';
 
 import _unarchive from './archive';
-import {startsWith} from './string';
+import { startsWith } from './string';
 
 interface BuildSettings {
   cFlags: Object;
@@ -59,11 +59,12 @@ interface DebugCache {
 }
 
 interface Cache {
+  url: string;
+  metaData?: string;
   configuration?: string;
   buildFile?: string;
   metaConfiguration?: string;
   generatedBuildFile?: string;
-  url?: string;
   libs?: string;
   bin?: string;
   debug?: DebugCache;
@@ -82,7 +83,7 @@ interface Platform {
   endianness: string,
   compiler: string
   platform: string,
-  cpu: {num: number, speed: string}
+  cpu: { num: number, speed: string }
 }
 
 interface Tool {
@@ -105,7 +106,6 @@ class Configuration {
   configure: BuildSettings;
   path: DirList;
   deps: Configuration[];
-  hash: string;
   cache: Cache;
   fetch: { url?: string; }
   link: string;
@@ -121,6 +121,7 @@ class Configuration {
   version: string;
   tag: string;
   user: string;
+  dir: string;
 }
 
 interface VinylFile {
@@ -191,36 +192,36 @@ function deleteAsync(filePath: string) {
   return new Promise<boolean>((resolve: Function, reject: Function) => {
     fs.unlink(filePath, (err) => {
       if (err) {
-    reject(err);
+        reject(err);
       }
       resolve(1);
-})
-});
+    })
+  });
 }
 
 function _glob(srcPattern: string[], relative: string,
-               cwd: string): Promise<any> {
+  cwd: string): Promise<any> {
   return new Promise((resolve: Function, reject: Function) => {
     return globAll(srcPattern,
-                   {
-                     cwd: cwd || process.cwd(),
-                     root: relative || process.cwd(),
-                     nonull: false
-                   },
-                   (err: Error, results: string[]) => {
-                     if (err) {
-                       reject(err);
-                     } else if (results) {
-                       resolve(_.map(results, (file: string) => {
-                         const filePath = path.join(cwd, file);
-                         if (relative) {
-                           return path.relative(relative, filePath);
-                         }
-                         return filePath;
-                       }));
-                     }
-                     reject('no files found');
-                   });
+      {
+        cwd: cwd || process.cwd(),
+        root: relative || process.cwd(),
+        nonull: false
+      },
+      (err: Error, results: string[]) => {
+        if (err) {
+          reject(err);
+        } else if (results) {
+          resolve(_.map(results, (file: string) => {
+            const filePath = path.join(cwd, file);
+            if (relative) {
+              return path.relative(relative, filePath);
+            }
+            return filePath;
+          }));
+        }
+        reject('no files found');
+      });
   });
 }
 
@@ -245,16 +246,16 @@ function existsAsync(filePath: string): Promise<boolean> {
 
 function readFileAsync(filePath: string, format: string = 'utf8') {
   return new Promise((resolve: Function, reject: Function) => fs.readFile(
-                         filePath, format, (err: Error, data: string) => {
-                           if (err) {
-                             reject(err);
-                           }
-                           return resolve(data);
-                         }));
+    filePath, format, (err: Error, data: string) => {
+      if (err) {
+        reject(err);
+      }
+      return resolve(data);
+    }));
 };
 
 function writeFileAsync(filePath: string, data: string,
-                        options?: Object): Promise<any> {
+  options?: Object): Promise<any> {
   return new Promise((resolve: Function, reject: Function) => {
     fs.writeFile(filePath, data, options, (err) => {
       if (err) {
@@ -266,19 +267,19 @@ function writeFileAsync(filePath: string, data: string,
 };
 
 function findOneAsync(srcPattern: string[], relative: string,
-                      cwd: string): Promise<string> {
+  cwd: string): Promise<string> {
   return glob(srcPattern, relative, cwd)
-      .then((array: string[]) => {
-        if (array.length) {
-          return Promise.resolve(array[0]);
-        }
-        return Promise.resolve(undefined);
-      });
+    .then((array: string[]) => {
+      if (array.length) {
+        return Promise.resolve(array[0]);
+      }
+      return Promise.resolve(undefined);
+    });
 }
 
 const defaultConfig = 'tmake';
 
-function configExists(configDir: string): string {
+function getConfigPath(configDir: string): string {
   const exts = ['yaml', 'json', 'cson'];
   for (const ext of exts) {
     const filePath = `${configDir}/${defaultConfig}.${ext}`;
@@ -290,35 +291,30 @@ function configExists(configDir: string): string {
 };
 
 function findConfigAsync(configDir: string): Promise<string> {
-  return Promise.resolve(configExists(configDir));
+  return Promise.resolve(getConfigPath(configDir));
 }
 
 function readConfigAsync(configDir: string): Promise<Configuration> {
   return findConfigAsync(configDir)
-      .then((configPath: string) => parseFileAsync(configPath));
+    .then((configPath: string) => parseFileAsync(configPath));
 };
 
 function parseFileAsync(configPath: string): Promise<Configuration> {
   if (configPath) {
     return readFileAsync(configPath, 'utf8')
-        .then((data: string) => {
-          switch (path.extname(configPath)) {
-            case '.cson':
-              return Promise.resolve(CSON.parse(data));
-            case '.json':
-              return Promise.resolve(JSON.parse(data));
-            case '.yaml':
-              return Promise.resolve(yaml.load(data));
-            default:
-              return Promise.reject(`unknown config type ${configPath}`);
-          }
-        });
+      .then((data: string) => {
+        return Promise.resolve(parseData(data, configPath));
+      });
   }
   return Promise.resolve(undefined);
 };
 
 function parseFileSync(configPath: string): Configuration {
   const data = fs.readFileSync(configPath, 'utf8');
+  return parseData(data, configPath);
+};
+
+function parseData(data: string, configPath: string) {
   switch (path.extname(configPath)) {
     case '.cson':
       return CSON.parse(data) as Configuration;
@@ -329,7 +325,7 @@ function parseFileSync(configPath: string): Configuration {
     default:
       throw new Error('unknown config ext');
   }
-};
+}
 
 function readIfExists(filePath: string) {
   if (fs.existsSync(filePath)) {
@@ -338,7 +334,7 @@ function readIfExists(filePath: string) {
 };
 
 function readConfigSync(configDir: string) {
-  const configPath = configExists(configDir);
+  const configPath = getConfigPath(configDir);
   if (configPath) {
     return parseFileSync(configPath);
   }
@@ -346,9 +342,9 @@ function readConfigSync(configDir: string) {
 };
 
 function unarchive(archive: string, tempDir: string, toDir: string,
-                   toPath?: string) {
+  toPath?: string) {
   return _unarchive(archive, tempDir)
-      .then(() => moveArchive(tempDir, toDir, toPath));
+    .then(() => moveArchive(tempDir, toDir, toPath));
 };
 
 function src(glob: string[], opt: Object) {
@@ -403,7 +399,7 @@ export {
   readConfigSync,
   readConfigAsync,
   readIfExists,
-  configExists,
+  getConfigPath,
   parseFileSync,
   parseFileAsync,
   writeFileAsync,

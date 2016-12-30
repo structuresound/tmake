@@ -1,11 +1,11 @@
 name: tmake_server
-target: bin
+outputType: executable
 build:
+  with: ninja
   linux:
     with: cmake
     linkerFlags:
       ldl: true
-  with: ninja
 deps:
-- link: ../mongocxx
-- link: ../served
+- link: mongocxx
+- link: served

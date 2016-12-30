@@ -1,5 +1,6 @@
 lib
 meteor
+electron
 node_modules
 server
 test
@@ -7,3 +8,4 @@ tests
 tests_cache
 .DS_Store
 .git
+.tscache
