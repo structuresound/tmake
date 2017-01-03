@@ -2,7 +2,7 @@ name: tmake_server
 outputType: executable
 build:
   with: ninja
-  linux:
+  mac, linux:
     with: cmake
     linkerFlags:
       ldl: true

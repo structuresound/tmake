@@ -92,3 +92,4 @@ configure:
         - '#include <libbson-1.0/bson.h>'
 deps:
 - link: ../mongoc
+- link: ../boost

@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import {check, diff} from 'js-object-tools';
+import { check, diff } from 'js-object-tools';
 
 function jsonStableHash(obj: Object) {
   if (!check(obj, 'Object')) {
@@ -23,7 +23,7 @@ function stringHash(string: string) {
 }
 
 function fileHash(filePath: string) {
-  return new Promise((resolve) => {
+  return new Promise<string>((resolve) => {
     const hash = crypto.createHash('md5');
     const stream = fs.createReadStream(filePath);
     stream.on('data', (data: any) => {

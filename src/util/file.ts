@@ -24,6 +24,7 @@ interface BuildSettings {
   libs: Object;
   includeDirs: Object;
   outputFile: string;
+  cmake: any;
 }
 
 interface InstallOptions {
@@ -78,7 +79,15 @@ interface GitSettings {
   archive?: string;
 }
 
+interface DockerImage {
+  user: string,
+  image: string,
+  architecture: string,
+  platform: string,
+}
+
 interface Platform {
+  docker: DockerImage,
   architecture: string,
   endianness: string,
   compiler: string

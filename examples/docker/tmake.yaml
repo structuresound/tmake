@@ -12,7 +12,7 @@ configure:
         - "\n\n#ifdef _LARGEFILE64_SOURCE"
         - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
 build:
-  with: ninja
+  with: cmake
   sources:
     - "*.c"
   compilerFlags:
@@ -26,3 +26,9 @@ build:
     Wconversion: true
     ios:
       "fembed-bitcode": true
+hosts:
+- docker:
+    user: dockcross
+    image: linux-armv7
+  platform: linux
+  arch: armv7

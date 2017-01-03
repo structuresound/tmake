@@ -7,10 +7,10 @@ import { startsWith } from './util/string';
 import log from './util/log';
 import * as file from './util/file';
 import args from './util/args';
-import { Configuration } from './configuration';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, stringHash } from './util/hash';
-import { ignore as nonIterables } from './iterate';
+import { iterable, ignore as nonIterables, getCommands } from './iterate';
+import { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
 interface Settings {
   [index: string]: string;
@@ -104,21 +104,24 @@ function getAbsolutePaths(node: Node): file.DirList {
   if (!d.home) {
     d.home = `${args.runDir}/${args.cachePath}`;
   }  // reference for build tools, should probably remove
-  if (!d.root) {
+  if (!d.root) { // dependency
     if (!node.name) {
       log.error(node);
       throw new Error('node has no name');
     }
     d.root = path.join(d.home, node.name);
+    if (pathOptions.includeDirs) {
+      d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
+    }
   }  // lowest level a package should have access to
+  else {
+    d.includeDirs = pathArray((pathOptions.includeDirs || 'source'), d.root);
+  }
   if (!d.clone) {
     d.clone = path.join(d.root, pathOptions.clone);
   }
-  // build
   d.source = path.join(d.clone, pathOptions.source);
   d.project = path.join(d.root, pathOptions.project || '');
-  // console.log colors.magenta d.project
-  d.includeDirs = pathArray((pathOptions.includeDirs || 'source'), d.root);
   if (d.build == null) {
     d.build = path.join(d.root, pathOptions.build);
   }
@@ -281,9 +284,44 @@ function resolveUrl(node: Node) {
   return 'none';
 }
 
+interface CmdObj {
+  cmd: string;
+  arg?: any;
+  cwd?: string;
+}
+
+interface DockerOptions {
+  image: string;
+  args: any;
+}
+
+function createConfiguration(node: Node, _configuration: file.BuildSettings) {
+  if (!_configuration) {
+    throw new Error('constructing node with undefined configuration');
+  }
+  let configuration: file.BuildSettings;
+  const c = node.select(_configuration);
+  const cFlags = c.cFlags || c.cxxFlags || {};
+  const cxxFlags = c.cxxFlags || c.cFlags || {};
+  const linkerFlags = c.linkerFlags || {};
+  const compilerFlags = c.compilerFlags || {};
+  configuration = <file.BuildSettings>{
+    compilerFlags: _.extend(node.select(stdCompilerFlags), compilerFlags),
+    linkerFlags: _.extend(node.select(stdLinkerFlags), linkerFlags),
+    cxxFlags: _.extend(node.select(stdCxxFlags), cxxFlags),
+    cFlags: _.omit(_.extend(node.select(stdCxxFlags), cFlags),
+      ['std', 'stdlib']),
+    frameworks: node.select(c.frameworks || stdFrameworks || {})
+  };
+  diff.extend(
+    configuration,
+    _.omit(c, Object.keys(configuration)));
+  return configuration;
+}
+
 class Node extends file.Configuration {
   _conf: file.Configuration;
-  configuration: Configuration;
+  configuration: file.BuildSettings;
   libs: string[];
   s: string[];
   selectors: string[];
@@ -341,7 +379,7 @@ class Node extends file.Configuration {
 
     const mainOperations = _.pick(mutable, ['configure', 'build']);
     diff.extend(this, this.select(mainOperations));
-    this.configuration = new Configuration(
+    this.configuration = createConfiguration(
       this, <file.BuildSettings>diff.combine(_.pick(this.build, ['with'].concat(nonIterables)),
         this.configure || {}));
     // Overrides
@@ -359,6 +397,20 @@ class Node extends file.Configuration {
       this.user = 'local';
     }
   }
+  frameworks() { return jsonToFrameworks(this.configuration.frameworks); }
+  cFlags() { return jsonToCFlags(this.configuration.cFlags); }
+  cxxFlags() { return jsonToCFlags(this.configuration.cxxFlags); }
+  linkerFlags() { return jsonToFlags(this.configuration.linkerFlags); }
+  compilerFlags() { return jsonToFlags(this.configuration.compilerFlags, { join: ' ' }); }
+  includeDirs() { return iterable(this.configuration.includeDirs); }
+  safeConfiguration() { return JSON.parse(JSON.stringify(this.configuration)); }
+  serializeConfiguration() {
+    return _.omit(this.safeConfiguration(),
+      ['cache', 'includeDirs', 'cc', 'libs', 'headers']);
+  }
+  hashConfiguration() { return jsonStableHash(this.serializeConfiguration()); }
+  getConfigurationIterable(): CmdObj[] { return getCommands(this.safeConfiguration(), nonIterables); }
+
   force() {
     return args.force && ((args.force === this.name) || (args.force === 'all'));
   }
@@ -387,7 +439,7 @@ class Node extends file.Configuration {
     }
   }
   configHash(): string {
-    return stringHash(this.urlHash() + this.metaDataHash() + this.configuration.hash());
+    return stringHash(this.urlHash() + this.metaDataHash() + this.hashConfiguration());
   }
   parse(input: any, conf?: any) {
     if (conf) {
@@ -452,4 +504,4 @@ class Node extends file.Configuration {
   }
 }
 
-export { Node, resolveName, keywords, argvSelectors };
+export { Node, CmdObj, resolveName, keywords, argvSelectors };

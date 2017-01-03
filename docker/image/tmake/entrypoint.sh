@@ -1,11 +1,10 @@
 #!/bin/bash
 
-# This is the entrypoint script for the dockerfile. Executed in the
-# container at runtime.
+# derived from sdt @ https://github.com/sdt/docker-raspberry-pi-cross-compiler/blob/master/image/rpxc/entrypoint.sh
 
 if [[ $# == 0 ]]; then
     # Presumably the image has been run directly, so help the user get started.
-    cat /tmake/tmake
+    cat /tmake/dmake
     exit 0
 fi
 
@@ -14,12 +13,12 @@ fi
 # created are owned by that user. Without this they are all owned by root.
 # If we are running from boot2docker, this is not necessary, and you end up not
 # being able to write to the volume.
-# The tmake script sets the TMAKE_UID and TMAKE_GID vars.
-if [[ -n $TMAKE_UID ]] && [[ -n $TMAKE_GID ]]; then
 
-    TMAKE_USER=tmake-user
+# The dmake script sets the TMAKE_UID and TMAKE_GID vars.
+if [[ -n $TMAKE_UID ]] && [[ -n $TMAKE_GID ]]; then
+    TMAKE_USER=tmake
     TMAKE_GROUP=tmake-group
-    TMAKE_HOME=/home/$TMAKE_USER
+    TMAKE_HOME=/tmake
 
     groupadd -o -g $TMAKE_GID $TMAKE_GROUP 2> /dev/null
     useradd -o -m -d $TMAKE_HOME -g $TMAKE_GID -u $TMAKE_UID $TMAKE_USER 2> /dev/null

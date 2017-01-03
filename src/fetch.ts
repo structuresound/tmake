@@ -4,18 +4,18 @@ import * as request from 'request';
 import progress = require('request-progress');
 import * as ProgressBar from 'progress';
 import * as fs from 'fs';
-import {diff} from 'js-object-tools';
+import { diff } from 'js-object-tools';
 
 import * as file from './util/file';
 import log from './util/log';
 import args from './util/args';
-import {mkdir, which, exit} from './util/sh';
-import {cache, updateNode} from './db';
-import {stringHash} from './util/hash';
-import {Node} from './node';
+import { mkdir, which, exit } from './util/sh';
+import { cache, updateNode } from './db';
+import { stringHash } from './util/hash';
+import { Node } from './node';
 
 function download(url: string, cacheDir = path.join(args.userCache,
-                                                    'cache')): Promise<string> {
+  'cache')): Promise<string> {
   if (!fs.existsSync(cacheDir)) {
     mkdir('-p', cacheDir);
   }
@@ -33,17 +33,17 @@ function download(url: string, cacheDir = path.join(args.userCache,
     const progressFn = (state: any) => {
       if (!progressBar && state.size.total) {
         progressBar =
-            new ProgressBar(`downloading [:bar] :percent :etas ${url}`, {
-              complete: '=',
-              incomplete: ' ',
-              width: 20,
-              total: state.size.total
-            });
+          new ProgressBar(`downloading [:bar] :percent :etas ${url}`, {
+            complete: '=',
+            incomplete: ' ',
+            width: 20,
+            total: state.size.total
+          });
       } else if (!progressBar) {
         progressBar =
-            new ProgressBar(
-                `downloading ${url} :elapsed`,
-                {complete: '=', incomplete: ' ', width: 20, total: 100000000});
+          new ProgressBar(
+            `downloading ${url} :elapsed`,
+            { complete: '=', incomplete: ' ', width: 20, total: 100000000 });
       } if (progressBar) { return progressBar.tick(state.size.transferred); }
       // The state is an object that looks like this:
       // {
@@ -66,10 +66,10 @@ function download(url: string, cacheDir = path.join(args.userCache,
       // }
     };
     return progress(request(url), options)
-        .on('progress', progressFn)
-        .on('error', reject)
-        .pipe(fs.createWriteStream(cacheFile))
-        .on('finish', () => { return resolve(cacheFile); });
+      .on('progress', progressFn)
+      .on('error', reject)
+      .pipe(fs.createWriteStream(cacheFile))
+      .on('finish', () => { return resolve(cacheFile); });
   });
 }
 
@@ -87,7 +87,10 @@ function unarchiveSource(filePath: string, toDir: string) {
 
 function updateCache(node: Node) {
   const modifier = {
-    $set: {'cache.url': node.urlHash(), 'cache.debug.url': node.url()}
+    $set: {
+      'cache.url': node.urlHash(),
+      // 'cache.debug.url': node.url()
+    }
   };
   return updateNode(node, modifier);
 }
@@ -98,7 +101,7 @@ function upsertCache(node: Node) {
       return updateCache(node);
     }
     return cache.insert(node.toCache())
-        .then(() => { return updateCache(node); });
+      .then(() => { return updateCache(node); });
   });
 }
 
@@ -108,7 +111,7 @@ function getSource(node: Node) {
   mkdir('-p', node.d.root);
   log.verbose(`fetching source @ ${url}`);
   return download(url)
-      .then((filePath) => { return unarchiveSource(filePath, node.d.clone); });
+    .then((filePath) => { return unarchiveSource(filePath, node.d.clone); });
 }
 
 function linkSource(node: Node): Promise<any> {
@@ -117,40 +120,40 @@ function linkSource(node: Node): Promise<any> {
   log.add('link source from', url);
   log.warn('to', node.d.root);
   return file.existsAsync(node.d.clone)
-      .then((exists) => {
-        if (exists) {
-          return Promise.resolve(true);
-        }
-        return new Promise((resolve, reject) => {
-          fs.symlink(url, node.d.root, 'dir', (err) => {
-            if (err) {
-              reject(err);
-            }
-            resolve();
-          });
+    .then((exists) => {
+      if (exists) {
+        return Promise.resolve(true);
+      }
+      return new Promise((resolve, reject) => {
+        fs.symlink(url, node.d.root, 'dir', (err) => {
+          if (err) {
+            reject(err);
+          }
+          resolve();
         });
       });
+    });
 }
 
 function destroy(node: Node) {
   return file.existsAsync(node.d.clone)
-      .then((exists) => {
-        if (exists) {
-          log.error(node.cache.debug.url);
-          log.add(node.url());
-          log.error('source url changed ... remove existing source');
-          file.nuke(node.d.clone);
+    .then((exists) => {
+      if (exists) {
+        // log.error(node.cache.debug.url);
+        log.add(node.url());
+        log.error('source url changed ... remove existing source');
+        file.nuke(node.d.clone);
+      }
+      const modifier = {
+        $unset: {
+          'cache.url': true,
+          'cache.metaConfiguration': true,
+          'cache.configuration': true,
+          // 'cache.debug.url': true
         }
-        const modifier = {
-          $unset: {
-            'cache.url': true,
-            'cache.metaConfiguration': true,
-            'cache.configuration': true,
-            'cache.debug.url': true
-          }
-        };
-        return updateNode(node, modifier);
-      });
+      };
+      return updateNode(node, modifier);
+    });
 }
 
 function reportStale(node: Node, currentHash: string) {
@@ -167,24 +170,24 @@ function maybeFetch(node: Node): Promise<any> {
     return linkSource(node);
   } else if (node.fetch || node.git) {
     return file.existsAsync(node.d.clone)
-        .then((exists: boolean) => {
-          const urlHash = node.urlHash();
-          if (exists) {
-            if ((urlHash !== node.cache.url) || node.force()) {
-              reportStale(node, urlHash);
-              return destroy(node).then(() => { return getSource(node); });
-            }
-            return Promise.resolve();
+      .then((exists: boolean) => {
+        const urlHash = node.urlHash();
+        if (exists) {
+          if ((urlHash !== node.cache.url) || node.force()) {
+            reportStale(node, urlHash);
+            return destroy(node).then(() => { return getSource(node); });
           }
-          return getSource(node);
-        });
+          return Promise.resolve();
+        }
+        return getSource(node);
+      });
   }
   log.info(`skip fetch, project is local ${node.name}`);
   return Promise.resolve();
 }
 
 function fetch(node: Node) {
-  return maybeFetch(node).then(() => {return upsertCache(node)});
+  return maybeFetch(node).then(() => { return upsertCache(node) });
 }
 
-export {fetch, findGit, download, getSource, linkSource, destroy};
+export { fetch, findGit, download, getSource, linkSource, destroy };

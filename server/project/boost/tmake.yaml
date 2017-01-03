@@ -1,6 +1,5 @@
 name: boost
 deps:
-- git: boostorg/core
 - git: boostorg/assert
 - git: boostorg/asio
   deps:
@@ -38,3 +37,6 @@ deps:
 - git: boostorg/throw_exception
 - git: boostorg/type_traits
 - git: boostorg/smart_ptr
+- git: boostorg/functional
+  deps:
+  - git: boostorg/config

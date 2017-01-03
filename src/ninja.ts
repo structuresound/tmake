@@ -4,15 +4,20 @@ import * as _ from 'lodash';
 import * as Promise from 'bluebird';
 import ninja_build_gen = require('ninja-build-gen');
 import log from './util/log';
-import {fetch} from './toolchain';
-import {Node} from './node';
+import { fetch } from './toolchain';
+import { Node } from './node';
 
 const ninjaVersion = '1.6.0';
 
 function build(node: Node): Promise<any> {
   return fetch(node.toolchain).then((toolpaths: any) => {
     const directory = node.d.project;
-    const command = `${toolpaths.ninja} -C ${directory}`;
+    let command = '';
+    if (node.target.docker) {
+      command = `dockcross ninja - C${directory}`;
+    } else {
+      command = `${toolpaths.ninja} -C ${directory}`;
+    }
     log.verbose(command);
     return new Promise((resolve, reject) => {
       sh.exec(command, (code, stdout, stderr) => {
@@ -43,20 +48,20 @@ function getRule(ext: string) {
 function generate(node: Node, fileName: string): void {
   log.add('generate new ninja config');
   const ninjaConfig = ninja_build_gen(ninjaVersion, 'build');
-  const includeString = _.map(node.configuration.includeDirs, (dir) => {
+  const includeString = _.map(node.includeDirs(), (dir) => {
     return `-I${dir}`;
   }).join(' ');
 
-  const cc = node.configuration.cc || 'gcc';
+  const cc = 'gcc';
 
-  const cCommand = `${cc} ${node.configuration
+  const cCommand = `${cc} ${node
     .compilerFlags()
-    .join(' ')} -MMD -MF $out.d ${node.configuration
+    .join(' ')} -MMD -MF $out.d ${node
       .cFlags()
       .join(' ')} -c $in -o $out ${includeString}`;
-  const cxxCommand = `${cc} ${node.configuration
+  const cxxCommand = `${cc} ${node
     .compilerFlags()
-    .join(' ')} -MMD -MF $out.d ${node.configuration
+    .join(' ')} -MMD -MF $out.d ${node
       .cxxFlags()
       .join(' ')} -c $in -o $out ${includeString}`;
 
@@ -91,7 +96,7 @@ function generate(node: Node, fileName: string): void {
       if (!libName) {
         libName = `${node.name}`;
       }
-      linkCommand = `${cc} -o $out $in ${node.configuration.libs ? node.configuration.libs.join(' ') : ''} ${node.configuration
+      linkCommand = `${cc} -o $out $in ${node.libs ? node.libs.join(' ') : ''} ${node
         .linkerFlags()
         .join(' ')}`;
       break;
@@ -102,7 +107,9 @@ function generate(node: Node, fileName: string): void {
     .run(linkCommand)
     .description(linkCommand);
 
-  const linkNames = _.map(node.s, (filePath: string) => {
+  const linkNames = [];
+
+  for (const filePath of node.s) {
     // console.log 'process source file', filePath
     const dir = path.dirname(filePath);
     const relative = path.relative(node.p.clone, dir);
@@ -116,8 +123,8 @@ function generate(node: Node, fileName: string): void {
       .edge(linkName)
       .from(filePath)
       .using(getRule(ext));
-    return linkName;
-  });
+    linkNames.push(linkName);
+  };
 
   const linkInput = linkNames.join(' ');
   ninjaConfig
@@ -128,4 +135,4 @@ function generate(node: Node, fileName: string): void {
   ninjaConfig.save(fileName);
 }
 
-export {generate, build};
+export { generate, build };

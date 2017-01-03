@@ -1,22 +1,19 @@
 import * as Promise from 'bluebird';
 import * as path from 'path';
 import * as fs from 'fs';
-import {check} from 'js-object-tools';
+import { check } from 'js-object-tools';
 
 
-import {execAsync} from './util/sh';
-import {build as cmake} from './cmake';
-import {build as ninja} from './ninja';
-import {build as make} from './make';
+import { execAsync } from './util/sh';
+import { build as cmake } from './cmake';
+import { build as ninja } from './ninja';
+import { build as make } from './make';
 
-import {iterate, getCommands, ignore} from './iterate';
-import {Node} from './node';
+import { iterate, getCommands, ignore } from './iterate';
+import { Node, CmdObj } from './node';
 import log from './util/log';
-import {
-  CmdObj
-} from './configuration'
 
-    function buildFolder(node: Node, isTest: boolean) {
+function buildFolder(node: Node, isTest: boolean) {
   if (isTest) {
     return node.d.test;
   }
@@ -39,6 +36,7 @@ function ensureBuildFolder(node: Node, isTest?: boolean) {
     return fs.mkdirSync(buildFolder(node, isTest));
   }
 }
+
 
 function ensureBuildFile(node: Node, isTest?: boolean) {
   if (!check(buildFile(node, isTest), 'String')) {
@@ -79,9 +77,9 @@ function build(node: Node, isTest: boolean) {
       default:
       case 'shell':
         return iterate(i.arg, (c: CmdObj) => {
-          let lc: CmdObj = check(c, String) ? <CmdObj>{cmd:<any>c} : c;
+          let lc: CmdObj = check(c, String) ? <CmdObj>{ cmd: <any>c } : c;
           const cwd = node.pathSetting(lc.cwd || node.d.source);
-          return execAsync(node.parse(lc.cmd, node), {cwd: cwd});
+          return execAsync(node.parse(lc.cmd, node), { cwd: cwd });
         });
     }
   });

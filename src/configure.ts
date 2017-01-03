@@ -21,8 +21,7 @@ import { stringHash } from './util/hash';
 
 import { iterate, iterable } from './iterate';
 
-import { Node } from './node';
-import { Configuration, CmdObj } from './configuration';
+import { Node, CmdObj } from './node';
 
 function copy(patterns: string[], options: file.CopyOptions): Promise<any> {
   const filePaths: string[] = [];
@@ -64,9 +63,7 @@ function globHeaders(node: Node): Promise<any> {
 
 function globSources(node: Node): Promise<any> {
   const patterns = node.globArray(
-    node.configuration.sources ?
-      node.configuration.sources :
-      ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']);
+    node.configuration.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']);
   return file.glob(patterns, node.d.project, node.d.source);
 }
 
@@ -83,7 +80,7 @@ function globFiles(node: Node): Promise<any> {
     .then((depGraph) => {
       if (depGraph.length) {
         log.verbose('deps', depGraph);
-        node.configuration.libs =
+        node.libs =
           _.chain(depGraph).map((dep: Node) => {
             return _.map(dep.libs, (lib) => {
               return path.join(dep.d.home, lib);
@@ -139,9 +136,8 @@ function generateBuildFile(node: Node, systemName: string): Promise<any> {
     case 'ninja':
       return Promise.resolve(ninja(node, buildFile));
     case 'cmake':
-      return cmake(node).then((CMakeLists) => {
-        return file.writeFileAsync(buildFile, CMakeLists);
-      }).then((conf) => { return Promise.resolve(conf); });
+      const CMakeLists = cmake(node);
+      return file.writeFileAsync(buildFile, CMakeLists).then((conf) => { return Promise.resolve(conf); });
     default:
       throw new Error(`bad build system ${systemName}`);
   }
@@ -162,11 +158,11 @@ function reportStale(node: Node, current: string) {
   const urlHash = node.urlHash();
   if (node.cache.url !== urlHash) {
     log.error(`hash ${node.cache.url} is stale, now ${urlHash}`);
-    log.error(`url ${node.cache.debug.url} is stale, now ${url}`);
+    // log.error(`url ${node.cache.debug.url} is stale, now ${url}`);
   } else {
     log.error(`${node.name} configuration ${node.cache.metaConfiguration} is stale, now ${current}`);
-    log.error(node.cache.debug.metaConfiguration);
-    log.add(node.configuration.serialize());
+    // log.error(node.cache.debug.metaConfiguration);
+    log.add(node.serializeConfiguration());
   }
 }
 
@@ -187,7 +183,7 @@ function configure(node: Node, isTest: boolean): Promise<any> {
     throw new Error('configure without node');
   }
   if (node.force() || isStale(node)) {
-    const commands = node.configuration.getCommands();
+    const commands = node.getConfigurationIterable();
     return Promise
       .each(
       commands,
@@ -249,7 +245,7 @@ function configure(node: Node, isTest: boolean): Promise<any> {
         return updateNode(node, {
           $set: {
             'cache.metaConfiguration': node.configHash(),
-            'cache.debug.metaConfiguration': node.configuration.serialize()
+            // 'cache.debug.metaConfiguration': node.configuration.serialize()
           }
         });
       });
@@ -262,7 +258,7 @@ function destroy(node: Node): Promise<any> {
   return updateNode(node, {
     $unset: {
       'cache.metaConfiguration': true,
-      'cache.debug.metaConfiguration': true
+      // 'cache.debug.metaConfiguration': true
     }
   });
 }
