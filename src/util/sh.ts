@@ -1,5 +1,5 @@
 import { exec as _exec, cd, mv, mkdir, which, exit, ExecOptions, ExecCallback, ExecOutputReturnValue } from 'shelljs';
-import log from './log';
+import { log } from './log';
 import child = require("child_process");
 
 interface ShellOptions {
@@ -28,4 +28,4 @@ function execAsync(command: string, options: ShellOptions = {}): Promise<any> {
 }
 ;
 
-export { exec, execAsync, ShellOptions, cd, exit, mkdir, mv, which }
+export { ShellOptions, exec, execAsync, cd, exit, mkdir, mv, which }

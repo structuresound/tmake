@@ -1,14 +1,24 @@
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { check, diff } from 'js-object-tools';
+import { check, arrayify, clone } from 'js-object-tools';
 
 import { replaceAll, startsWith } from './util/string';
-import log from './util/log';
+import { log } from './util/log';
 import { exec } from './util/sh';
 import interpolate from './interpolate';
-import * as file from './util/file';
+import * as file from './file';
 import args from './util/args';
+
+interface MacroObject {
+  macro: string, map: { [index: string]: string }
+}
+
+interface ReplEntry {
+  inputs: any, sources: any, directive: {
+    prepost?: string, pre?: string, post?: string
+  }
+}
 
 function absolutePath(s: string, relative?: string) {
   if (!check(s, String)) {
@@ -29,7 +39,7 @@ function fullPath(p: string, root: string) {
 }
 
 function pathArray(val: string | string[], root: string): string[] {
-  return _.map(diff.arrayify(val), (v) => { return fullPath(v, root); });
+  return _.map(arrayify(val), (v) => { return fullPath(v, root); });
 }
 
 const shellCache: { [index: string]: string } = {};
@@ -53,9 +63,6 @@ const shellReplace = (m: string) => {
 }
   ;
 
-interface MacroObject {
-  macro: string, map: { [index: string]: string }
-}
 function objectReplace(m: MacroObject, dict: Object) {
   if (!m.macro) {
     throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
@@ -124,7 +131,7 @@ function _parse(input: string | MacroObject, dict: any,
 };
 
 function parse(input: string | MacroObject, dict: any): any {
-  return _parse(diff.clone(input), dict);
+  return _parse(clone(input), dict);
 }
 
 // function parseObject(obj: {[index:string]: any}, conf: Object) {
@@ -148,12 +155,6 @@ function parse(input: string | MacroObject, dict: any): any {
 //   //  log.debug('out:', out || input);
 //   return out || input;
 // }
-
-interface ReplEntry {
-  inputs: any, sources: any, directive: {
-    prepost?: string, pre?: string, post?: string
-  }
-}
 
 function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
   if (!fs.existsSync(f)) {
@@ -222,4 +223,4 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
   return Promise.resolve();
 }
 
-export { parse, absolutePath, pathArray, fullPath, replaceInFile, ReplEntry };
+export { MacroObject, ReplEntry, parse, absolutePath, pathArray, fullPath, replaceInFile };

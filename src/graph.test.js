@@ -5,7 +5,7 @@ import {check} from 'js-object-tools';
 import args from '../lib/util/args';
 import {graph} from '../lib/graph';
 import {resolveName} from '../lib/node';
-import file from '../lib/util/file';
+import file from '../lib/file';
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/src/test/hello.yaml'));
 describe('graph', () => {
@@ -24,7 +24,7 @@ describe('graph', () => {
   });
 
   it('build list has root + deps(root) length', () => {
-    assert.equal(modules.length, helloWorld.deps.length + 1);
+    assert.equal(modules.length, Object.keys(helloWorld.deps).length + 1);
   });
 
   it('build list puts root dep last (order)', () => {

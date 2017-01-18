@@ -36,9 +36,19 @@ module.exports = (grunt) ->
         allowJs: true
         declaration: false
         sourceMap: true
+    dtsGenerator:
+      options:
+        name: 'tmake'
+        project: './'
+        out: 'tmake.d.ts'
+      default:
+        src: [ '/src/**/*.ts' ]
+
+  grunt.loadNpmTasks 'dts-generator'
 
   grunt.loadNpmTasks 'grunt-ts'
   grunt.loadNpmTasks 'grunt-babel'
 
   grunt.registerTask 'build', ['ts', 'babel']
   grunt.registerTask 'default', ['build']
+  grunt.registerTask 'declare', ['dtsGenerator']

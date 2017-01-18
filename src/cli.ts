@@ -5,9 +5,9 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { check } from 'js-object-tools';
 
-import log from './util/log';
+import { log } from './util/log';
 import args from './util/args';
-import * as file from './util/file';
+import * as file from './file';
 import { execute, list, unlink, push, parse } from './tmake';
 import { cache, user } from './db';
 import { graph, createNode } from './graph';
@@ -153,7 +153,7 @@ function createPackage() {
   return Promise.resolve(defaultPackage);
 }
 
-function tmake(rootConfig: file.Configuration,
+function tmake(rootConfig: ProjectFile,
   positionalArgs = args._): Promise<any> {
   cache.loadDatabase();
   user.loadDatabase();
@@ -168,7 +168,7 @@ function tmake(rootConfig: file.Configuration,
       return execute(rootConfig, 'link');
     case 'unlink':
       return cache.findOne({ name: resolvedName })
-        .then((dep: file.Configuration) => unlink(dep || rootConfig));
+        .then((dep: ProjectFile) => unlink(dep || rootConfig));
     case 'push':
       return execute(rootConfig, 'push');
     case 'test':
@@ -190,7 +190,7 @@ function tmake(rootConfig: file.Configuration,
       return execute(rootConfig, 'install');
     case 'ls':
     case 'list':
-      return ((): Promise<file.Configuration[]> => {
+      return ((): Promise<ProjectFile[]> => {
         if (positionalArgs[1] === 'local') {
           return list('user', { name: positionalArgs[2] })
         } else if (positionalArgs[1]) {

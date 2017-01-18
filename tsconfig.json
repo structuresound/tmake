@@ -7,7 +7,7 @@
         "**/*.spec.ts"
     ],
     "compilerOptions": {
-        "outDir": "lib",
+        "outDir": "eslib",
         "sourceMap": true,
         "noImplicitAny": true,
         "module": "commonjs",

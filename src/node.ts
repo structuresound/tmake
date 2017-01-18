@@ -1,115 +1,31 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, diff } from 'js-object-tools';
+import { check, clone, extend, combine, plain as toJSON, safeOLHM } from 'js-object-tools';
 import cascade from './util/cascade';
 import { startsWith } from './util/string';
-import log from './util/log';
-import * as file from './util/file';
+import { log } from './util/log';
 import args from './util/args';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, stringHash } from './util/hash';
-import { iterable, ignore as nonIterables, getCommands } from './iterate';
 import { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
-interface Settings {
-  [index: string]: string;
-}
+import { CacheProperty } from './cache';
+import { Environment } from './environment';
 
-interface SafeDep {
-  name: string;
-  hash: string;
-}
-
-const settings: any =
-  file.parseFileSync(path.join(args.binDir, 'settings.yaml'));
-
-const platformNames: Settings = {
-  linux: 'linux',
-  darwin: 'mac',
-  mac: 'mac',
-  win: 'win',
-  win32: 'win',
-  ios: 'ios',
-  android: 'android'
-};
-
-const archNames: Settings = { x64: 'x86_64', arm: 'armv7a', arm64: 'arm64' };
-
-const HOST_ENDIANNESS = os.endianness();
-const HOST_PLATFORM = platformNames[os.platform()];
-const HOST_ARCHITECTURE = archNames[os.arch()];
-const HOST_CPU = os.cpus();
-
-const ninjaVersion = 'v1.7.1';
-
-const HOST_ENV = {
-  architecture: HOST_ARCHITECTURE,
-  endianness: HOST_ENDIANNESS,
-  compiler: settings.defaultCompiler[HOST_PLATFORM],
-  platform: HOST_PLATFORM,
-  cpu: { num: HOST_CPU.length, speed: HOST_CPU[0].speed }
-};
-
-const DEFAULT_TARGET = {
-  architecture: HOST_ARCHITECTURE,
-  endianness: HOST_ENDIANNESS,
-  platform: HOST_PLATFORM
-};
-
-const DEFAULT_TOOLCHAIN = {
-  ninja: {
-    version: ninjaVersion,
-    url:
-    'https://github.com/ninja-build/ninja/releases/download/{version}/ninja-{host.platform}.zip'
-  },
-  'host-mac': { clang: { bin: '$(which gcc)' } },
-  'host-linux': { gcc: { bin: '$(which gcc)' } }
-};
-
-function parseSelectors(dict: any, prefix: string) {
-  const _selectors: string[] = [];
-  const selectables: Settings =
-    <Settings>_.pick(dict, ['platform', 'compiler']);
-  for (const key of Object.keys(selectables)) {
-    _selectors.push(`${prefix || ''}${selectables[key]}`);
-  }
-  return _selectors;
-}
-
-const DEFAULT_ENV =
-  file.parseFileSync(path.join(args.binDir, 'environment.yaml'));
-const _keywords: any =
-  file.parseFileSync(path.join(args.binDir, 'keywords.yaml'));
-const keywords =
-  []
-    .concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
-    .concat(_keywords.target)
-    .concat(_keywords.build)
-    .concat(_keywords.compiler)
-    .concat(_keywords.sdk)
-    .concat(_keywords.ide)
-    .concat(_keywords.deploy);
-
-const argvSelectors = Object.keys(_.pick(args, keywords));
-argvSelectors.push(args.compiler);
-
-
-function getAbsolutePaths(node: Node): file.DirList {
-  // if conf.git?.archive
-  //   defaultPathOptions.clone = '#{conf.name}-#{conf.git.archive}'
-  const pathOptions = node.p;
-  const d: file.DirList = <file.DirList>diff.clone(node.d || {});
+function getProjectDirs(project: Project): ProjectDirs {
+  const pathOptions = project.p;
+  const d: ProjectDirs = <ProjectDirs>clone(project.d || {});
   // fetch
   if (!d.home) {
     d.home = `${args.runDir}/${args.cachePath}`;
   }  // reference for build tools, should probably remove
   if (!d.root) { // dependency
-    if (!node.name) {
-      log.error(node);
+    if (!project.name) {
+      log.error(project);
       throw new Error('node has no name');
     }
-    d.root = path.join(d.home, node.name);
+    d.root = path.join(d.home, project.name);
     if (pathOptions.includeDirs) {
       d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
     }
@@ -121,85 +37,20 @@ function getAbsolutePaths(node: Node): file.DirList {
     d.clone = path.join(d.root, pathOptions.clone);
   }
   d.source = path.join(d.clone, pathOptions.source);
-  d.project = path.join(d.root, pathOptions.project || '');
-  if (d.build == null) {
-    d.build = path.join(d.root, pathOptions.build);
-  }
-
-  d.install = <file.install_list>{
-    binaries: _.map(diff.arrayify(pathOptions.install.binaries), (ft: file.InstallOptions) => {
-      return {
-        sources: ft.sources,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.root, (ft.to || 'bin'))
-      };
-    }),
-    headers: _.map(diff.arrayify(pathOptions.install.headers), (ft: file.InstallOptions) => {
-      return {
-        sources: ft.sources,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.home, (ft.to || 'include')),
-        includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
-      };
-    }),
-    libraries: _.map(diff.arrayify(pathOptions.install.libraries), (ft: file.InstallOptions) => {
-      return {
-        sources: ft.sources,
-        from: path.join(d.root, ft.from),
-        to: path.join(d.home, (ft.to || 'lib'))
-      };
-    })
-  }
-    ;
-
-  if (pathOptions.install.assets) {
-    d.install.assets = _.map(diff.arrayify(pathOptions.install.assets),
-      (ft: file.InstallOptions) => {
-        return {
-          sources: ft.sources,
-          from: path.join(d.root, ft.from),
-          to: path.join(d.root, (ft.to || 'bin'))
-        };
-      });
-  }
   return d;
 }
 
-function getPathOptions(conf: file.Configuration) {
-  const defaultPathOptions = {
+function getProjectPaths(node: Project) {
+  const defaultPaths = {
     source: '',
     headers: '',
-    test: 'build_tests',
     clone: 'source',
-    project: ''
   };
-
-  const pathOptions = <file.DirList>diff.extend(defaultPathOptions, conf.path);
-
-  if (pathOptions.build == null) {
-    pathOptions.build = path.join(pathOptions.project, 'build');
-  }
-
-  if (pathOptions.install == null) {
-    pathOptions.install = {};
-  }
-  if (pathOptions.install.headers == null) {
-    pathOptions.install
-      .headers = [{ from: path.join(pathOptions.clone, 'include') }];
-  }
-
-  if (pathOptions.install.libraries == null) {
-    pathOptions.install.libraries = [{ from: pathOptions.build }];
-  }
-
-  if (pathOptions.install.binaries == null) {
-    pathOptions.install.binaries = [{ from: pathOptions.build, to: 'bin' }];
-  }
-
+  const pathOptions = <ProjectDirs>extend(defaultPaths, node.path);
   return pathOptions;
 }
 
-function resolveVersion(conf: file.Configuration) {
+function resolveVersion(conf: ProjectFile | Project) {
   if (check(conf.version, String)) {
     return conf.name;
   } else if (check(conf.tag, String)) {
@@ -216,7 +67,7 @@ function resolveVersion(conf: file.Configuration) {
   }
 }
 
-function resolveName(conf: file.Configuration): string {
+function resolveName(conf: ProjectFile | Project): string {
   if (check(conf.name, String)) {
     return conf.name;
   }
@@ -237,14 +88,20 @@ function resolveName(conf: file.Configuration): string {
   throw new Error(`resolveName() failed on module ${JSON.stringify(conf, [], 2)}`);
 }
 
-function mergeNodes(a: any, b: any) {
+function mergeNodes(a: Project, b: any) {
+  if (!a || !b) return;
   for (const k of Object.keys(b)) {
     if (!a[k]) {
       a[k] = b[k];
     }
   }
-  if (a.cache && b.cache) {
-    mergeNodes(a.cache, b.cache);
+  if (b.cache) {
+    for (const k of Object.keys(b.cache)) {
+      const v = b.cache[k]
+      if (v) {
+        a.cache[k].set(v);
+      }
+    }
   }
 }
 
@@ -255,11 +112,11 @@ function parsePath(s: string) {
   return path.join(args.runDir, s);
 }
 
-function resolveUrl(node: Node) {
-  let config: file.GitSettings = node.git || node.fetch || {};
-  if (node.git) {
+function resolveUrl(conf: ProjectFile | Project) {
+  let config: schema.Git = conf.git || conf.archive || {};
+  if (conf.git) {
     if (typeof config === 'string') {
-      config = <file.GitSettings>{ repository: node.git as string };
+      config = <schema.Git>{ repository: conf.git as string };
     }
     if (!config.repository) {
       throw new Error(
@@ -267,13 +124,13 @@ function resolveUrl(node: Node) {
     }
     const base = `https://github.com/${config.repository}`;
     const archive =
-      config.archive || config.tag || config.branch || node.tag || 'master';
+      config.archive || config.tag || config.branch || conf.tag || 'master';
     return `${base}/archive/${archive}.tar.gz`;
-  } else if (node.link) {
-    return parsePath(node.link);
-  } else if (node.fetch) {
+  } else if (conf.link) {
+    return 'link';
+  } else if (conf.archive) {
     if (typeof config === 'string') {
-      config = <file.GitSettings>{ archive: node.fetch as string };
+      config = <schema.Git>{ archive: conf.archive as string };
     }
     if (!config.archive) {
       throw new Error(
@@ -284,109 +141,91 @@ function resolveUrl(node: Node) {
   return 'none';
 }
 
-interface CmdObj {
-  cmd: string;
-  arg?: any;
-  cwd?: string;
+class OLHV<T> {
+  require?: string;
+  value: T
+}
+class OLHM<T> {
+  [index: string]: OLHV<T>;
 }
 
-interface DockerOptions {
-  image: string;
-  args: any;
+class ProjectCache {
+  [index: string]: CacheProperty<any>;
+  fetch: CacheProperty<string>;
+  metaData?: CacheProperty<string>;
+  metaConfiguration?: CacheProperty<string>;
+  bin?: CacheProperty<string>;
+  libs?: CacheProperty<string[]>;
 }
 
-function createConfiguration(node: Node, _configuration: file.BuildSettings) {
-  if (!_configuration) {
-    throw new Error('constructing node with undefined configuration');
-  }
-  let configuration: file.BuildSettings;
-  const c = node.select(_configuration);
-  const cFlags = c.cFlags || c.cxxFlags || {};
-  const cxxFlags = c.cxxFlags || c.cFlags || {};
-  const linkerFlags = c.linkerFlags || {};
-  const compilerFlags = c.compilerFlags || {};
-  configuration = <file.BuildSettings>{
-    compilerFlags: _.extend(node.select(stdCompilerFlags), compilerFlags),
-    linkerFlags: _.extend(node.select(stdLinkerFlags), linkerFlags),
-    cxxFlags: _.extend(node.select(stdCxxFlags), cxxFlags),
-    cFlags: _.omit(_.extend(node.select(stdCxxFlags), cFlags),
-      ['std', 'stdlib']),
-    frameworks: node.select(c.frameworks || stdFrameworks || {})
-  };
-  diff.extend(
-    configuration,
-    _.omit(c, Object.keys(configuration)));
-  return configuration;
-}
+class Project implements ProjectFile {
+  [index: string]: any;
+  // implements ProjectFile
+  name?: string;
+  override?: Project;
+  deps?: Project[];
+  cache?: ProjectCache;
+  link?: string;
+  git?: schema.Git;
+  archive?: { url?: string; }
+  version?: string;
+  tag?: string;
+  user?: string;
+  dir?: string;
+  toolchains?: OLHM<schema.Toolchain>;
 
-class Node extends file.Configuration {
-  _conf: file.Configuration;
-  configuration: file.BuildSettings;
+  // implements Toolchain
+  build: schema.Build;
+  configure: schema.Configure;
+  host: schema.Platform;
+  target: schema.Platform;
+  tools: schema.Tools;
+  outputType: string;
+  path: EnvironmentDirs;
+  environment?: any;
+
+  // runtime
+  environments: Environment[];
   libs: string[];
-  s: string[];
-  selectors: string[];
+  d: ProjectDirs;
+  p: ProjectDirs;
 
-  constructor(_conf: file.Configuration, parent: Node) {
-    super();
+  constructor(_projectFile: ProjectFile, parent?: Project) {
     // load conf
-    if (!_conf) {
+    if (!_projectFile) {
       throw new Error('constructing node with undefined configuration');
     }
-    if (check(_conf, Node)) {
-      return _conf as Node;
+    if (check(_projectFile, Project)) {
+      return <any>_projectFile;
     }
-    const mutable = diff.clone(_conf);
-    const metaDataFields = _.pick(mutable, ['name', 'version', 'user', 'dir']);
-    diff.extend(this, metaDataFields);
+    const projectFile: ProjectFile = <ProjectFile>clone(_projectFile);
+    const metaDataFields = _.pick(projectFile, ['name', 'version', 'user', 'dir', 'git', 'archive']);
+    extend(this, metaDataFields);
+
     if (!this.name) {
-      this.name = resolveName(mutable);
-    }
-    if (!mutable.override) {
-      mutable.override = new file.Configuration();
+      this.name = resolveName(projectFile);
     }
 
-    // 1. set up selectors + environment
-    this.host = <file.Platform>diff.combine(HOST_ENV, mutable.host);
-    this.target = <file.Platform>diff.combine(DEFAULT_TARGET, mutable.target);
-
-    const hostSelectors = parseSelectors(this.host, 'host-');
-    const targetSelectors = parseSelectors(this.target, undefined);
-    this.selectors = hostSelectors.concat(targetSelectors);
-
-
-    const environment =
-      cascade.deep(diff.combine(DEFAULT_ENV, mutable.environment), keywords,
-        this.selectors);
-    diff.extend(this, environment);
-
-    // 2. setup paths + directories
-
-    this.path = this.select(mutable.path || {});
-    this.p = getPathOptions(this);
-
+    this.p = getProjectPaths(this);
     if (!parent) {
-      this.d = <file.DirList>{ root: args.runDir };
+      this.d = <EnvironmentDirs>{ root: args.runDir };
     }
-    this.d = getAbsolutePaths(this);
+    this.d = getProjectDirs(this);
 
-    // 3. extend + select all remaining settings
-    const inOutFields = _.pick(mutable, ['git', 'fetch', 'outputType']);
-    diff.extend(this, this.select(inOutFields));
-    if (!this.outputType) {
-      this.outputType = 'static';
+
+    const toolchainFields = _.pick(projectFile, ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure']);
+    extend(this, toolchainFields);
+
+    const toolchains = this.toolchains ? safeOLHM(this.toolchains) : [<schema.Toolchain>{}];
+    this.environments = [];
+    for (const t of toolchains) {
+      this.environments.push(new Environment(t, this));
     }
-    this.toolchain = this.selectToolchain(mutable);
-
-    const mainOperations = _.pick(mutable, ['configure', 'build']);
-    diff.extend(this, this.select(mainOperations));
-    this.configuration = createConfiguration(
-      this, <file.BuildSettings>diff.combine(_.pick(this.build, ['with'].concat(nonIterables)),
-        this.configure || {}));
     // Overrides
     if (parent) {
       if (parent.override) {
-        diff.extend(this, parent.override);
-        diff.extend(this.override, parent.override);
+        extend(this, parent.override);
+        extend(this.override, parent.override);
       }
     }
     // LAZY Defaults
@@ -396,112 +235,54 @@ class Node extends file.Configuration {
     if (!this.user) {
       this.user = 'local';
     }
+
+    this.cache = new ProjectCache;
+    this.cache.fetch = new CacheProperty(() => stringHash(this.url()))
+    this.cache.metaData = new CacheProperty(() => {
+      return jsonStableHash({
+        version: this.version,
+        outputType: this.outputType || 'static',
+        deps: this.safeDeps()
+      });
+    }, { require: this.cache.fetch });
   }
-  frameworks() { return jsonToFrameworks(this.configuration.frameworks); }
-  cFlags() { return jsonToCFlags(this.configuration.cFlags); }
-  cxxFlags() { return jsonToCFlags(this.configuration.cxxFlags); }
-  linkerFlags() { return jsonToFlags(this.configuration.linkerFlags); }
-  compilerFlags() { return jsonToFlags(this.configuration.compilerFlags, { join: ' ' }); }
-  includeDirs() { return iterable(this.configuration.includeDirs); }
-  safeConfiguration() { return JSON.parse(JSON.stringify(this.configuration)); }
-  serializeConfiguration() {
-    return _.omit(this.safeConfiguration(),
-      ['cache', 'includeDirs', 'cc', 'libs', 'headers']);
-  }
-  hashConfiguration() { return jsonStableHash(this.serializeConfiguration()); }
-  getConfigurationIterable(): CmdObj[] { return getCommands(this.safeConfiguration(), nonIterables); }
 
   force() {
     return args.force && ((args.force === this.name) || (args.force === 'all'));
   }
-  j() { return this.host.cpu.num; }
-  fullPath(p: string) {
-    return absolutePath(p, this.d.root);
-  }
-  pathSetting(val: string) { return this.fullPath(parse(val, this)); }
-  globArray(val: any) {
-    return _.map(diff.arrayify(val), (v) => { return parse(v, this); });
-  }
   url(): string { return resolveUrl(this); }
-  urlHash(): string { return stringHash(this.url()); }
-  metaDataHash(): string {
-    return jsonStableHash({
-      version: this.version,
-      outputType: this.outputType || 'static',
-      deps: this.safeDeps()
-    });
-  }
-  safeDeps(): SafeDep[] {
+  safeDeps() {
     if (this.deps) {
-      return <SafeDep[]>_.map(this.deps, (node: Node) => {
-        return <SafeDep>{ name: node.name, hash: node.configHash() };
+      return _.map(this.deps, (node: Project) => {
+        const dep = <SafeDep>{ name: node.name, hash: node.hash() };
+        return dep;
       });
     }
   }
-  configHash(): string {
-    return stringHash(this.urlHash() + this.metaDataHash() + this.hashConfiguration());
-  }
-  parse(input: any, conf?: any) {
-    if (conf) {
-      const dict =
-        diff.combine(this, cascade.deep(conf, keywords, this.selectors));
-      return parse(input, dict);
-    }
-    return parse(input, this);
-  }
-  select(base: any, options: { keywords?: {}, selectors?: {}, dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
-    if (!base) {
-      throw new Error('selecting on empty object');
-    }
-    const mutableOptions = diff.clone(options);
-
-    mutableOptions.keywords =
-      _.difference(keywords, mutableOptions.ignore.keywords);
-    mutableOptions.selectors =
-      _.difference(this.selectors, mutableOptions.ignore.selectors);
-
-    const flattened =
-      cascade.deep(base, mutableOptions.keywords, mutableOptions.selectors);
-    const parsed = this.parse(flattened, mutableOptions.dict);
-    return parsed;
-  }
-  selectToolchain(conf: file.Configuration) {
-    const buildSystems = ['cmake', 'ninja'];
-    const compilers = ['clang', 'gcc', 'msvc'];
-
-    const toolchain = this.select(
-      DEFAULT_TOOLCHAIN,
-      { dict: this, ignore: { keywords: buildSystems.concat(compilers) } });
-    if (conf.host && conf.toolchain) {
-      const customToolchain = this.select(
-        conf.toolchain,
-        { dict: this, ignore: { keywords: buildSystems.concat(compilers) } });
-      diff.extend(toolchain, conf.toolchain);
-    }
-    for (const name of Object.keys(toolchain)) {
-      const tool = toolchain[name];
-      if (tool.bin == null) {
-        tool.bin = name;
-      }
-      if (tool.name == null) {
-        tool.name = name;
+  merge(other: Project | Project): void { mergeNodes(this, other); }
+  toCache(): ProjectFile {
+    const ret = <ProjectFile>_.pick(this,
+      ['name', 'libs', 'version']);
+    ret.cache = {};
+    for (const k of Object.keys(this.cache)) {
+      const v = this.cache[k].value;
+      if (v) {
+        ret.cache[k] = v;
       }
     }
-    return toolchain;
+    return ret;
   }
-  merge(other: Node | file.Configuration): void { mergeNodes(this, other); }
-  toCache(): file.Configuration {
-    return <file.Configuration>_.pick(this,
-      ['cache', 'name', 'libs', 'version']);
-  }
-  safe(stripDeps?: boolean): file.Configuration {
-    const plain = <file.Configuration>_.omit(
-      diff.plain(this), ['_id', 'configuration', 'cache', 'd', 'p', 's']);
+  safe(stripDeps?: boolean): Project {
+    const plain = <Project>_.omit(
+      toJSON(this), ['_id', 'configuration', 'cache', 'd', 'p', 's']);
     if (plain.deps && stripDeps) {
       plain.deps = <any>this.safeDeps();
     }
     return plain;
   }
+  hash() {
+    return jsonStableHash(this.safe());
+  }
 }
 
-export { Node, CmdObj, resolveName, keywords, argvSelectors };
+export { Project, resolveName };

@@ -8,144 +8,8 @@ import map = require('map-stream');
 import globAll = require('glob-all');
 import { check } from 'js-object-tools';
 import { src as _src, dest, symlink } from 'vinyl-fs';
-
-import _unarchive from './archive';
-import { startsWith } from './string';
-
-interface BuildSettings {
-  cFlags: Object;
-  cxxFlags: Object;
-  compilerFlags: Object;
-  linkerFlags: Object;
-  defines: Object;
-  frameworks: Object;
-  sources: Object;
-  headers: Object;
-  libs: Object;
-  includeDirs: Object;
-  outputFile: string;
-  cmake: any;
-}
-
-interface InstallOptions {
-  from: string;
-  to?: string;
-  sources?: string[];
-  includeFrom?: string;
-}
-
-interface install_list {
-  binaries?: InstallOptions[];
-  headers?: InstallOptions[];
-  libs?: InstallOptions[];
-  assets?: InstallOptions[];
-  libraries?: InstallOptions[];
-}
-
-interface DirList {
-  root: string;
-  home: string;
-  clone: string;
-  project: string;
-  source: string;
-  build: string;
-  test: string;
-  install: install_list;
-  includeDirs: string[];
-}
-
-interface DebugCache {
-  url?: string;
-  metaConfiguration?: Object
-}
-
-interface Cache {
-  url: string;
-  metaData?: string;
-  configuration?: string;
-  buildFile?: string;
-  metaConfiguration?: string;
-  generatedBuildFile?: string;
-  libs?: string;
-  bin?: string;
-  debug?: DebugCache;
-}
-
-interface GitSettings {
-  repository?: string;
-  url?: string;
-  branch?: string;
-  tag?: string;
-  archive?: string;
-}
-
-interface DockerImage {
-  user: string,
-  image: string,
-  architecture: string,
-  platform: string,
-}
-
-interface Platform {
-  docker: DockerImage,
-  architecture: string,
-  endianness: string,
-  compiler: string
-  platform: string,
-  cpu: { num: number, speed: string }
-}
-
-interface Tool {
-  url: string,
-  version: string,
-  bin?: string,
-  name?: string
-}
-
-interface Toolchain {
-  ninja: Tool;
-  clang: Tool;
-}
-
-class Configuration {
-  [index: string]: any;
-  name: string;
-  override: Configuration;
-  build: BuildSettings;
-  configure: BuildSettings;
-  path: DirList;
-  deps: Configuration[];
-  cache: Cache;
-  fetch: { url?: string; }
-  link: string;
-  git: GitSettings;
-  host: Platform;
-  target: Platform;
-  test: BuildSettings;
-  toolchain: Toolchain;
-  environment: any;
-  d: DirList;
-  p: DirList;
-  outputType: string;
-  version: string;
-  tag: string;
-  user: string;
-  dir: string;
-}
-
-interface VinylFile {
-  path: string;
-  base: string;
-  cwd?: string;
-}
-
-interface CopyOptions {
-  followSymlinks?: boolean;
-  flatten?: boolean;
-  relative?: string;
-  from?: string;
-  to?: string;
-}
+import _unarchive from './util/archive';
+import { startsWith } from './util/string';
 
 function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
@@ -303,12 +167,12 @@ function findConfigAsync(configDir: string): Promise<string> {
   return Promise.resolve(getConfigPath(configDir));
 }
 
-function readConfigAsync(configDir: string): Promise<Configuration> {
+function readConfigAsync(configDir: string): Promise<ProjectFile> {
   return findConfigAsync(configDir)
     .then((configPath: string) => parseFileAsync(configPath));
 };
 
-function parseFileAsync(configPath: string): Promise<Configuration> {
+function parseFileAsync(configPath: string): Promise<ProjectFile> {
   if (configPath) {
     return readFileAsync(configPath, 'utf8')
       .then((data: string) => {
@@ -318,7 +182,7 @@ function parseFileAsync(configPath: string): Promise<Configuration> {
   return Promise.resolve(undefined);
 };
 
-function parseFileSync(configPath: string): Configuration {
+function parseFileSync(configPath: string): ProjectFile {
   const data = fs.readFileSync(configPath, 'utf8');
   return parseData(data, configPath);
 };
@@ -326,7 +190,7 @@ function parseFileSync(configPath: string): Configuration {
 function parseData(data: string, configPath: string) {
   switch (path.extname(configPath)) {
     case '.cson':
-      return CSON.parse(data) as Configuration;
+      return CSON.parse(data) as ProjectFile;
     case '.json':
       return JSON.parse(data);
     case '.yaml':
@@ -418,15 +282,4 @@ export {
   prune,
   wait,
   symlink,
-  InstallOptions,
-  install_list,
-  BuildSettings,
-  Configuration,
-  Platform,
-  Cache,
-  DirList,
-  DebugCache,
-  GitSettings,
-  VinylFile,
-  CopyOptions
 };

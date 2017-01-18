@@ -1,11 +1,11 @@
-// Type definitions for Node.js v4.x
+// Type definitions for Project.js v4.x
 // Project: http://nodejs.org/
 // Definitions by: Microsoft TypeScript <http://typescriptlang.org>, DefinitelyTyped <https://github.com/DefinitelyTyped/DefinitelyTyped>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
 /************************************************
 *                                               *
-*               Node.js v4.x API                *
+*               Project.js v4.x API                *
 *                                               *
 ************************************************/
 
@@ -172,7 +172,7 @@ declare var Buffer: {
     isBuffer(obj: any): obj is Buffer;
     /**
      * Returns true if {encoding} is a valid encoding argument.
-     * Valid string encodings in Node 0.12: 'ascii'|'utf8'|'utf16le'|'ucs2'(alias of 'utf16le')|'base64'|'binary'(deprecated)|'hex'
+     * Valid string encodings in Project 0.12: 'ascii'|'utf8'|'utf16le'|'ucs2'(alias of 'utf16le')|'base64'|'binary'(deprecated)|'hex'
      *
      * @param encoding string to test.
      */
@@ -658,7 +658,7 @@ declare module "http" {
          */
         keepAliveMsecs?: number;
         /**
-         * Maximum number of sockets to allow per host. Default for Node 0.10 is 5, default for Node 0.12 is Infinity
+         * Maximum number of sockets to allow per host. Default for Project 0.10 is 5, default for Project 0.12 is Infinity
          */
         maxSockets?: number;
         /**

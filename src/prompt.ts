@@ -1,6 +1,6 @@
 import * as Promise from 'bluebird';
 import * as util from 'util';
-import log from './util/log';
+import { log } from './util/log';
 import args from './util/args';
 
 interface Prompt {
@@ -13,19 +13,19 @@ interface Prompt {
   ask: Function;
 }
 
-const that: Prompt = <Prompt>{};
-that.done = () => {
+const prompt: Prompt = <Prompt>{};
+prompt.done = () => {
   return process
     .stdin
     .pause();
 };
-that.prompt = () => {
+prompt.prompt = () => {
   return process
     .stdout
-    .write(that.message);
+    .write(prompt.message);
 };
-that.message = '?:';
-that.start = () => {
+prompt.message = '?:';
+prompt.start = () => {
   process
     .stdin
     .resume();
@@ -35,35 +35,35 @@ that.start = () => {
   process
     .stdin
     .on('data', (text: string) => {
-      return that.onReceived(text);
+      return prompt.onReceived(text);
     });
-  return that.prompt();
+  return prompt.prompt();
 };
-that.onReceived = (text: string) => {
+prompt.onReceived = (text: string) => {
   log.verbose(`received data: ${text} ${util.inspect(text)}`);
 };
-that.yes = args.y || args.yes;
-that.ask = (q: string, expect: any, skip: boolean) => {
-  if (that.yes || skip) {
+prompt.yes = args.y || args.yes;
+prompt.ask = (q: string, expect: any, skip: boolean) => {
+  if (prompt.yes || skip) {
     return Promise.resolve(expect || 'y');
   }
   return new Promise((resolve) => {
-    that.message = `${q}: `;
-    that.onReceived = (data: any) => {
+    prompt.message = `${q}: `;
+    prompt.onReceived = (data: any) => {
       const noLines = data.replace(/\r?\n|\r/g, ' ');
       const answer = noLines.trim();
-      that.done();
+      prompt.done();
       if (expect) {
         if (answer === expect) {
           return resolve(answer);
         }
-      } else if (answer === 'y' || answer === 'yes' || that.yes) {
+      } else if (answer === 'y' || answer === 'yes' || prompt.yes) {
         return resolve(answer);
       }
       return resolve(false);
     };
-    return that.start();
+    return prompt.start();
   });
 };
 
-export default that;
+export { Prompt, prompt }

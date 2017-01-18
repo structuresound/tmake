@@ -1,7 +1,7 @@
 import request from 'request-promise';
 import Promise from 'bluebird';
 import colors from 'chalk';
-import log from './util/log';
+import { log } from './util/log';
 
 const apiVer = 'v1';
 const server = 'http://localhost:3000';

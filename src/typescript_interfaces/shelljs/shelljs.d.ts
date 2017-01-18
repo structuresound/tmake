@@ -532,7 +532,7 @@ declare module "shelljs"
     export function touch(options: touchOptionsArray, ...files: string[]): void;
     export function touch(options: touchOptionsArray, files: string[]): void;
 
-    // Configuration
+    // Project
 
     interface ShellConfig
     {

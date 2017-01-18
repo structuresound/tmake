@@ -4,15 +4,13 @@ import * as request from 'request';
 import progress = require('request-progress');
 import * as ProgressBar from 'progress';
 import * as fs from 'fs';
-import { diff } from 'js-object-tools';
-
-import * as file from './util/file';
-import log from './util/log';
+import * as file from './file';
+import { log } from './util/log';
 import args from './util/args';
 import { mkdir, which, exit } from './util/sh';
 import { cache, updateNode } from './db';
 import { stringHash } from './util/hash';
-import { Node } from './node';
+import { Project } from './node';
 
 function download(url: string, cacheDir = path.join(args.userCache,
   'cache')): Promise<string> {
@@ -85,17 +83,16 @@ function unarchiveSource(filePath: string, toDir: string) {
   return file.unarchive(filePath, tempDir, toDir);
 }
 
-function updateCache(node: Node) {
+function updateCache(node: Project) {
   const modifier = {
     $set: {
-      'cache.url': node.urlHash(),
-      // 'cache.debug.url': node.url()
+      'cache.fetch': node.cache.fetch.update()
     }
   };
   return updateNode(node, modifier);
 }
 
-function upsertCache(node: Node) {
+function upsertCache(node: Project) {
   return cache.findOne(node.name).then((res: any) => {
     if (res) {
       return updateCache(node);
@@ -105,18 +102,16 @@ function upsertCache(node: Node) {
   });
 }
 
-function getSource(node: Node) {
+function getSource(node: Project) {
   const url = node.url();
-  const urlHash = node.urlHash();
   mkdir('-p', node.d.root);
   log.verbose(`fetching source @ ${url}`);
   return download(url)
     .then((filePath) => { return unarchiveSource(filePath, node.d.clone); });
 }
 
-function linkSource(node: Node): Promise<any> {
+function linkSource(node: Project): Promise<any> {
   const url = node.url();
-  const urlHash = node.urlHash();
   log.add('link source from', url);
   log.warn('to', node.d.root);
   return file.existsAsync(node.d.clone)
@@ -135,7 +130,7 @@ function linkSource(node: Node): Promise<any> {
     });
 }
 
-function destroy(node: Node) {
+function destroy(node: Project) {
   return file.existsAsync(node.d.clone)
     .then((exists) => {
       if (exists) {
@@ -144,49 +139,46 @@ function destroy(node: Node) {
         log.error('source url changed ... remove existing source');
         file.nuke(node.d.clone);
       }
+      node.cache.fetch.reset();
       const modifier = {
         $unset: {
-          'cache.url': true,
-          'cache.metaConfiguration': true,
-          'cache.configuration': true,
-          // 'cache.debug.url': true
+          'cache.fetch': ''
         }
       };
       return updateNode(node, modifier);
     });
 }
 
-function reportStale(node: Node, currentHash: string) {
-  if (node.cache.url !== currentHash) {
-    log.error(`cache invalid ${node.cache.url} != ${currentHash}`);
+function reportStale(node: Project) {
+  if (node.cache.fetch.dirty()) {
+    log.error(`cache invalid ${node.cache.fetch.get()}`);
     log.verbose(node.cache);
   } else {
     log.add('forcing re-fetch of source');
   }
 }
 
-function maybeFetch(node: Node): Promise<any> {
+function maybeFetch(node: Project): Promise<any> {
   if (node.link) {
     return linkSource(node);
-  } else if (node.fetch || node.git) {
+  }
+  if (node.archive || node.git) {
     return file.existsAsync(node.d.clone)
       .then((exists: boolean) => {
-        const urlHash = node.urlHash();
-        if (exists) {
-          if ((urlHash !== node.cache.url) || node.force()) {
-            reportStale(node, urlHash);
-            return destroy(node).then(() => { return getSource(node); });
+        if (!exists || node.cache.fetch.dirty() || node.force()) {
+          if (exists) {
+            return destroy(node).then(() => { return getSource(node) });
           }
-          return Promise.resolve();
+          return getSource(node);
         }
-        return getSource(node);
+        return Promise.resolve();
       });
   }
   log.info(`skip fetch, project is local ${node.name}`);
   return Promise.resolve();
 }
 
-function fetch(node: Node) {
+function fetch(node: Project): Promise<any> {
   return maybeFetch(node).then(() => { return upsertCache(node) });
 }
 

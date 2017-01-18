@@ -1,12 +1,11 @@
 import * as _ from 'lodash';
 import * as fs from 'fs';
-import { diff, check } from 'js-object-tools';
+import { check } from 'js-object-tools';
 
-import * as file from './util/file';
+import * as file from './file';
 import { startsWith } from './util/string';
 import { jsonStableHash } from './util/hash';
-import { getCommands, ignore } from './iterate';
-import { Node } from './node';
+import { Project } from './node';
 
 const stdCxxFlags = {
   O: 2,

@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
-import {diff, check} from 'js-object-tools';
+import {valueForKeyPath, check} from 'js-object-tools';
 
-import log from './util/log';
+import { log } from './util/log';
 
 function defaultLookup(key: string, data: {[index: string]: any}) {
   if (key in data) {
@@ -10,7 +10,7 @@ function defaultLookup(key: string, data: {[index: string]: any}) {
   // look up the chain
   const keyParts = key.split('.');
   if (keyParts.length > 1) {
-    const repl = diff.valueForKeyPath(key, data);
+    const repl = valueForKeyPath(key, data);
     return repl;
   }
 }

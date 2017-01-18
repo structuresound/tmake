@@ -1,36 +1,55 @@
+/// <reference path="./node.d.ts" /> 
+
 import * as _ from 'lodash';
 import * as Promise from 'bluebird';
-import * as file from './util/file';
-import { DepGraph } from 'dependency-graph';
-import { diff, check } from 'js-object-tools';
-import log from './util/log';
+import * as file from './file';
+import { combine, check, NodeGraph } from 'js-object-tools';
+import { log } from './util/log';
 import args from './util/args';
-import { iterable } from './iterate';
+import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
 import { cache as db } from './db';
-import { Node } from './node';
+import { jsonStableHash } from './util/hash';
 
-function loadCache(node: Node): Promise<Node> {
-  return db.findOne({ name: node.name })
-    .then((result: file.Configuration) => {
-      const existing = result || { cache: { debug: {}, test: {} } };
-      node.merge(<any>existing);
-      return Promise.resolve(node);
+import { Project } from './node';
+import { Environment, EnvironmentCache, CacheProperty } from './environment';
+
+function loadCache(project: Project): Promise<Project> {
+  return db.findOne({ name: project.name })
+    .then((result: ProjectFile) => {
+      if (result) {
+        project.merge(<any>result);
+      }
+      return Promise.each(project.environments, (e) => {
+        return loadEnvironment(e);
+      }).then(() => {
+        return Promise.resolve(project);
+      })
     });
 }
 
-function createNode(_conf: file.Configuration, parent?: Node): Promise<Node> {
-  const node = new Node(_conf, parent);
+function loadEnvironment(env: Environment): Promise<any> {
+  return db.findOne({ name: env.id() })
+    .then((result: EnvironmentCacheFile) => {
+      env.cache = new EnvironmentCache();
+      env.cache.configure = new CacheProperty(() => {
+        return jsonStableHash(env.configure);
+      })
+    });
+}
+
+function createNode(_conf: ProjectFile, parent?: Project): Promise<Project> {
+  const node = new Project(_conf, parent);
   return loadCache(node);
 }
 
 interface Cache {
-  [index: string]: Node;
+  [index: string]: Project;
 }
 
 
-function graphNode(_conf: file.Configuration, parent: Node, graph: DepGraph,
-  cache: Cache): Promise<Node> {
+function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project>,
+  cache: Cache): Promise<Project> {
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.dir : '');
@@ -39,10 +58,10 @@ function graphNode(_conf: file.Configuration, parent: Node, graph: DepGraph,
     if (!linkedConfig) {
       throw new Error(`can't resolve symlink ${conf.link} relative to parent ${parent.dir} fullpath: ${file.getConfigPath(configDir)}`)
     }
-    conf = <file.Configuration>diff.combine(linkedConfig, conf);
+    conf = <ProjectFile>combine(linkedConfig, conf);
   }
   return createNode(conf, parent)
-    .then((node: Node) => {
+    .then((node: Project) => {
       if (parent && (node.name === parent.name)) {
         throw new Error(`recursive dependency ${parent.name}`);
       }
@@ -57,44 +76,44 @@ function graphNode(_conf: file.Configuration, parent: Node, graph: DepGraph,
           log.warn('@', node.dir);
         }
       }
-      return Promise.map(iterable(conf.deps) || [],
-        (dep: file.Configuration) => {
+      return mapOLHM(conf.deps,
+        (dep: ProjectFile) => {
           if (dep) {
             return graphNode(dep, node, graph, cache);
           }
         })
         .then((deps) => {
           if (deps.length && deps[0] != undefined) {
-            node.deps = deps;
+            node.deps = <any>deps;
           }
           return Promise.resolve(node);
         });
     });
 }
 
-function _map(node: file.Configuration, graphType: string,
-  graphArg?: string): Promise<Node[]> {
+function _map(node: ProjectFile, graphType: string,
+  graphArg?: string): Promise<Project[]> {
   const cache: Cache = {};
-  const graph = new DepGraph();
+  const graph = new NodeGraph();
 
   return graphNode(node, undefined, graph, cache)
     .then(() => {
       const nodeNames = graph[graphType](graphArg);
-      const nodes: Node[] =
+      const nodes: Project[] =
         _.map(nodeNames, (name: string) => { return cache[name]; });
       return Promise.resolve(nodes);
     });
 }
 
-function all(node: file.Configuration) {
+function all(node: ProjectFile) {
   return _map(node, 'overallOrder');
 }
 
-function deps(node: file.Configuration) {
+function deps(node: ProjectFile) {
   return _map(node, 'dependenciesOf', node.name);
 }
 
-function resolve(conf: file.Configuration) {
+function resolve(conf: ProjectFile) {
   if (!conf) {
     throw new Error('resolving without a root node');
   }

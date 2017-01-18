@@ -4,17 +4,18 @@ import fs from 'fs';
 
 import args from '../lib/util/args';
 import {stringHash} from '../lib/util/hash';
-import {Node} from '../lib/node';
-import {fetch as fetchToolchain, pathForTool} from '../lib/toolchain';
+import {Project} from '../lib/node';
+import {fetch as fetchToolchain, pathForTool} from '../lib/tools';
 
-describe('toolchain', function () {
-  const node = new Node({name: 'toolchain-test'});
+describe('tools', function () {
+  const project = new Project({name: 'tools-test'});
+  const env = project.environments[0];
 
   this.timeout(120000);
-  const hostChain = node.toolchain;
+  const hostChain = env.tools;
   const ninjaVersion = 'v1.7.1';
 
-  it('can parse toolchain correctly', () => {
+  it('can parse tools correctly', () => {
     expect(hostChain.ninja.name)
       .to
       .equal('ninja');
@@ -23,7 +24,7 @@ describe('toolchain', function () {
       .equal('ninja');
     return expect(hostChain.ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${node.host.platform}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${env.host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {

@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import { check, diff } from 'js-object-tools';
+import stringify = require('json-stable-stringify');
+import { check } from 'js-object-tools';
 
 function jsonStableHash(obj: Object) {
   if (!check(obj, 'Object')) {
@@ -8,7 +9,7 @@ function jsonStableHash(obj: Object) {
   }
   return crypto
     .createHash('md5')
-    .update(diff.stringify(obj))
+    .update(stringify(obj))
     .digest('hex');
 }
 

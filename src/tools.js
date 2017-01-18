@@ -7,8 +7,8 @@ import fs from 'fs';
 import {check} from 'js-object-tools';
 
 import args from './util/args';
-import * as file from './util/file';
-import log from './util/log';
+import * as file from './file';
+import { log } from './util/log';
 import {stringHash} from './util/hash';
 import {download} from './fetch';
 import {startsWith} from './util/string';

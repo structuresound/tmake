@@ -1,7 +1,7 @@
 import {expect} from 'chai';
 import path from 'path';
 import {check} from 'js-object-tools';
-import file from '../lib/util/file';
+import file from '../lib/file';
 import args from '../lib/util/args';
 
 describe('file', () => {

@@ -1,11 +1,11 @@
 import _ from 'lodash';
-import {check, diff} from 'js-object-tools';
-import {replaceAll} from './string';
-import log from './log';
-import {startsWith} from './string';
+import { check, every, any, contains, valueForKeyPath, mergeValueAtKeypath, keyPaths } from 'js-object-tools';
+import { replaceAll } from './string';
+import { log } from './log';
+import { startsWith } from './string';
 
 function deepSearch(object, keywords, selectors, stack) {
-  for (const key of diff.keyPaths(object)) {
+  for (const key of keyPaths(object)) {
     let priority = 0;
     let filtered = key;
     const unfiltered = key.split('.');
@@ -25,13 +25,13 @@ function deepSearch(object, keywords, selectors, stack) {
       if (stack[priority] == null) {
         stack[priority] = {};
       }
-      const val = diff.valueForKeyPath(key, object);
+      const val = valueForKeyPath(key, object);
       stack[priority][filtered] = val;
     }
   }
   const flat = {};
   _.each(stack, (priority) => {
-    _.each(priority, (v, k) => { diff.mergeValueAtKeypath(v, k, flat); });
+    _.each(priority, (v, k) => { mergeValueAtKeypath(v, k, flat); });
   });
   return flat;
 }
@@ -48,7 +48,7 @@ function shallowSearch(current, keywords, selectors, stack, height) {
     } else {
       if (check(current[key], Object)) {
         stack[height][key] =
-            flatten(shallowSearch(current[key], keywords, selectors, [], 0));
+          flatten(shallowSearch(current[key], keywords, selectors, [], 0));
       } else {
         stack[height][key] = current[key];
       }
@@ -67,21 +67,21 @@ function flatten(stack) {
 
 function parseAnd(input, cssString) {
   if (cssString.indexOf(' ') !== -1) {
-    return diff.every(cssString.split(' '), (subCssString) => {
+    return every(cssString.split(' '), (subCssString) => {
       if (startsWith(subCssString, '!')) {
-        return !diff.contains(input, subCssString);
+        return !contains(input, subCssString);
       } else {
-        return diff.contains(input, subCssString);
+        return contains(input, subCssString);
       }
     });
   }
-  return diff.contains(input, cssString);
+  return contains(input, cssString);
 }
 
 function parseOr(input, cssString) {
   const repl = replaceAll(cssString, ', ', ',');
   if (repl.indexOf(',') !== -1) {
-    return diff.any(repl.split(','), (subCssString) => {
+    return any(repl.split(','), (subCssString) => {
       return parseAnd(input, subCssString);
     });
   }
