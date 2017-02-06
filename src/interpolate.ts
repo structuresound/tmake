@@ -1,9 +1,9 @@
 import * as _ from 'lodash';
-import {valueForKeyPath, check} from 'js-object-tools';
+import { valueForKeyPath, check } from 'js-object-tools';
 
-import { log } from './util/log';
+import { log } from './log';
 
-function defaultLookup(key: string, data: {[index: string]: any}) {
+function defaultLookup(key: string, data: { [index: string]: any }) {
   if (key in data) {
     return data[key];
   }
@@ -15,18 +15,18 @@ function defaultLookup(key: string, data: {[index: string]: any}) {
   }
 }
 
-interface Options {
+export interface InterpolateOptions {
   [index: string]: any;
   ref?: { [index: string]: any }
   mustPass?: boolean
 }
 
 function _interpolate(template: string, func: Function | Object,
-                      opt: Options): string {
+  opt: InterpolateOptions): string {
   const commands = template.match(/{[^}\r\n]*}/g);
   if (commands) {
     if (commands[0].length ===
-        template.length) {  // allow for object replacement of single command
+      template.length) {  // allow for object replacement of single command
       const res = (<Function>func)(commands[0].slice(1, -1));
       if (check(res, String)) {
         return _interpolate(res, func, opt);
@@ -51,8 +51,8 @@ function _interpolate(template: string, func: Function | Object,
   return template;
 }
 
-function interpolate(template: string, funcOrData: Function | Object,
-                     mustPass: boolean) {
+export function interpolate(template: string, funcOrData: Function | Object,
+  mustPass?: boolean) {
   if (!template) {
     throw new Error(`can't interpolate ${template}`);
   }
@@ -62,7 +62,5 @@ function interpolate(template: string, funcOrData: Function | Object,
   const func = check(funcOrData, Function) ? funcOrData : ((key: string) => {
     return defaultLookup(key, funcOrData);
   });
-  return _interpolate(template, func, {ref: funcOrData, mustPass: mustPass});
+  return _interpolate(template, func, { ref: funcOrData, mustPass: mustPass });
 }
-
-export default interpolate;

@@ -1,21 +1,21 @@
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { check } from 'js-object-tools';
 
-import { log } from './util/log';
-import args from './util/args';
+import { log } from './log';
+import { args } from './args';
 import * as file from './file';
 import { execute, list, unlink, push, parse } from './tmake';
 import { cache, user } from './db';
 import { graph, createNode } from './graph';
 
-import { resolveName } from './node';
+import { ProjectFile, resolveName } from './project';
 
 const name = 'tmake';
-Promise.onPossiblyUnhandledRejection(function (error) { throw error; });
+Bluebird.onPossiblyUnhandledRejection(function (error) { throw error; });
 
 function sortKeysBy(obj: any, comparator?: Function) {
   const keys = _.sortBy(_.keys(obj), (key) => {
@@ -154,7 +154,7 @@ function createPackage() {
 }
 
 function tmake(rootConfig: ProjectFile,
-  positionalArgs = args._): Promise<any> {
+  positionalArgs = args._) {
   cache.loadDatabase();
   user.loadDatabase();
   const resolvedName =
@@ -190,7 +190,7 @@ function tmake(rootConfig: ProjectFile,
       return execute(rootConfig, 'install');
     case 'ls':
     case 'list':
-      return ((): Promise<ProjectFile[]> => {
+      return (() => {
         if (positionalArgs[1] === 'local') {
           return list('user', { name: positionalArgs[2] })
         } else if (positionalArgs[1]) {
@@ -227,12 +227,8 @@ function run() {
     default:
       return file.readConfigAsync(args.runDir)
         .then(
-        (config) => {
-          if (check(config, Error)) {
-            throw config;  // as Error
-          }
-          if (config) {
-            config.dir = args.runDir;
+        (projectFile) => {
+          if (projectFile) {
             const cmd = args._[0];
             if (!check(cmd, String)) {
               log.quiet(manual());
@@ -254,12 +250,10 @@ function run() {
                 if (!check(args._[1], parseOptions(cmd).type)) {
                   log.quiet(usage(cmd));
                 }
-                return tmake(config);
+                return tmake(projectFile);
             }
           }
-
           // No config present
-
           const example = args._[1] || 'served';
           const examplePath =
             path.join(args.npmDir, `examples/${example}`);

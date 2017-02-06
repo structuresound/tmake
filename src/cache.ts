@@ -1,12 +1,12 @@
-import { jsonStableHash, stringHash } from './util/hash';
+import { jsonStableHash, stringHash } from './hash';
 
-declare interface CachePropertyOptions<T> {
+export interface CachePropertyOptions<T> {
     require?: CacheProperty<T>;
     value?: T;
     combine?: () => T;
 }
 
-class CacheProperty<T> {
+export class CacheProperty<T> {
     require: CacheProperty<T>;
     _value: T;
     _get: Function;
@@ -35,7 +35,7 @@ class CacheProperty<T> {
         if (this._combine) {
             return this._combine(this, other);
         }
-        return stringHash(<any>this._get() + <any>other.value());
+        return <any>stringHash(<any>this._get() + <any>other.value());
     }
     dirty(dynamicMatch?: any): boolean {
         let existing = dynamicMatch ? dynamicMatch : this.get();
@@ -53,5 +53,3 @@ class CacheProperty<T> {
         }
     }
 }
-
-export { CacheProperty };

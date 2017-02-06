@@ -1,7 +1,7 @@
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as util from 'util';
-import { log } from './util/log';
-import args from './util/args';
+import { log } from './log';
+import { args } from './args';
 
 interface Prompt {
   done: Function;

@@ -1,18 +1,20 @@
 /*  eslint no-template-curly-in-string: "off"*/
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as sh from 'shelljs';
 import * as fs from 'fs';
 import { arrayify, check } from 'js-object-tools';
 
 import { updateNode, updateEnvironment } from './db';
-import { fileHash } from './util/hash';
-import { log } from './util/log';
+import { fileHash } from './hash';
+import { log } from './log';
 
-import { startsWith } from './util/string';
+import { startsWith } from './string';
 import { fetch } from './tools';
-import file from './file';
+import * as file from './file';
+
+import { Environment } from './environment';
 
 interface CMakeDefines {
   [index: string]: string;
@@ -32,7 +34,7 @@ function doConfiguration(env: Environment, ninja: string) {
     let value = cMakeDefines[k];
     if (typeof value === 'string' || value instanceof String) {
       if (startsWith(value, '~/')) {
-        value = `${env
+        value = `${env.project
           .d
           .home}/${value
             .slice(2)}`;
@@ -45,7 +47,7 @@ function doConfiguration(env: Environment, ninja: string) {
 
 function cmake(env: Environment, command: string) {
   log.quiet(command);
-  return new Promise((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     sh.cd(env.d.build);
     return sh.exec(command, (code, stdout, stderr) => {
       if (code) {
@@ -60,8 +62,7 @@ function cmake(env: Environment, command: string) {
 }
 
 function configure(env: Environment) {
-  const buildFilePath = path.join(env.d.project, );
-  return fileHash(buildFilePath).then((buildFileHash) => {
+  return fileHash(env.getBuildFilePath('cmake')).then((buildFileHash) => {
     if (!env.cache.buildFile.dirty(buildFileHash)) {
       return Promise.resolve();
     }

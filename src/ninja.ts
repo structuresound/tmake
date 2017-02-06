@@ -1,14 +1,16 @@
 import * as path from 'path';
 import * as sh from 'shelljs';
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import ninja_build_gen = require('ninja-build-gen');
-import { log } from './util/log';
+import { log } from './log';
 import { fetch } from './tools';
+
+import { Environment } from './environment';
 
 const ninjaVersion = '1.6.0';
 
-function build(env: Environment): Promise<any> {
+function build(env: Environment) {
   return fetch(env.tools).then((toolpaths: any) => {
     const directory = env.d.project;
     let command = '';
@@ -21,7 +23,7 @@ function build(env: Environment): Promise<any> {
     return new Promise((resolve, reject) => {
       sh.exec(command, (code, stdout, stderr) => {
         if (code) {
-          return reject(`ninja exited with code ${code}\n${command}`);
+          return reject(new Error(`ninja exited with code ${code}\n${command}`));
         } else if (stdout) {
           return resolve(stdout);
         } else if (stderr) {
@@ -79,6 +81,7 @@ function generate(env: Environment, fileName: string): void {
   let linkCommand = 'ar rv $out $in';
   let libName = env.build.outputFile;
   let staticLibs = '';
+  log.verbose('    ', 'link:', env.project.libs);
   switch (env.outputType) {
     case 'static':
     default:
@@ -95,7 +98,7 @@ function generate(env: Environment, fileName: string): void {
       if (!libName) {
         libName = `${env.project.name}`;
       }
-      linkCommand = `${cc} -o $out $in ${env.project.libs ? env.project.libs.join(' ') : ''} ${env
+      linkCommand = `${cc} -o $out $in${env.build.libs ? ' ' + env.build.libs.join(' ') : ''}${env
         .linkerFlags()
         .join(' ')}`;
       break;
@@ -109,15 +112,15 @@ function generate(env: Environment, fileName: string): void {
   const linkNames = [];
 
   for (const filePath of env.s) {
-    // console.log 'process source file', filePath
+    // console.log('process source file', filePath);
     const dir = path.dirname(filePath);
     const relative = path.relative(env.p.clone, dir);
-    // console.log 'relative from #{env.p.clone} is #{relative}'
+    // console.log(`relative from ${env.p.clone} is ${relative}`);
     const outBase = path.join('build', relative);
     const ext = path.extname(filePath);
     const name = path.basename(filePath, ext);
     const linkName = `${outBase}/${name}.o`;
-    // console.log 'add build file', linkName
+    // console.log('add build file', linkName);
     ninjaConfig
       .edge(linkName)
       .from(filePath)

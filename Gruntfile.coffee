@@ -7,23 +7,14 @@ module.exports = (grunt) ->
           sourceMap: true
           presets: ['babel-preset-es2015']
         cwd: "#{__dirname}/src/"
-        src: ['**/*.js', '!**/*.test.js']
+        src: ['**/*.js']
         dest: 'lib/'
-        ext: '.js'
-      tests:
-        expand: true
-        options:
-          sourceMap: true
-          presets: ['babel-preset-es2015']
-        flatten: false
-        cwd: "#{__dirname}/src/"
-        src: ['**/*.test.js']
-        dest: 'test/'
         ext: '.js'
     ts:
       dev:
-        src: ['src/**/*.ts', '!src/**/*.test.ts']
+        src: ['src/**/*.ts']
         outDir: 'lib',
+        watch: 'src'
       options:
         noImplicitAny: true
         moduleResolution: 'node'

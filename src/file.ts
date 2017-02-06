@@ -8,8 +8,24 @@ import map = require('map-stream');
 import globAll = require('glob-all');
 import { check } from 'js-object-tools';
 import { src as _src, dest, symlink } from 'vinyl-fs';
-import _unarchive from './util/archive';
-import { startsWith } from './util/string';
+import _unarchive from './archive';
+import { startsWith } from './string';
+
+import { ProjectFile } from './project';
+
+export interface VinylFile {
+  path: string;
+  base: string;
+  cwd?: string;
+}
+
+export interface VinylOptions {
+  followSymlinks?: boolean;
+  flatten?: boolean;
+  relative?: string;
+  from?: string;
+  to?: string;
+}
 
 function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
@@ -62,19 +78,19 @@ function wait(stream: any, readOnly?: boolean) {
 };
 
 function deleteAsync(filePath: string) {
-  return new Promise<boolean>((resolve: Function, reject: Function) => {
+  return new Promise<void>((resolve: Function, reject: Function) => {
     fs.unlink(filePath, (err) => {
       if (err) {
         reject(err);
       }
-      resolve(1);
+      resolve();
     })
   });
 }
 
 function _glob(srcPattern: string[], relative: string,
-  cwd: string): Promise<any> {
-  return new Promise((resolve: Function, reject: Function) => {
+  cwd: string) {
+  return new Promise<string[]>((resolve: Function, reject: Function) => {
     return globAll(srcPattern,
       {
         cwd: cwd || process.cwd(),
@@ -98,7 +114,7 @@ function _glob(srcPattern: string[], relative: string,
   });
 }
 
-function glob(patternS: any, relative: string, cwd: string): Promise<any> {
+function glob(patternS: any, relative: string, cwd: string) {
   let patterns: string[] = [];
   if (check(patternS, String)) {
     patterns.push(patternS);
@@ -108,7 +124,7 @@ function glob(patternS: any, relative: string, cwd: string): Promise<any> {
   return _glob(patterns, relative, cwd);
 };
 
-function existsAsync(filePath: string): Promise<boolean> {
+function existsAsync(filePath: string) {
   return new Promise<boolean>((resolve: Function, reject: Function) => {
     if (!filePath) {
       reject(new Error('no specified clone directory'));
@@ -118,7 +134,7 @@ function existsAsync(filePath: string): Promise<boolean> {
 };
 
 function readFileAsync(filePath: string, format: string = 'utf8') {
-  return new Promise((resolve: Function, reject: Function) => fs.readFile(
+  return new Promise<string>((resolve: Function, reject: Function) => fs.readFile(
     filePath, format, (err: Error, data: string) => {
       if (err) {
         reject(err);
@@ -128,19 +144,19 @@ function readFileAsync(filePath: string, format: string = 'utf8') {
 };
 
 function writeFileAsync(filePath: string, data: string,
-  options?: Object): Promise<any> {
-  return new Promise((resolve: Function, reject: Function) => {
+  options?: Object) {
+  return new Promise<void>((resolve: Function, reject: Function) => {
     fs.writeFile(filePath, data, options, (err) => {
       if (err) {
         reject(err);
       }
-      return resolve();
+      resolve();
     });
   });
 };
 
 function findOneAsync(srcPattern: string[], relative: string,
-  cwd: string): Promise<string> {
+  cwd: string) {
   return glob(srcPattern, relative, cwd)
     .then((array: string[]) => {
       if (array.length) {
@@ -163,31 +179,28 @@ function getConfigPath(configDir: string): string {
   return '';
 };
 
-function findConfigAsync(configDir: string): Promise<string> {
+function findConfigAsync(configDir: string) {
   return Promise.resolve(getConfigPath(configDir));
 }
 
-function readConfigAsync(configDir: string): Promise<ProjectFile> {
+function readConfigAsync(configDir: string) {
   return findConfigAsync(configDir)
     .then((configPath: string) => parseFileAsync(configPath));
 };
 
-function parseFileAsync(configPath: string): Promise<ProjectFile> {
-  if (configPath) {
-    return readFileAsync(configPath, 'utf8')
-      .then((data: string) => {
-        return Promise.resolve(parseData(data, configPath));
-      });
-  }
-  return Promise.resolve(undefined);
+function parseFileAsync(configPath: string) {
+  return readFileAsync(configPath, 'utf8')
+    .then((data: string) => {
+      return Promise.resolve(parseData(data, configPath));
+    });
 };
 
-function parseFileSync(configPath: string): ProjectFile {
+function parseFileSync(configPath: string) {
   const data = fs.readFileSync(configPath, 'utf8');
   return parseData(data, configPath);
 };
 
-function parseData(data: string, configPath: string) {
+function parseData(data: string, configPath: string): ProjectFile {
   switch (path.extname(configPath)) {
     case '.cson':
       return CSON.parse(data) as ProjectFile;

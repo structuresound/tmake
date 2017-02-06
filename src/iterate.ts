@@ -1,6 +1,12 @@
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import { contains, check, safeOLHM } from 'js-object-tools';
+
+export interface CmdObj {
+  cmd: string;
+  arg?: any;
+  cwd?: string;
+}
 
 const _ignore = [
   'linkerFlags',
@@ -16,7 +22,7 @@ const _ignore = [
   'outputFile'
 ];
 
-function iterable(val: any) {
+export function iterable(val: any) {
   if (check(val, Array)) {
     return val;
   } else if (check(val, Object)) {
@@ -25,7 +31,7 @@ function iterable(val: any) {
   return [val];
 }
 
-function getCommands(it: any, ignore?: string[]) {
+export function getCommands(it: any, ignore?: string[]) {
   const validCommands = [];
   if (check(it, String)) {
     validCommands.push({ arg: it, cmd: 'shell' });
@@ -43,31 +49,29 @@ function getCommands(it: any, ignore?: string[]) {
   return validCommands;
 }
 
-function iterateOLHM(obj: any, fn: (any: any) => Promise<any>) {
+export function iterateOLHM(obj: any, fn: (any: any) => Promise<any>) {
   const it = safeOLHM(obj);
   if (!check(it, Array)
   ) {
     throw new Error('safeOLHM did not produce array');
   }
-  return Promise.each(it, fn);
+  return Bluebird.each(it, fn);
 }
 
-function mapOLHM(obj: any, fn: (any: any) => Promise<any>) {
+export function mapOLHM(obj: any, fn: (any: any) => Promise<any>) {
   const it = safeOLHM(obj);
   if (!check(it, Array)
   ) {
     throw new Error('safeOLHM did not produce array');
   }
-  return Promise.map(it, fn);
+  return Bluebird.map(it, fn);
 }
 
-function iterate(obj: any, fn: (cmd: schema.CmdObj) => Promise<any>) {
+export function iterate(obj: any, fn: (cmd: CmdObj) => Promise<any> | Bluebird<any>) {
   const it = iterable(obj);
   if (!check(it, Array)
   ) {
     throw new Error('iterable did not produce array');
   }
-  return Promise.each(it, fn);
+  return Bluebird.each(it, fn);
 }
-
-export { iterable, iterate, iterateOLHM, mapOLHM, getCommands };

@@ -3,12 +3,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { check, arrayify, clone } from 'js-object-tools';
 
-import { replaceAll, startsWith } from './util/string';
-import { log } from './util/log';
-import { exec } from './util/sh';
-import interpolate from './interpolate';
+import { replaceAll, startsWith } from './string';
+import { log } from './log';
+import { exec } from './sh';
+import { interpolate } from './interpolate';
 import * as file from './file';
-import args from './util/args';
+import { args } from './args';
 
 interface MacroObject {
   macro: string, map: { [index: string]: string }
@@ -156,14 +156,39 @@ function parse(input: string | MacroObject, dict: any): any {
 //   return out || input;
 // }
 
-function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
-  if (!fs.existsSync(f)) {
-    throw new Error(`no file at ${f}`);
+function readWritePathsForFile(f: string, r: ReplEntry) {
+  if (f.endsWith('.in')) {
+    return {
+      readPath: f,
+      cachePath: undefined,
+      writePath: f.replace(new RegExp('.in' + '$'), '')
+    }
   }
+  return {
+    readPath: f + '.tmake',
+    cachePath: f + '.tmake',
+    writePath: f
+  }
+}
+
+function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
+  const {readPath, cachePath, writePath} = readWritePathsForFile(f, r);
+  if (cachePath && !fs.existsSync(cachePath)) {
+    // log.warn('cache input file to', cachePath);
+    if (!fs.existsSync(f)) {
+      throw new Error(`but no original source file located at ${f}`);
+    }
+    fs.renameSync(f, cachePath);
+  }
+  if (!fs.existsSync(readPath)) {
+    throw new Error(`no input file at ${readPath}`);
+  }
+  let inputString = fs.readFileSync(readPath, 'utf8');
+
   if (!r.inputs) {
     throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
   }
-  let stringFile = fs.readFileSync(f, 'utf8');
+
   for (const k of Object.keys(r.inputs)) {
     const v = r.inputs[k];
     let parsedKey: string;
@@ -179,46 +204,26 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
       parsedKey = `${r.directive.prepost || r.directive.pre || ''}${parsedKey}${r.directive.prepost || r.directive.post || ''}`;
     }
     if (args.verbose) {
-      if ((<any>stringFile)
+      if ((<any>inputString)
         .includes(
         parsedKey)) {  // https://github.com/Microsoft/TypeScript/issues/3920
         log.add(`[ replace ] ${parsedKey} : ${parsedVal}`);
       }
     }
-    stringFile = replaceAll(stringFile, parsedKey, parsedVal);
+    inputString = replaceAll(inputString, parsedKey, parsedVal);
   }
 
-  const format = {
-    ext: path.extname(f),
-    name: path.basename(f, path.extname(f)),
-    dir: path.dirname(f),
-  };
-
-  if (format.ext === '.in') {
-    const parts = f.split('.');
-    format.dir = path.dirname(parts[0]);
-    format.name = path.basename(parts[0]);
-    format.ext = parts.slice(1).join('.');
-  }
-  const editedFormat = _.extend(format, _.pick(r, Object.keys(format)));
-  let base: string;
-  if (startsWith(format.ext, '.')) {
-    base = editedFormat.name + editedFormat.ext;
-  } else {
-    base = editedFormat.name + '.' + editedFormat.ext;
-  }
-  const newPath = path.join(editedFormat.dir, base);
   let existingString = '';
-  if (fs.existsSync(newPath)) {
-    existingString = fs.readFileSync(newPath, 'utf8');
+  if (fs.existsSync(writePath)) {
+    existingString = fs.readFileSync(writePath, 'utf8');
   }
-  if (existingString !== stringFile) {
-    if (!existingString) {
-      log.add('write new file to', newPath);
-    } else {
-      log.error('overwrite file', newPath);
-    }
-    return file.writeFileAsync(newPath, stringFile, { encoding: 'utf8' });
+  if (existingString !== inputString) {
+    // if (!existingString) {
+    //   log.add('write new file to', writePath);
+    // } else {
+    //   log.warn('overwrite file', writePath);
+    // }
+    return file.writeFileAsync(writePath, inputString, { encoding: 'utf8' });
   }
   return Promise.resolve();
 }

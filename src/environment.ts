@@ -2,19 +2,108 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import { check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
-import cascade from './util/cascade';
-import { startsWith } from './util/string';
-import { log } from './util/log';
+
+import cascade from './cascade';
+import { startsWith } from './string';
+import { log } from './log';
 import { parseFileSync } from './file';
-import args from './util/args';
+import { args } from './args';
 import { parse, absolutePath, pathArray } from './parse';
-import { jsonStableHash, fileHash, stringHash } from './util/hash';
-import { iterable, getCommands } from './iterate';
+import { jsonStableHash, fileHash, stringHash } from './hash';
+import { CmdObj, iterable, getCommands } from './iterate';
 import { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
 import { CacheProperty } from './cache';
+import { Build } from './build';
+import { Configure } from './configure';
+import { Install, InstallOptions } from './install';
+import { Project, ProjectDirs } from './project';
+import { Tools } from './tools';
 
-const platformNames: schema.Settings = {
+export interface Docker {
+    user: string,
+    image: string,
+    architecture: string,
+    platform: string,
+}
+
+export interface Toolchain {
+    [index: string]: any;
+    host?: Platform;
+    target?: Platform;
+    tools?: Tools;
+    outputType?: string;
+    path?: EnvironmentDirs;
+    environment?: any;
+    configure?: Configure;
+    build?: Build;
+}
+
+export interface Platform {
+    docker?: Docker,
+    architecture?: string,
+    endianness?: string,
+    compiler?: string
+    platform?: string,
+    cpu?: { num: number, speed?: string }
+}
+
+export interface EnvironmentDirs extends ProjectDirs {
+    project: string;
+    build: string;
+    test: string;
+    install: Install;
+}
+
+export interface EnvironmentModifier {
+    [index: string]: any;
+
+    $set?: Environment$Set;
+    $unset?: Environment$Unset;
+}
+
+interface DockerOptions {
+    image: string;
+    args: any;
+}
+
+export interface Environment$Unset extends Environment$Set {
+    cache?: boolean;
+}
+
+export interface Environment$Set {
+    'cache.buildFilePath'?: string;
+    'cache.generatedBuildFilePath'?: string;
+    'cache.buildFile'?: string;
+
+    'cache.build'?: string;
+    'cache.configure'?: string;
+    'cache.assets'?: string[];
+}
+
+export interface EnvironmentCacheFile {
+    [index: string]: any;
+
+    buildFilePath?: string;
+    generatedBuildFilePath?: string;
+    buildFile?: string;
+    build?: string;
+    configure?: string;
+    assets?: string[];
+}
+
+export interface EnvironmentCache {
+    [index: string]: CacheProperty<any>;
+
+    buildFilePath: CacheProperty<string>;
+    generatedBuildFilePath: CacheProperty<string>;
+    buildFile: CacheProperty<string>;
+    build: CacheProperty<string>;
+    configure: CacheProperty<string>;
+    assets: CacheProperty<string[]>;
+}
+
+const platformNames = {
     linux: 'linux',
     darwin: 'mac',
     mac: 'mac',
@@ -24,7 +113,7 @@ const platformNames: schema.Settings = {
     android: 'android'
 };
 
-const archNames: schema.Settings = { x64: 'x86_64', arm: 'armv7a', arm64: 'arm64' };
+const archNames = { x64: 'x86_64', arm: 'armv7a', arm64: 'arm64' };
 
 const HOST_ENDIANNESS = os.endianness();
 const HOST_PLATFORM = platformNames[os.platform()];
@@ -61,8 +150,8 @@ const DEFAULT_TOOLCHAIN = {
 
 function parseSelectors(dict: any, prefix: string) {
     const _selectors: string[] = [];
-    const selectables: schema.Settings =
-        <schema.Settings>_.pick(dict, ['platform', 'compiler']);
+    const selectables =
+        _.pick(dict, ['platform', 'compiler']);
     for (const key of Object.keys(selectables)) {
         _selectors.push(`${prefix || ''}${selectables[key]}`);
     }
@@ -93,23 +182,15 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
     if (d.build == null) {
         d.build = path.join(d.root, pathOptions.build);
     }
-    d.install = <schema.Install>{
-        binaries: _.map(arrayify(pathOptions.install.binaries), (ft: schema.InstallOptions) => {
+    d.install = <Install>{
+        binaries: _.map(arrayify(pathOptions.install.binaries), (ft: InstallOptions) => {
             return {
                 sources: ft.sources,
                 from: path.join(d.root, ft.from),
                 to: path.join(d.root, (ft.to || 'bin'))
             };
         }),
-        headers: _.map(arrayify(pathOptions.install.headers), (ft: schema.InstallOptions) => {
-            return {
-                sources: ft.sources,
-                from: path.join(d.root, ft.from),
-                to: path.join(d.home, (ft.to || 'include')),
-                includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
-            };
-        }),
-        libraries: _.map(arrayify(pathOptions.install.libraries), (ft: schema.InstallOptions) => {
+        libraries: _.map(arrayify(pathOptions.install.libraries), (ft: InstallOptions) => {
             return {
                 sources: ft.sources,
                 from: path.join(d.root, ft.from),
@@ -119,7 +200,7 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
     }
     if (pathOptions.install.assets) {
         d.install.assets = _.map(arrayify(pathOptions.install.assets),
-            (ft: schema.InstallOptions) => {
+            (ft: InstallOptions) => {
                 return {
                     sources: ft.sources,
                     from: path.join(d.root, ft.from),
@@ -133,20 +214,15 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
 
 function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
     const defaultPaths = combine(projectPaths, {
+        root: '',
         project: 'source',
         test: 'build_tests'
     });
 
     const paths = <EnvironmentDirs>extend(defaultPaths, env.path);
+    console.log('arch', env.target.architecture);
     if (paths.build == null) {
-        paths.build = path.join(paths.project, 'build');
-    }
-    if (paths.install == null) {
-        paths.install = {};
-    }
-    if (paths.install.headers == null) {
-        paths.install
-            .headers = [{ from: path.join(paths.clone, 'include') }];
+        paths.build = path.join(paths.root, 'build', env.target.architecture);
     }
     if (paths.install.libraries == null) {
         paths.install.libraries = [{ from: paths.build }];
@@ -168,7 +244,7 @@ function getBuildFile(env: Environment, systemName: string): string {
     return (<any>buildFileNames)[systemName];
 }
 
-function parseBuild(env: Environment, config: schema.Build) {
+function parseBuild(env: Environment, config: Build) {
     const b = env.select(config);
 
     const cFlags = b.cFlags || b.cxxFlags || {};
@@ -185,28 +261,28 @@ function parseBuild(env: Environment, config: schema.Build) {
     env.build = b;
 }
 
-class Environment implements schema.Toolchain {
-    configure: schema.Configure;
-    build: schema.Build;
+class Environment implements Toolchain {
+    configure: Configure;
+    build: Build;
     path: EnvironmentDirs;
     selectors: string[];
     d: EnvironmentDirs;
     p: EnvironmentDirs;
     s: string[];
-    host: schema.Platform;
-    target: schema.Platform;
-    tools: schema.Tools;
+    host: Platform;
+    target: Platform;
+    tools: Tools;
     environment: any;
     outputType: string;
     cache: EnvironmentCache;
 
     project: Project;
 
-    constructor(t: schema.Toolchain, project: Project) {
+    constructor(t: Toolchain, project: Project) {
         // 1. set up selectors + environment
         this.project = project;
-        this.host = <schema.Platform>combine(HOST_ENV, t.host || project.host);
-        this.target = <schema.Platform>combine(DEFAULT_TARGET, t.target || project.target);
+        this.host = <Platform>combine(HOST_ENV, t.host || project.host);
+        this.target = <Platform>combine(DEFAULT_TARGET, t.target || project.target);
 
         const hostSelectors = parseSelectors(this.host, 'host-');
         const targetSelectors = parseSelectors(this.target, undefined);
@@ -225,7 +301,7 @@ class Environment implements schema.Toolchain {
         const mainOperations = _.pick(project, ['configure', 'build']);
         extend(this, this.select(mainOperations));
         this.configure = this.select(combine(project.configure || t.configure));
-        parseBuild(this, <schema.Build>combine(project.build || t.build));
+        parseBuild(this, <Build>combine(project.build || t.build));
         // 3. extend + select all remaining settings
         const inOutFields = _.pick(project, ['outputType']);
         extend(this, this.select(inOutFields));
@@ -233,19 +309,26 @@ class Environment implements schema.Toolchain {
             this.outputType = 'static';
         }
 
-        this.cache = new EnvironmentCache();
-        this.cache.configure = new CacheProperty(() => {
-            return jsonStableHash(this.configure);
-        })
-        this.cache.build = new CacheProperty(() => {
-            return jsonStableHash(this.build);
-        })
-        this.cache.buildFile = new CacheProperty(() => {
-            return fileHash(this.getBuildFilePath(this.build.with));
-        })
-        this.cache.generatedBuildFilePath = new CacheProperty(() => {
-            return this.getBuildFilePath(this.configure.for);
-        })
+        this.cache = {
+            configure: new CacheProperty<string>(() => {
+                return jsonStableHash(this.configure);
+            }),
+            build: new CacheProperty<string>(() => {
+                return jsonStableHash(this.build);
+            }),
+            buildFile: new CacheProperty<string>(() => {
+                return fileHash(this.getBuildFilePath(this.build.with));
+            }),
+            buildFilePath: new CacheProperty<string>(() => {
+                return this.getBuildFilePath(this.build.with);
+            }),
+            generatedBuildFilePath: new CacheProperty<string>(() => {
+                return this.getBuildFilePath(this.configure.for);
+            }),
+            assets: new CacheProperty<string[]>(() => {
+                return [""];
+            })
+        }
     }
 
     frameworks() { return jsonToFrameworks(this.build.frameworks); }
@@ -274,7 +357,7 @@ class Environment implements schema.Toolchain {
             toJSON(this), ['project']);
         return plain;
     }
-    select(base: any, options: { keywords?: {}, selectors?: {}, dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
+    select(base: any, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
         if (!base) {
             throw new Error('selecting on empty object');
         }
@@ -324,9 +407,9 @@ class Environment implements schema.Toolchain {
         }
         return tools;
     }
-    getConfigurationIterable(): schema.CmdObj[] { return getCommands(this.configure); }
+    getConfigurationIterable(): CmdObj[] { return getCommands(this.configure); }
 }
 
 export {
-    Environment, EnvironmentCache, CacheProperty, keywords, argvSelectors
+    Environment, CacheProperty, keywords, argvSelectors
 }

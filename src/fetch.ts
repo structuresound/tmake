@@ -1,19 +1,28 @@
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as request from 'request';
 import progress = require('request-progress');
 import * as ProgressBar from 'progress';
 import * as fs from 'fs';
 import * as file from './file';
-import { log } from './util/log';
-import args from './util/args';
-import { mkdir, which, exit } from './util/sh';
+
+import { log } from './log';
+import { args } from './args';
+import { mkdir, which, exit } from './sh';
 import { cache, updateNode } from './db';
-import { stringHash } from './util/hash';
-import { Project } from './node';
+import { stringHash } from './hash';
+import { Project } from './project';
+
+export interface Git {
+  repository?: string;
+  url?: string;
+  branch?: string;
+  tag?: string;
+  archive?: string;
+}
 
 function download(url: string, cacheDir = path.join(args.userCache,
-  'cache')): Promise<string> {
+  'cache')) {
   if (!fs.existsSync(cacheDir)) {
     mkdir('-p', cacheDir);
   }
@@ -99,7 +108,7 @@ function upsertCache(node: Project) {
     }
     return cache.insert(node.toCache())
       .then(() => { return updateCache(node); });
-  });
+  }).then(() => Promise.resolve());
 }
 
 function getSource(node: Project) {
@@ -110,16 +119,16 @@ function getSource(node: Project) {
     .then((filePath) => { return unarchiveSource(filePath, node.d.clone); });
 }
 
-function linkSource(node: Project): Promise<any> {
+function linkSource(node: Project) {
   const url = node.url();
   log.add('link source from', url);
   log.warn('to', node.d.root);
   return file.existsAsync(node.d.clone)
     .then((exists) => {
       if (exists) {
-        return Promise.resolve(true);
+        return Promise.resolve();
       }
-      return new Promise((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
         fs.symlink(url, node.d.root, 'dir', (err) => {
           if (err) {
             reject(err);
@@ -158,27 +167,29 @@ function reportStale(node: Project) {
   }
 }
 
-function maybeFetch(node: Project): Promise<any> {
+function maybeFetch(node: Project) {
   if (node.link) {
-    return linkSource(node);
+    return linkSource(node).then(() => Promise.resolve(true));
   }
   if (node.archive || node.git) {
-    return file.existsAsync(node.d.clone)
-      .then((exists: boolean) => {
+    return file.existsAsync(node.d.clone).then((exists) => {
+      const getIt = () => {
         if (!exists || node.cache.fetch.dirty() || node.force()) {
           if (exists) {
-            return destroy(node).then(() => { return getSource(node) });
+            return destroy(node).then(() => getSource(node));
           }
-          return getSource(node);
+          return getSource(node)
         }
-        return Promise.resolve();
-      });
+      }
+      const ret = getIt()
+      return ret ? ret.then(() => Promise.resolve(true)) : Promise.resolve(false);
+    });
   }
   log.info(`skip fetch, project is local ${node.name}`);
-  return Promise.resolve();
+  return Promise.resolve(false);
 }
 
-function fetch(node: Project): Promise<any> {
+function fetch(node: Project) {
   return maybeFetch(node).then(() => { return upsertCache(node) });
 }
 

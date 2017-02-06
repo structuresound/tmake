@@ -1,33 +1,37 @@
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import { arrayify, check } from 'js-object-tools';
 import * as fs from 'fs';
 
 import * as file from './file';
-import { execAsync, ShellOptions } from './util/sh';
-import { log } from './util/log';
-
+import { execAsync, ShellOptions } from './sh';
+import { log } from './log';
 import { deps } from './graph';
-import args from './util/args';
+import { args } from './args';
 import { replaceInFile, ReplEntry } from './parse';
-
 import { updateEnvironment } from './db';
-
 import { generate as cmake } from './cmake';
 import { generate as ninja } from './ninja';
-
-import { stringHash } from './util/hash';
-
-import { iterateOLHM } from './iterate';
+import { stringHash } from './hash';
+import { CmdObj, iterateOLHM } from './iterate';
 
 import { Environment } from './environment';
+import { Project } from './project';
 
-function copy(patterns: string[], options: schema.CopyOptions): Promise<any> {
+export interface Configure {
+  create?: any;
+  replace?: any;
+  shell?: any;
+  cmake?: any;
+  for?: any;
+}
+
+function copy(patterns: string[], options: file.VinylOptions) {
   const filePaths: string[] = [];
   return file
     .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
-      .pipe(file.map((data: schema.VinylFile, callback: Function) => {
+      .pipe(file.map((data: file.VinylFile, callback: Function) => {
         const mutable = data;
         log.verbose(`+ ${path.relative(mutable.cwd, mutable.path)}`);
         if (options.flatten) {
@@ -44,7 +48,7 @@ function copy(patterns: string[], options: schema.CopyOptions): Promise<any> {
     .then(() => { return Promise.resolve(filePaths); });
 }
 
-function globHeaders(env: Environment): Promise<any> {
+function globHeaders(env: Environment) {
   const patterns = env.globArray(
     env.build.headers ? env.build.headers : [
       '**/*.h',
@@ -54,20 +58,20 @@ function globHeaders(env: Environment): Promise<any> {
       '!tests/**',
       '!build/**'
     ]);
-  return Promise.map(env.d.includeDirs,
+  return Bluebird.map(env.project.d.includeDirs,
     (includePath: string) => {
       return file.glob(patterns, env.d.project, includePath);
     })
     .then((stack) => { return Promise.resolve(_.flatten(stack)); });
 }
 
-function globSources(env: Environment): Promise<any> {
+function globSources(env: Environment) {
   const patterns = env.globArray(
     env.build.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']);
-  return file.glob(patterns, env.d.project, env.d.source);
+  return file.glob(patterns, env.d.project, env.project.d.source);
 }
 
-function globFiles(env: Environment): Promise<any> {
+function globFiles(env: Environment) {
   return globHeaders(env)
     .then((headers) => {
       env.build.headers = headers;
@@ -75,20 +79,22 @@ function globFiles(env: Environment): Promise<any> {
     })
     .then((sources) => {
       env.s = sources;
-      return deps(<any>env.project);
+      return deps(env.project);
     })
     .then((depGraph) => {
+      console.log('depGraph', depGraph);
       if (depGraph.length) {
-        log.verbose('deps', depGraph);
-        env.project.libs =
-          _.chain(depGraph).map((dep: Project) => {
-            return _.map(dep.libs, (lib) => {
-              return path.join(dep.d.home, lib);
-            });
-          }).flatten().value().reverse() as string[];
+        const stack = depGraph.map((dep: Project) => {
+          return _.map(dep.cache.libs.value(), (lib) => {
+            console.log('+', path.join(dep.d.home, lib));
+            return path.join(dep.d.home, lib);
+          })
+        })
+        env.build.libs = _.flatten(stack);
       }
+      console.log('flattened libs = ', env.build.libs);
       env.build.includeDirs = _.union
-        ([`${env.d.home}/include`], env.d.includeDirs);
+        ([`${env.project.d.home}/include`], env.project.d.includeDirs);
       return Promise.resolve(env);
     });
 }
@@ -97,7 +103,7 @@ interface StringObject {
   [key: string]: string;
 }
 
-function createBuildFileFor(env: Environment, systemName: string): Promise<any> {
+function createBuildFileFor(env: Environment, systemName: string) {
   return file.existsAsync(env.getBuildFilePath(systemName))
     .then((exists) => {
       if (exists) {
@@ -109,11 +115,11 @@ function createBuildFileFor(env: Environment, systemName: string): Promise<any> 
     });
 }
 
-function generateConfig(env: Environment, systemName: string): Promise<any> {
+function generateConfig(env: Environment, systemName: string) {
   return globFiles(env)
     .then(() => { return generateBuildFile(env, systemName); })
     .then(() => {
-      const buildFileName = getBuildFile(env, systemName);
+      const buildFileName = env.getBuildFile(systemName);
       return updateEnvironment(env, {
         $set: {
           'cache.buildFilePath': buildFileName,
@@ -123,8 +129,8 @@ function generateConfig(env: Environment, systemName: string): Promise<any> {
     });
 }
 
-function generateBuildFile(env: Environment, systemName: string): Promise<any> {
-  const buildFile = getBuildFilePath(env, systemName);
+function generateBuildFile(env: Environment, systemName: string) {
+  const buildFile = env.getBuildFilePath(systemName);
   switch (systemName) {
     case 'ninja':
       return Promise.resolve(ninja(env, buildFile));
@@ -136,17 +142,16 @@ function generateBuildFile(env: Environment, systemName: string): Promise<any> {
   }
 }
 
-function configure(env: Environment, isTest: boolean): Promise<any> {
+export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
   if (env.project.force() || env.cache.configure.dirty()) {
     const commands = env.getConfigurationIterable();
-    return Promise
-      .each(
+    return Bluebird.each(
       commands,
-      (i: schema.CmdObj) => {
-        log.verbose(`configure >> ${i.cmd}`);
+      (i: CmdObj): PromiseLike<any> => {
+        log.verbose(`  ${i.cmd}:`);
         switch (i.cmd) {
           case 'for':
-            log.verbose(`configure for: ${i.arg}`);
+            log.verbose(`    ${i.arg}`);
             return createBuildFileFor(env, i.arg);
           case 'ninja':
           case 'cmake':
@@ -154,10 +159,10 @@ function configure(env: Environment, isTest: boolean): Promise<any> {
           default:
           case 'shell':
             return iterateOLHM(i.arg, (command: any) => {
-              const c: schema.CmdObj = check(command, String) ?
-                <schema.CmdObj>{ cmd: command } :
+              const c: CmdObj = check(command, String) ?
+                <CmdObj>{ cmd: command } :
                 command;
-              const setting = env.pathSetting(c.cwd || env.d.source);
+              const setting = env.pathSetting(c.cwd || env.project.d.source);
               return execAsync(
                 env.parse(c.cmd, env),
                 <ShellOptions>{ cwd: setting, silent: !args.quiet });
@@ -165,17 +170,17 @@ function configure(env: Environment, isTest: boolean): Promise<any> {
           case 'replace':
             return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
               const pattern = env.globArray(replEntry.sources);
-              return file.glob(pattern, undefined, env.d.source)
-                .then((files: string[]): Promise<any> => {
-                  return Promise.each(files, (file) => {
+              return file.glob(pattern, undefined, env.project.d.source)
+                .then((files: string[]) => {
+                  return Bluebird.each(files, (file) => {
                     return replaceInFile(file, replEntry, env);
-                  });
-                });
+                  })
+                })
             });
           case 'create':
             return iterateOLHM(
               i.arg, (entry: any) => {
-                const filePath = path.join(env.d.source, entry.path);
+                const filePath = path.join(env.project.d.source, entry.path);
                 const existing = file.readIfExists(filePath);
                 if (existing !== entry.string) {
                   log.verbose(`create file ${filePath}`);
@@ -194,10 +199,8 @@ function configure(env: Environment, isTest: boolean): Promise<any> {
                   { from: fromDir, to: env.pathSetting(e.to) });
               });
         }
-      })
+      }).then(() => Promise.resolve());
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);
   return Promise.resolve(env);
 }
-
-export { configure, getBuildFile, getBuildFilePath};

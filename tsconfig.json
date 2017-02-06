@@ -1,22 +1,13 @@
 {
-    "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules",
-        "**/*.spec.ts"
-    ],
-    "compilerOptions": {
-        "outDir": "eslib",
-        "sourceMap": true,
-        "noImplicitAny": true,
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "target": "es5",
-        "preserveConstEnums": true,
-        "allowSyntheticDefaultImports": true,
-        "allowJs": true,
-        "declaration": false,
-        "noEmitOnError": false
-    }
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

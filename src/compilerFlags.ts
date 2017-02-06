@@ -3,22 +3,22 @@ import * as fs from 'fs';
 import { check } from 'js-object-tools';
 
 import * as file from './file';
-import { startsWith } from './util/string';
-import { jsonStableHash } from './util/hash';
-import { Project } from './node';
+import { startsWith } from './string';
+import { jsonStableHash } from './hash';
+import { Project } from './project';
 
 const stdCxxFlags = {
-  O: 2,
-  mac: { std: 'c++11', stdlib: 'libc++' },
-  linux: { std: 'c++0x', pthread: true }
+    O: 2,
+    mac: { std: 'c++11', stdlib: 'libc++' },
+    linux: { std: 'c++0x', pthread: true }
 };
 
 const stdFrameworks = { mac: { CoreFoundation: true } };
 
 const stdLinkerFlags = {
-  // static: true
-  linux: { 'lstdc++': true, lpthread: true },
-  mac: { 'lc++': true }
+    // static: true
+    linux: { 'lstdc++': true, lpthread: true },
+    mac: { 'lc++': true }
 };
 
 

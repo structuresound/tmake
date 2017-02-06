@@ -1,44 +1,43 @@
-/// <reference path="./node.d.ts" /> 
-
 import * as _ from 'lodash';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as file from './file';
 import { combine, check, NodeGraph } from 'js-object-tools';
-import { log } from './util/log';
-import args from './util/args';
+import { log } from './log';
+import { args } from './args';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
 import { cache as db } from './db';
-import { jsonStableHash } from './util/hash';
+import { jsonStableHash } from './hash';
 
-import { Project } from './node';
-import { Environment, EnvironmentCache, CacheProperty } from './environment';
+import { Project, ProjectFile } from './project';
+import { Environment, EnvironmentCacheFile, CacheProperty } from './environment';
 
-function loadCache(project: Project): Promise<Project> {
+function loadCache(project: Project): PromiseLike<Project> {
   return db.findOne({ name: project.name })
     .then((result: ProjectFile) => {
       if (result) {
         project.merge(<any>result);
       }
-      return Promise.each(project.environments, (e) => {
+      return Bluebird.each(project.environments, (e) => {
         return loadEnvironment(e);
-      }).then(() => {
-        return Promise.resolve(project);
       })
-    });
+    }).then(() => {
+      return Promise.resolve(project);
+    })
 }
 
-function loadEnvironment(env: Environment): Promise<any> {
+function loadEnvironment(env: Environment) {
   return db.findOne({ name: env.id() })
     .then((result: EnvironmentCacheFile) => {
-      env.cache = new EnvironmentCache();
-      env.cache.configure = new CacheProperty(() => {
-        return jsonStableHash(env.configure);
-      })
+      if (result) {
+        for (const key of Object.keys(result)) {
+          env.cache[key].set(result[key]);
+        }
+      }
     });
 }
 
-function createNode(_conf: ProjectFile, parent?: Project): Promise<Project> {
+function createNode(_conf: ProjectFile, parent?: Project) {
   const node = new Project(_conf, parent);
   return loadCache(node);
 }
@@ -49,7 +48,7 @@ interface Cache {
 
 
 function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project>,
-  cache: Cache): Promise<Project> {
+  cache: Cache) {
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.dir : '');
@@ -71,12 +70,9 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
       }
       cache[node.name] = node;
       if (args.verbose) {
-        log.add(`+${node.name}`);
-        if (node.dir) {
-          log.warn('@', node.dir);
-        }
+        log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
-      return mapOLHM(conf.deps,
+      return mapOLHM(conf.deps || {},
         (dep: ProjectFile) => {
           if (dep) {
             return graphNode(dep, node, graph, cache);
@@ -84,7 +80,10 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
         })
         .then((deps) => {
           if (deps.length && deps[0] != undefined) {
-            node.deps = <any>deps;
+            node.deps = {}
+            for (const dep of deps) {
+              node.deps[dep.name] = dep;
+            }
           }
           return Promise.resolve(node);
         });
@@ -92,7 +91,7 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
 }
 
 function _map(node: ProjectFile, graphType: string,
-  graphArg?: string): Promise<Project[]> {
+  graphArg?: string): PromiseLike<Project[]> {
   const cache: Cache = {};
   const graph = new NodeGraph();
 
@@ -105,15 +104,15 @@ function _map(node: ProjectFile, graphType: string,
     });
 }
 
-function all(node: ProjectFile) {
+function all(node: Project | ProjectFile) {
   return _map(node, 'overallOrder');
 }
 
-function deps(node: ProjectFile) {
+function deps(node: Project | ProjectFile) {
   return _map(node, 'dependenciesOf', node.name);
 }
 
-function resolve(conf: ProjectFile) {
+function resolve(conf: Project | ProjectFile) {
   if (!conf) {
     throw new Error('resolving without a root node');
   }

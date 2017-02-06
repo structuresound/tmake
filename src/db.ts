@@ -3,9 +3,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { apply } from 'js-object-tools';
 
-import args from './util/args';
-import { log } from './util/log';
-import { mkdir } from './util/sh';
+import { args } from './args';
+import { log } from './log';
+import { mkdir } from './sh';
+
+import { Project, ProjectModifier } from './project'
+import { Environment, EnvironmentModifier } from './environment'
+
 
 let cacheDbPath: string;
 

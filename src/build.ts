@@ -1,39 +1,47 @@
-/// <reference path="./schema.d.ts" /> 
-
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as fs from 'fs';
 import { check } from 'js-object-tools';
+import { mkdir } from './sh';
 
-
-import { execAsync } from './util/sh';
+import { execAsync } from './sh';
 import { build as cmake } from './cmake';
 import { build as ninja } from './ninja';
 import { build as make } from './make';
 
-import { iterate, getCommands } from './iterate';
+import { CmdObj, iterate, getCommands } from './iterate';
 import { Environment } from './environment';
-import { log } from './util/log';
+import { log } from './log';
 
-import { getBuildFile, getBuildFilePath } from './configure';
-
-function buildFolder(env: Environment, isTest: boolean) {
-  if (isTest) {
-    return env.d.test;
-  }
-  return env.d.build;
+export interface Build {
+  with?: string;
+  cFlags?: any;
+  cxxFlags?: any;
+  compilerFlags?: any;
+  linkerFlags?: any;
+  defines?: any;
+  frameworks?: any;
+  sources?: any;
+  headers?: any;
+  libs?: any;
+  includeDirs?: any;
+  cmake?: any;
+  outputFile?: string;
 }
 
+function getBuildFolder(env: Environment, isTest: boolean) {
+  return isTest ? env.d.test : env.d.build;
+}
 
 function ensureBuildFolder(env: Environment, isTest?: boolean) {
-  if (!fs.existsSync(buildFolder(env, isTest))) {
-    return fs.mkdirSync(buildFolder(env, isTest));
+  const buildFolder = getBuildFolder(env, isTest);
+  if (!fs.existsSync(buildFolder)) {
+    mkdir('-p', buildFolder);
   }
 }
 
-
 function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
-  const buildFilePath = getBuildFilePath(env, system)
+  const buildFilePath = env.getBuildFilePath(system);
   if (!check(buildFilePath, 'String')) {
     throw new Error('no build file specified');
   }
@@ -57,11 +65,11 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
   }
 }
 
-function build(env: Environment, isTest: boolean) {
+export function build(env: Environment, isTest: boolean) {
   if (!env.build) {
     return Promise.resolve();
   }
-  return iterate(getCommands(env.build), (i: schema.CmdObj) => {
+  return iterate(getCommands(env.build), (i: CmdObj) => {
     switch (i.cmd) {
       case 'ninja':
       case 'cmake':
@@ -71,13 +79,11 @@ function build(env: Environment, isTest: boolean) {
         return buildWith(env, i.arg, isTest);
       default:
       case 'shell':
-        return iterate(i.arg, (c: schema.CmdObj) => {
-          let lc: schema.CmdObj = check(c, String) ? <schema.CmdObj>{ cmd: <any>c } : c;
-          const cwd = env.pathSetting(lc.cwd || env.d.source);
+        return iterate(i.arg, (c: CmdObj) => {
+          let lc: CmdObj = check(c, String) ? <CmdObj>{ cmd: <any>c } : c;
+          const cwd = env.pathSetting(lc.cwd || env.project.d.source);
           return execAsync(env.parse(lc.cmd, env), { cwd: cwd });
         });
     }
   });
 }
-
-export default build;
