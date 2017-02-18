@@ -12,6 +12,6 @@ server/context/trie_modules/
 server/context/.idea
 server/context/tmake_server.xcodeproj
 server/context/Info.plist
-/test
 /tests
+/dist
 /tests_cache
