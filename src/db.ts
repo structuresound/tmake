@@ -27,23 +27,21 @@ if (testMode) {
 
 const userDbPath: string = `${args.userCache}/packages.db`;
 
-const cache = new Datastore({ filename: cacheDbPath, autoload: testMode });
-const user = new Datastore({ filename: userDbPath, autoload: testMode });
+export const cache = new Datastore({ filename: cacheDbPath, autoload: testMode });
+export const user = new Datastore({ filename: userDbPath, autoload: testMode });
 
-function nodeNamed(name: string) {
+export function nodeNamed(name: string) {
   return cache.findOne({ name: name });
 }
 
-function environmentWithId(name: string) {
+export function environmentWithId(name: string) {
   return cache.findOne({ name: name });
 }
 
-function updateNode(node: Project, modifier: ProjectModifier) {
+export function updateNode(node: Project, modifier: ProjectModifier) {
   return cache.update({ name: node.name }, modifier, {});
 }
 
-function updateEnvironment(env: Environment, modifier: EnvironmentModifier) {
+export function updateEnvironment(env: Environment, modifier: EnvironmentModifier) {
   return cache.update({ _id: env.id() }, modifier, { upsert: true });
 }
-
-export { nodeNamed, environmentWithId, user, cache, updateNode, updateEnvironment };

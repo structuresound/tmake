@@ -82,7 +82,6 @@ function globFiles(env: Environment) {
       return deps(env.project);
     })
     .then((depGraph) => {
-      console.log('depGraph', depGraph);
       if (depGraph.length) {
         const stack = depGraph.map((dep: Project) => {
           return _.map(dep.cache.libs.value(), (lib) => {
@@ -104,10 +103,10 @@ interface StringObject {
 }
 
 function createBuildFileFor(env: Environment, systemName: string) {
-  return file.existsAsync(env.getBuildFilePath(systemName))
+  return file.existsAsync(env.getProjectFilePath(systemName))
     .then((exists) => {
       if (exists) {
-        const buildFileName = env.getBuildFile(systemName);
+        const buildFileName = env.getProjectFile(systemName);
         log.quiet(`using pre-existing build file ${buildFileName}`);
         return updateEnvironment(env, { $set: { 'cache.generatedBuildFilePath': buildFileName } });
       }
@@ -119,7 +118,7 @@ function generateConfig(env: Environment, systemName: string) {
   return globFiles(env)
     .then(() => { return generateBuildFile(env, systemName); })
     .then(() => {
-      const buildFileName = env.getBuildFile(systemName);
+      const buildFileName = env.getProjectFile(systemName);
       return updateEnvironment(env, {
         $set: {
           'cache.buildFilePath': buildFileName,
@@ -130,7 +129,8 @@ function generateConfig(env: Environment, systemName: string) {
 }
 
 function generateBuildFile(env: Environment, systemName: string) {
-  const buildFile = env.getBuildFilePath(systemName);
+  env.ensureProjectFolder();
+  const buildFile = env.getProjectFilePath(systemName);
   switch (systemName) {
     case 'ninja':
       return Promise.resolve(ninja(env, buildFile));

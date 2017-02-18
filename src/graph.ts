@@ -72,7 +72,7 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
       if (args.verbose) {
         log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
-      return mapOLHM(conf.deps || {},
+      return mapOLHM(conf.require || {},
         (dep: ProjectFile) => {
           if (dep) {
             return graphNode(dep, node, graph, cache);
@@ -80,9 +80,9 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
         })
         .then((deps) => {
           if (deps.length && deps[0] != undefined) {
-            node.deps = {}
+            node.require = {}
             for (const dep of deps) {
-              node.deps[dep.name] = dep;
+              node.require[dep.name] = dep;
             }
           }
           return Promise.resolve(node);

@@ -41,7 +41,7 @@ function ensureBuildFolder(env: Environment, isTest?: boolean) {
 }
 
 function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
-  const buildFilePath = env.getBuildFilePath(system);
+  const buildFilePath = env.getProjectFilePath(system);
   if (!check(buildFilePath, 'String')) {
     throw new Error('no build file specified');
   }

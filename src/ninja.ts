@@ -48,7 +48,7 @@ function getRule(ext: string) {
 
 function generate(env: Environment, fileName: string): void {
   log.add('generate new ninja config');
-  const ninjaConfig = ninja_build_gen(ninjaVersion, 'build');
+  const ninjaConfig = ninja_build_gen(ninjaVersion, env.d.build);
   const includeString = _.map(env.includeDirs(), (dir) => {
     return `-I${dir}`;
   }).join(' ');
@@ -78,10 +78,12 @@ function generate(env: Environment, fileName: string): void {
     .run(cxxCommand)
     .description(cxxCommand);
 
-  let linkCommand = 'ar rv $out $in';
+  let linkCommand = `ar rv ${env.d.build}/$out $in`;
   let libName = env.build.outputFile;
   let staticLibs = '';
-  log.verbose('    ', 'link:', env.project.libs);
+  if (env.project.libs) {
+    log.verbose('    ', 'link:', env.project.libs);
+  }
   switch (env.outputType) {
     case 'static':
     default:
@@ -92,15 +94,16 @@ function generate(env: Environment, fileName: string): void {
       } else if (!libName) {
         libName = `${env.project.name}.a`;
       }
-      linkCommand = 'ar rv $out $in';
+      linkCommand = `ar rv ${env.d.build}/$out $in`;
       break;
     case 'executable':
       if (!libName) {
         libName = `${env.project.name}`;
       }
-      linkCommand = `${cc} -o $out $in${env.build.libs ? ' ' + env.build.libs.join(' ') : ''}${env
-        .linkerFlags()
-        .join(' ')}`;
+      linkCommand = `${cc} -o ${env.d.build}/$out $in${env.build.libs ? ' ' + env.build.libs.join(' ') : ''}${env
+        .linkerFlags() ? ' ' + env
+          .linkerFlags()
+          .join(' ') : ''}`;
       break;
   }
 
@@ -113,14 +116,14 @@ function generate(env: Environment, fileName: string): void {
 
   for (const filePath of env.s) {
     // console.log('process source file', filePath);
-    const dir = path.dirname(filePath);
-    const relative = path.relative(env.p.clone, dir);
+    // const dir = path.dirname(filePath);
+    // const relative = path.relative(env.p.clone, dir);
     // console.log(`relative from ${env.p.clone} is ${relative}`);
-    const outBase = path.join('build', relative);
+    // const outBase = path.join('build', relative);
     const ext = path.extname(filePath);
     const name = path.basename(filePath, ext);
-    const linkName = `${outBase}/${name}.o`;
-    // console.log('add build file', linkName);
+    const linkName = `${env.d.build}/${name}.o`;
+    console.log('add build file', linkName);
     ninjaConfig
       .edge(linkName)
       .from(filePath)
@@ -130,7 +133,7 @@ function generate(env: Environment, fileName: string): void {
 
   const linkInput = linkNames.join(' ');
   ninjaConfig
-    .edge(`build/${libName}`)
+    .edge(libName)
     .from(linkInput)
     .using('link');
 

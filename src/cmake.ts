@@ -62,7 +62,7 @@ function cmake(env: Environment, command: string) {
 }
 
 function configure(env: Environment) {
-  return fileHash(env.getBuildFilePath('cmake')).then((buildFileHash) => {
+  return fileHash(env.getProjectFilePath('cmake')).then((buildFileHash) => {
     if (!env.cache.buildFile.dirty(buildFileHash)) {
       return Promise.resolve();
     }

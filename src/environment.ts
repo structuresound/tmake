@@ -1,6 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
+import * as fs from 'fs';
 import { check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
 
 import cascade from './cascade';
@@ -8,6 +9,7 @@ import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from './file';
 import { args } from './args';
+import { mkdir } from './sh';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, fileHash, stringHash } from './hash';
 import { CmdObj, iterable, getCommands } from './iterate';
@@ -215,25 +217,26 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
 function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
     const defaultPaths = combine(projectPaths, {
         root: '',
-        project: 'source',
         test: 'build_tests'
     });
-
     const paths = <EnvironmentDirs>extend(defaultPaths, env.path);
-    console.log('arch', env.target.architecture);
-    if (paths.build == null) {
+    if (!check(paths.build, String)) {
         paths.build = path.join(paths.root, 'build', env.target.architecture);
     }
-    if (paths.install.libraries == null) {
+    if (!check(paths.project, String)) {
+        paths.project = paths.clone;
+    }
+    if (!check(paths.install.libraries, String)) {
         paths.install.libraries = [{ from: paths.build }];
     }
-    if (paths.install.binaries == null) {
+    if (!check(paths.install.binaries, String)) {
         paths.install.binaries = [{ from: paths.build, to: 'bin' }];
     }
+
     return paths;
 };
 
-function getBuildFile(env: Environment, systemName: string): string {
+function getProjectFile(env: Environment, systemName: string): string {
     const buildFileNames = {
         ninja: 'build.ninja',
         cmake: 'CMakeLists.txt',
@@ -279,7 +282,7 @@ class Environment implements Toolchain {
     project: Project;
 
     constructor(t: Toolchain, project: Project) {
-        // 1. set up selectors + environment
+        /* set up selectors + environment */
         this.project = project;
         this.host = <Platform>combine(HOST_ENV, t.host || project.host);
         this.target = <Platform>combine(DEFAULT_TARGET, t.target || project.target);
@@ -294,15 +297,20 @@ class Environment implements Toolchain {
         extend(this, environment);
 
         this.tools = this.selectTools();
-        // 2. setup paths + directories
+
+        /* copy config + build settings */
+        const mainOperations = _.pick(project, ['configure', 'build']);
+        extend(this, this.select(mainOperations));
+
+        /* setup paths + directories */
         this.path = this.select(t.path || project.path || {});
         this.p = getEnvironmentPaths(this, project.p);
         this.d = getEnvironmentDirs(this, project.d);
-        const mainOperations = _.pick(project, ['configure', 'build']);
-        extend(this, this.select(mainOperations));
+
         this.configure = this.select(combine(project.configure || t.configure));
         parseBuild(this, <Build>combine(project.build || t.build));
-        // 3. extend + select all remaining settings
+
+        /* extend + select all remaining settings */
         const inOutFields = _.pick(project, ['outputType']);
         extend(this, this.select(inOutFields));
         if (!this.outputType) {
@@ -317,13 +325,13 @@ class Environment implements Toolchain {
                 return jsonStableHash(this.build);
             }),
             buildFile: new CacheProperty<string>(() => {
-                return fileHash(this.getBuildFilePath(this.build.with));
+                return fileHash(this.getProjectFilePath(this.build.with));
             }),
             buildFilePath: new CacheProperty<string>(() => {
-                return this.getBuildFilePath(this.build.with);
+                return this.getProjectFilePath(this.build.with);
             }),
             generatedBuildFilePath: new CacheProperty<string>(() => {
-                return this.getBuildFilePath(this.configure.for);
+                return this.getProjectFilePath(this.configure.for);
             }),
             assets: new CacheProperty<string[]>(() => {
                 return [""];
@@ -377,11 +385,16 @@ class Environment implements Toolchain {
         return absolutePath(p, this.d.root);
     }
     pathSetting(val: string) { return this.fullPath(parse(val, this)); }
-    getBuildFile(system: string) {
-        return getBuildFile(this, system);
+    getProjectFile(system: string) {
+        return getProjectFile(this, system);
     }
-    getBuildFilePath(system: string) {
-        return path.join(this.d.project, getBuildFile(this, system));
+    getProjectFilePath(system: string) {
+        return path.join(this.d.project, getProjectFile(this, system));
+    }
+    ensureProjectFolder() {
+        if (!fs.existsSync(this.d.project)) {
+            mkdir('-p', this.d.project);
+        }
     }
     selectTools() {
         const buildSystems = ['cmake', 'ninja'];

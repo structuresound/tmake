@@ -3,7 +3,7 @@ import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
-import { plain as toJSON } from 'js-object-tools';
+import { plain as toJSON, safeOLHM } from 'js-object-tools';
 
 import { linkSource, destroy as destroySource } from './fetch';
 import { log } from './log';
@@ -21,7 +21,7 @@ import { configure } from './configure';
 import { installProject, installEnvironment, installHeaders } from './install';
 import test from './test';
 
-import { Project, ProjectFile, ProjectModifier } from './project';
+import { Project, ProjectFile, ProjectModifier, resolveName } from './project';
 import { Environment } from './environment';
 
 function execute(conf: ProjectFile, phase: string) {
@@ -82,16 +82,23 @@ class ProjectRunner {
   }
   test() { return this.build(true).then(() => test(this)); }
   link() {
+    const root = this.project;
     return this.install()
       .then(() => {
-        const doc: ProjectFile = this.project.safe(true);
-        const query = { name: doc.name, tag: doc.tag || 'master' };
-        return userDb.update(query, { $set: doc }, { upsert: true });
+        return graph(this.project).then((deps) => {
+          return Bluebird.each(deps, (project) => {
+            if (!project.tree) {
+              const doc = project.toRegistry();
+              const query = { name: doc.name, tag: doc.tag || 'master' };
+              log.log('pushing link', project.hash(), doc);
+              return userDb.update(query, { $set: doc }, { upsert: true });
+            }
+          })
+        });
       });
   }
   clean() {
     log.quiet(`cleaning ${this.project.name}`);
-    log.verbose(this.project.libs);
     _.each(this.project.libs, (libFile) => {
       log.quiet(`rm ${libFile}`);
       if (fs.existsSync(libFile)) {
@@ -104,8 +111,8 @@ class ProjectRunner {
         file.nuke(env.d.build);
       }
       const projectModifier: ProjectModifier = {
-        $unset: {
-          cache: true
+        $set: {
+          cache: {}
         }
       };
       return updateNode(this.project, projectModifier)
@@ -125,7 +132,7 @@ class ProjectRunner {
             } catch (err) {
               log.error(err.message || err);
             }
-            const unsetter = { $unset: { 'cache': true } };
+            const unsetter = { $set: { 'cache': {} } };
             return updateEnvironment(env, unsetter);
           }
           return Promise.resolve();
@@ -192,7 +199,7 @@ function parse(config: ProjectFile, aspect: string) {
     .then((project) => {
       switch (aspect) {
         case 'node':
-          log.log(project.safe());
+          log.log(project.toRegistry());
         default:
           log.log(toJSON(project[aspect] || {}));
       }
@@ -211,7 +218,7 @@ function findAndClean(depName: string): PromiseLike<ProjectFile> {
           .then(() => {
             return nodeNamed(depName)
               .then((cleaned: ProjectFile) => {
-                log.verbose(cleaned);
+                log.verbose('cleaned project', cleaned);
                 return Promise.resolve(cleaned);
               })
           })

@@ -71,16 +71,16 @@ function link({patterns, from, to, opt}: CopyOptions) {
   });
 }
 
-function bin(project: Project) {
-  if (contains(['executable'], project.outputType)) {
+function bin(env: Environment) {
+  if (contains(['executable'], env.outputType)) {
     mkdir('-p', path.join(args.runDir, 'bin'));
     const binaries: string[] = [];
-    _.each(project.d.install.binaries, (ft: InstallOptions) => {
-      const from = path.join(ft.from, project.name);
-      const to = path.join(ft.to, project.name);
+    _.each(env.d.install.binaries, (ft: InstallOptions) => {
+      const from = path.join(ft.from, env.project.name);
+      const to = path.join(ft.to, env.project.name);
       log.verbose(`[ install bin ] from ${from} to ${to}`);
       mv(from, to);
-      return binaries.push(to);
+      binaries.push(to);
     });
     let cumulativeHash = '';
     return Bluebird.each(binaries, (binPath) => {
@@ -89,15 +89,9 @@ function bin(project: Project) {
         cumulativeHash = stringHash(cumulativeHash + hash);
         return Promise.resolve(cumulativeHash);
       });
+    }).then(() => {
+      return Promise.resolve('executable');
     })
-      .then(() => {
-        return updateNode(
-          project, {
-            $set: {
-              'cache.bin': cumulativeHash,
-            }
-          });
-      });
   }
   return Promise.resolve('executable');
 }
@@ -183,14 +177,13 @@ export function installHeaders(project: Project) {
 }
 
 export function installProject(project: Project) {
-  return installHeaders(project)
-    .then(() => {
-      return bin(project);
-    });
+  return installHeaders(project);
 }
 
 export function installEnvironment(env: Environment) {
   return libs(env).then(() => {
+    return bin(env);
+  }).then(() => {
     return assets(env);
   });
 }

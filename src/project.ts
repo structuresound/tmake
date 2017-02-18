@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, clone, extend, combine, plain as toJSON, safeOLHM, arrayify } from 'js-object-tools';
+import { check, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
 import cascade from './cascade';
 import { startsWith } from './string';
 import { log } from './log';
@@ -21,6 +21,7 @@ import { Tools } from './tools';
 export interface Project$Set {
   libs?: string[];
 
+  'cache'?: Object;
   'cache.fetch'?: string;
   'cache.metaData'?: string;
   'cache.metaConfiguration'?: string;
@@ -66,11 +67,12 @@ export interface ProjectFile extends Toolchain {
   // metadata
   name?: string;
   override?: Project;
-  deps?: OLHM<ProjectFile>;
+  require?: OLHM<ProjectFile>;
   cache?: any;
   link?: string;
   git?: Git;
   archive?: { url?: string; }
+  tree?: string;
   version?: string;
   tag?: string;
   user?: string;
@@ -87,6 +89,11 @@ export interface ProjectFile extends Toolchain {
   path?: EnvironmentDirs;
   environment?: any;
 }
+
+export const metaDataKeys = ['name', 'version', 'user', 'dir', 'git', 'archive'];
+export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure'];
+export const dependencyKeys = ['require'];
+export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
 
 function getProjectDirs(project: Project): ProjectDirs {
   const pathOptions = project.p;
@@ -121,9 +128,8 @@ function getProjectDirs(project: Project): ProjectDirs {
         to: path.join(d.home, (ft.to || 'include')),
         includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
       };
-    }),
+    })
   }
-
   return d;
 }
 
@@ -236,14 +242,6 @@ function resolveUrl(conf: ProjectFile | Project) {
   return 'none';
 }
 
-class OLHV<T> {
-  require?: string;
-  value: T
-}
-class OLHM<T> {
-  [index: string]: OLHV<T>;
-}
-
 export interface ProjectCache {
   fetch: CacheProperty<string>;
   metaData?: CacheProperty<string>;
@@ -259,13 +257,14 @@ export class Project implements ProjectFile {
   // implements ProjectFile
   name?: string;
   override?: Project;
-  deps?: OLHM<Project>;
+  require?: OLHM<Project>;
   cache?: ProjectCache;
   link?: string;
   git?: Git;
   archive?: { url?: string; }
   version?: string;
   tag?: string;
+  tree?: string;
   user?: string;
   dir?: string;
   toolchains?: OLHM<Toolchain>;
@@ -295,7 +294,7 @@ export class Project implements ProjectFile {
       return <any>_projectFile;
     }
     const projectFile: ProjectFile = <ProjectFile>clone(_projectFile);
-    const metaDataFields = _.pick(projectFile, ['name', 'version', 'user', 'dir', 'git', 'archive']);
+    const metaDataFields = _.pick(projectFile, metaDataKeys);
     extend(this, metaDataFields);
 
     if (!this.name) {
@@ -308,8 +307,7 @@ export class Project implements ProjectFile {
     }
     this.d = getProjectDirs(this);
 
-
-    const toolchainFields = _.pick(projectFile, ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure']);
+    const toolchainFields = _.pick(projectFile, toolchainKeys);
     extend(this, toolchainFields);
     if (!this.outputType) {
       this.outputType = 'static';
@@ -339,7 +337,7 @@ export class Project implements ProjectFile {
       return jsonStableHash({
         version: this.version,
         outputType: this.outputType,
-        deps: this.safeDeps()
+        require: this.safeDeps()
       });
     }, { require: fetch });
     const libs = new CacheProperty(() => {
@@ -358,12 +356,17 @@ export class Project implements ProjectFile {
   }
   url(): string { return resolveUrl(this); }
   safeDeps() {
-    if (this.deps) {
-      return safeOLHM(this.deps).map((node: Project) => {
-        const dep = { name: node.name, hash: node.hash() };
-        return dep;
-      });
+    const safe = {};
+    if (this.require) {
+      for (const k of Object.keys(this.require)) {
+        const v = <any>this.require[k];
+        if (!v.name) {
+          throw (new Error(log.getMessage('dep has no name', v)));
+        }
+        safe[k] = { name: v.name, hash: v.hash() };
+      }
     }
+    return safe;
   }
   merge(other: Project | Project): void { mergeNodes(this, other); }
   toCache(): ProjectFile {
@@ -379,15 +382,14 @@ export class Project implements ProjectFile {
     }
     return ret;
   }
-  safe(stripDeps?: boolean): Project {
-    const plain = <Project>_.omit(
-      toJSON(this), ['_id', 'configuration', 'cache', 'd', 'p', 's']);
-    if (plain.deps && stripDeps) {
-      plain.deps = <any>this.safeDeps();
+  toRegistry(): Project {
+    const plain = <Project>_.pick(this, registryKeys);
+    if (plain.require) {
+      plain.require = <any>this.safeDeps();
     }
     return plain;
   }
   hash() {
-    return jsonStableHash(this.safe());
+    return jsonStableHash(this.toRegistry());
   }
 }
