@@ -1,7 +1,7 @@
 /*  global it describe*/
 import * as path from 'path';
 import { assert } from 'chai';
-import { contains, check } from 'js-object-tools';
+import { contains, containsAny, check } from 'js-object-tools';
 
 import { parseFileAsync } from '../src/file';
 import { args } from '../src/args';
@@ -34,7 +34,7 @@ describe('environment', () => {
     () => { assert.ok(contains(keywords, 'clang')); });
   it('selectors contain a host', () => {
     assert.ok(
-      contains(env.selectors, ['host-mac', 'host-linux', 'host-win']), `${env.selectors.join(', ')}`);
+      containsAny(env.selectors, ['host-mac', 'host-linux', 'host-win']), `${env.selectors.join(', ')}`);
   });
   it('project selectors match configuration target', () => {
     assert.ok(contains(env.selectors, 'test-platform'), `${env.selectors.join(', ')}`);
