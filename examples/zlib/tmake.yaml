@@ -3,6 +3,7 @@ git:
   repository: madler/zlib
   tag: v1.2.8
 configure:
+  for: ninja
   replace:
     gzguts:
       sources:

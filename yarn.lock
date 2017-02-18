@@ -18,10 +18,6 @@
   version "0.0.30"
   resolved "https://registry.yarnpkg.com/@types/cson/-/cson-0.0.30.tgz#069cea660dbb167672c7e83acbb057178a342d70"
 
-"@types/es6-promise@0.0.32":
-  version "0.0.32"
-  resolved "https://registry.yarnpkg.com/@types/es6-promise/-/es6-promise-0.0.32.tgz#3bcf44fb1e429f3df76188c8c6d874463ba371fd"
-
 "@types/file-type@0.0.1":
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/@types/file-type/-/file-type-0.0.1.tgz#42fd32ad2eaded668725c1f589549b1e73803f71"
@@ -3713,7 +3709,7 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
 
-typescript@^2.1.5:
+typescript@^2.1.6:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-2.2.0.tgz#626f2fc70087d2480f21ebb12c1888288c8614e3"
 
