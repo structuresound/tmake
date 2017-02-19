@@ -90,7 +90,6 @@ class ProjectRunner {
             if (!project.tree) {
               const doc = project.toRegistry();
               const query = { name: doc.name, tag: doc.tag || 'master' };
-              log.log('pushing link', project.hash(), doc);
               return userDb.update(query, { $set: doc }, { upsert: true });
             }
           })

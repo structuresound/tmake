@@ -176,7 +176,7 @@ function getConfigPath(configDir: string): string {
       return filePath;
     }
   }
-  return '';
+  return <string>undefined;
 };
 
 function findConfigAsync(configDir: string) {
@@ -185,7 +185,12 @@ function findConfigAsync(configDir: string) {
 
 function readConfigAsync(configDir: string) {
   return findConfigAsync(configDir)
-    .then((configPath: string) => parseFileAsync(configPath));
+    .then((configPath: string) => {
+      if (configPath) {
+        return parseFileAsync(configPath);
+      }
+      return Promise.resolve(<ProjectFile>undefined);
+    });
 };
 
 function parseFileAsync(configPath: string) {

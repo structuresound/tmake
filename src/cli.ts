@@ -263,8 +263,7 @@ function run() {
             case 'init':
               return init();
             case 'example':
-              log.quiet(`copy from ${example} to ${targetFolder}`,
-                'magenta');
+              log.quiet(`copy from ${example} to ${targetFolder}`);
               return file.src(['**/*'], { cwd: examplePath })
                 .pipe(file.dest(path.join(args.runDir, targetFolder)));
             default:
