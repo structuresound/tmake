@@ -1,6 +1,10 @@
 /lib
 node_modules
 .DS_Store
+.tscache
+.istanbul.yml
+.nyc_output
+.vscode
 coverage/
 meteor/
 server/context/CMakeLists.txt
@@ -10,6 +14,6 @@ server/context/trie_modules/
 server/context/.idea
 server/context/tmake_server.xcodeproj
 server/context/Info.plist
-/test
 /tests
+/dist
 /tests_cache

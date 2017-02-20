@@ -1,0 +1,34 @@
+---
+git:
+  repository: madler/zlib
+  tag: v1.2.8
+configure:
+  replace:
+    gzguts:
+      sources:
+        - "gzguts.h"
+      inputs:
+        unistd:
+        - "\n\n#ifdef _LARGEFILE64_SOURCE"
+        - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
+build:
+  with: cmake
+  sources:
+    - "*.c"
+  compilerFlags:
+    ios:
+      miphoneos-version-min: "=6.0"
+  cFlags:
+    O: 3
+    Wall: true
+    Wwrite-strings: true
+    Wpointer-arith: true
+    Wconversion: true
+    ios:
+      "fembed-bitcode": true
+hosts:
+- docker:
+    user: dockcross
+    image: linux-armv7
+  platform: linux
+  arch: armv7

@@ -1,15 +1,13 @@
-base:
+dockerBase:
 	cd docker/base && docker build -t 1e1f/tmake:base .
 
-npm:
-	grunt coffee
-	npm publish
-
-docker: base
+tmake:
+	grunt build
+docker: tmake
 	docker build -t 1e1f/tmake .
 
 server:
-	cd server && docker build -t 1e1f/tmake:server .
+	cd server/project && docker build -t 1e1f/tmake:server .
 
 run:
 	cd server && docker compose up
@@ -24,4 +22,4 @@ install:
 	docker push 1e1f/tmake
 	docker push 1e1f/tmake:server
 
-.PHONY: npm base server dist all build test clean
+.PHONY: dockerBase docker server dist all build test clean

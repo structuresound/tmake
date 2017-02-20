@@ -1,0 +1,85 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXFileReference section */
+		291B60CA1E1C581700CE5E60 /* tmake.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = tmake.xcdatamodel; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		291B60C21E1C57EB00CE5E60 = {
+			isa = PBXGroup;
+			children = (
+				291B60C91E1C581700CE5E60 /* tmake.xcdatamodeld */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXProject section */
+		291B60C31E1C57EB00CE5E60 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0810;
+			};
+			buildConfigurationList = 291B60C61E1C57EB00CE5E60 /* Build configuration list for PBXProject "datamodel" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 291B60C21E1C57EB00CE5E60;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		291B60C71E1C57EB00CE5E60 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		291B60C81E1C57EB00CE5E60 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		291B60C61E1C57EB00CE5E60 /* Build configuration list for PBXProject "datamodel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				291B60C71E1C57EB00CE5E60 /* Debug */,
+				291B60C81E1C57EB00CE5E60 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		291B60C91E1C581700CE5E60 /* tmake.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				291B60CA1E1C581700CE5E60 /* tmake.xcdatamodel */,
+			);
+			currentVersion = 291B60CA1E1C581700CE5E60 /* tmake.xcdatamodel */;
+			path = tmake.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
+	};
+	rootObject = 291B60C31E1C57EB00CE5E60 /* Project object */;
+}

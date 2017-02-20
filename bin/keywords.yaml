@@ -1,0 +1,35 @@
+host:
+  - mac
+  - win
+  - linux
+  - raspbian
+  - debian
+  - ubuntu
+target:
+  - linux
+  - mac
+  - win
+  - ios
+  - android
+  - raspberryPi
+  - test-platform
+build:
+  - cmake
+  - ninja
+sdk:
+  - cocoa
+  - sdl
+  - juce
+compiler:
+  - clang
+  - gcc
+  - msvc
+ide:
+  - xcode
+  - clion
+  - visualStudio
+  - vscode
+  - codeblocks
+  - appcode
+deploy:
+  - simulator

@@ -3,9 +3,10 @@ git:
   repository: madler/zlib
   tag: v1.2.8
 configure:
+  for: ninja
   replace:
     gzguts:
-      matching:
+      sources:
         - "gzguts.h"
       inputs:
         unistd:
@@ -14,8 +15,7 @@ configure:
 build:
   with: ninja
   sources:
-    matching:
-      - "*.c"
+    - "*.c"
   compilerFlags:
     ios:
       miphoneos-version-min: "=6.0"

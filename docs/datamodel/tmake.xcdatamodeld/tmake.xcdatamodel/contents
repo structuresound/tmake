@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="11542" systemVersion="15G1212" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="Configuration" representedClassName="Configuration" syncable="YES" codeGenerationType="class">
+        <relationship name="host" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Host" syncable="YES"/>
+        <relationship name="target" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Target" syncable="YES"/>
+    </entity>
+    <entity name="Docker" representedClassName="Docker" syncable="YES" codeGenerationType="class">
+        <attribute name="image" optional="YES" syncable="YES"/>
+        <attribute name="user" optional="YES" syncable="YES"/>
+    </entity>
+    <entity name="Host" representedClassName="Host" syncable="YES" codeGenerationType="class">
+        <relationship name="docker" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Docker" syncable="YES"/>
+    </entity>
+    <entity name="Node" representedClassName="Node" syncable="YES" codeGenerationType="class">
+        <relationship name="configurations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Configuration" syncable="YES"/>
+        <relationship name="dependency" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Node" inverseName="parent" inverseEntity="Node" syncable="YES"/>
+        <relationship name="parent" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Node" inverseName="dependency" inverseEntity="Node" syncable="YES"/>
+    </entity>
+    <entity name="Target" representedClassName="Target" syncable="YES" codeGenerationType="class">
+        <attribute name="architecture" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="docker" optional="YES" syncable="YES"/>
+        <attribute name="platgform" optional="YES" attributeType="String" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="Node" positionX="-243" positionY="-99" width="128" height="88"/>
+        <element name="Configuration" positionX="-38" positionY="-90" width="128" height="73"/>
+        <element name="Host" positionX="135" positionY="-99" width="128" height="58"/>
+        <element name="Target" positionX="133" positionY="-9" width="128" height="88"/>
+        <element name="Docker" positionX="340" positionY="-135" width="128" height="75"/>
+    </elements>
+</model>

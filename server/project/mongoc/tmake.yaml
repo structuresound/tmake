@@ -1,0 +1,91 @@
+git:
+  repository: mongodb/mongo-c-driver
+  tag: 1.3.4
+configure:
+  for: ninja
+  replace:
+    files:
+      sources:
+      - src/mongoc/mongoc-config.h.in
+      - src/mongoc/mongoc-version.h.in
+      inputs:
+        MONGOC_MAJOR_VERSION: 1
+        MONGOC_MINOR_VERSION: 3
+        MONGOC_MICRO_VERSION: 4
+        MONGOC_PRERELEASE_VERSION: rc0
+        MONGOC_VERSION: 1.3.4
+        MONGOC_ENABLE_CRYPTO: 1
+        MONGOC_ENABLE_CRYPTO_CNG: 0
+        MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO: 0
+        mac:
+          MONGOC_ENABLE_CRYPTO_COMMON_CRYPTO: 1
+        MONGOC_ENABLE_CRYPTO_LIBCRYPTO: 1
+        MONGOC_ENABLE_CRYPTO_SYSTEM_PROFILE: 1
+        MONGOC_ENABLE_SSL: 1
+        MONGOC_ENABLE_SSL_OPENSSL: 1
+        MONGOC_ENABLE_SSL_SECURE_CHANNEL: 0
+        MONGOC_ENABLE_SSL_SECURE_TRANSPORT: 0
+        MONGOC_ENABLE_SASL: 0
+        MONGOC_HAVE_SASL_CLIENT_DONE: 0
+        MONGOC_HAVE_WEAK_SYMBOLS: 0
+        MONGOC_NO_AUTOMATIC_GLOBALS: 1
+      directive:
+        prepost: "@"
+      ext: "h"
+    include_bson:
+      sources:
+      - src/**/*.h
+      - src/**/*.c
+      inputs:
+        bson:
+        - '#include <bson.h>'
+        - '#include <libbson-1.0/bson.h>'
+        bson_quote:
+        - '#include "bson.h"'
+        - '#include <libbson-1.0/bson.h>'
+        bcon:
+        - '#include <bcon.h>'
+        - '#include <libbson-1.0/bcon.h>'
+build:
+  with: ninja
+  sources:
+  - src/mongoc/*.c
+  - "!src/mongoc/mongoc-rand-cng.c"
+  - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"
+  - "!src/mongoc/mongoc-crypto-cng.c"
+  - "!src/mongoc/mongoc-secure-channel.c"
+  - "!src/mongoc/mongoc-secure-transport"
+  - "!src/mongoc/mongoc-crypto-common-crypto"
+  - "!src/mongoc/mongoc-rand-common-crypto"
+  cFlags:
+    DMONGOC_COMPILATION: true
+    D_GNU_SOURCE: true
+    D_BSD_SOURCE: true
+    O3: true
+    std: c++11
+    g: true
+    Wall: true
+    Wextra: true
+    Wno-unused-parameter: true
+    Wno-missing-field-initializers: true
+    linux:
+      pthread: true
+    win:
+      D_CRT_SECURE_NO_WARNINGS: true
+    mac:
+      stdlib: libc++
+      Wno-deprecated-declarations: true
+  outputFile: libmongoc-1.0.a
+path:
+  install:
+    headers:
+    - from: source/src/mongoc
+      to: include/libmongoc-1.0
+test:
+  build:
+    with: ninja
+require:
+  libbson:
+    link: ../libbson
+  openssl:
+    link: ../openssl

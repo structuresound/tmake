@@ -1,14 +1,12 @@
 os:
   - linux
   - osx
-# Ubuntu 14.04 Trusty support
-sudo: required
 dist: trusty
 language: node_js
 node_js:
-  - '4'
-before_script:
-  - npm install -g grunt-cli
-  - grunt build
-after_success:
-  - npm run coveralls
+  - '6'
+before_install:
+- npm config set progress=false
+script: npm run cover
+after_script:
+  - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls

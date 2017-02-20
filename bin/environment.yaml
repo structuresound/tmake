@@ -1,0 +1,29 @@
+XC_RUN: 'xcrun --sdk {XC_PLATFORM}'
+host-mac:
+  DEVELOPER: $(xcode-select -print-path)
+  HOST_PLATFORM: mac
+host-mac ios:
+  CROSS_SDK: '{XC_DIR}{SDK_VERSION}.sdk'
+  CROSS_TOP: '{DEVELOPER}/Platforms/{XC_DIR}.profile/Developer'
+  FRAMEWORKS: '{CROSS_TOP}/SDKs/{CROSS_SDK}/System/Library/Frameworks/'
+  INCLUDES: '{CROSS_TOP}/SDKs/{CROSS_SDK}/usr/include'
+  IPHONEOS_DEPLOYMENT_VERSION: '6.0'
+  IPHONEOS_PLATFORM: '$({XC_RUN} --show-sdk-profile-path)'
+  IPHONEOS_SDK: '$({XC_RUN} --show-sdk-path)'
+  IPHONEOS_SDK_VERSION: '$({XC_RUN} --show-sdk-version)'
+  SDK_VERSION: '$({XC_RUN} --show-sdk-version)'
+  XC_DIR: iPhoneOS
+  XC_PLATFORM: iphoneos
+  simulator:
+    XC_DIR: iPhoneSimulator
+    XC_PLATFORM: iphonesimulator
+host-mac mac:
+  OSX_DEPLOYMENT_VERSION: '10.8'
+  OSX_PLATFORM: '$({XC_RUN} --show-sdk-profile-path)'
+  OSX_SDK: '$({XC_RUN} --show-sdk-path)'
+  OSX_SDK_VERSION: '$({XC_RUN} --show-sdk-version)'
+  PLATFORM: darwin64-x86_64-cc
+  SDK_VERSION: '$({XC_RUN} --show-sdk-version)'
+  XC_PLATFORM: macosx
+test-platform:
+  TEST_SDK_VERSION: 'test-platform-1.0'

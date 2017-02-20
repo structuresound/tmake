@@ -1,7 +1,0 @@
-context/CMakeLists.txt
-context/bin
-context/build
-context/trie_modules
-context/.idea
-context/tmake_server.xcodeproj
-context/Info.plist

@@ -1,0 +1,98 @@
+build:
+  with: ninja
+  sources:
+  - src/bsoncxx/**/*.cpp
+  - "!src/bsoncxx/test/**"
+  - src/mongocxx/**/*.cpp
+  - "!src/mongocxx/test/**"
+  cFlags:
+    DMONGO_CXX_DRIVER_COMPILING: true
+    DMONGOC_ENABLE_SSL: true
+    DMONGOC_ENABLE_SSL_OPENSSL: true
+    DMONGOC_HAVE_SSL: true
+    DBSON_CXX_DRIVER_COMPILING: true
+    O3: true
+    std: c++11
+configure:
+  for: ninja
+  create:
+    mongocxx/config/export:
+      path: src/mongocxx/config/export.hpp
+      string: |-
+        #ifndef MONGOCXX_API_H
+          #define MONGOCXX_API_H
+          #define MONGOCXX_API
+          #define MONGOCXX_PRIVATE
+        #endif
+    bsoncxx/config/export:
+      path: src/bsoncxx/config/export.hpp
+      string: |-
+        #ifndef BSONCXX_API_H
+          #define BSONCXX_API_H
+          #define BSONCXX_API
+          #define BSONCXX_PRIVATE
+        #endif
+  replace:
+    versions:
+      sources:
+      - src/bsoncxx/config/version.hpp.in
+      - src/mongocxx/config/version.hpp.in
+      inputs:
+        MONGOCXX_VERSION_MAJOR: '3'
+        MONGOCXX_VERSION_MINOR: '0'
+        MONGOCXX_VERSION_PATCH: '2'
+        MONGOCXX_VERSION_EXTRA: "-rc0-pre"
+      directive:
+        prepost: "@"
+      ext: "hpp"
+    src/mongocxx/config:
+      sources:
+      - src/mongocxx/config/config.hpp.in
+      - src/mongocxx/config/private/config.hpp.in
+      inputs:
+        "@MONGOCXX_INLINE_NAMESPACE@": v3_0_2
+      ext: "hpp"
+    src/bsoncxx/config:
+      sources:
+      - src/bsoncxx/config/config.hpp.in
+      - src/bsoncxx/config/private/config.hpp.in
+      inputs:
+        "#cmakedefine BSONCXX_POLY_USE_STD_EXPERIMENTAL": "//#define BSONCXX_POLY_USE_STD_EXPERIMENTAL
+          0"
+        "#cmakedefine BSONCXX_POLY_USE_MNMLSTC": "//#define BSONCXX_POLY_USE_MNMLSTC
+          0"
+        "#cmakedefine BSONCXX_POLY_USE_SYSTEM_MNMLSTC": "//#define BSONCXX_POLY_USE_SYSTEM_MNMLSTC
+          0"
+        "#cmakedefine BSONCXX_POLY_USE_BOOST": "#define BSONCXX_POLY_USE_BOOST
+          1"
+        "@BSONCXX_INLINE_NAMESPACE@": v3_0_2
+      ext: "hpp"
+    namespaceIncludes:
+      sources:
+      - src/**/*.h
+      - src/**/*.hpp
+      - src/**/*.cpp
+      inputs:
+        mongoc:
+        - '#include <mongoc.h>'
+        - '#include <libmongoc-1.0/mongoc.h>'
+        bson:
+        - '#include <bson.h>'
+        - '#include <libbson-1.0/bson.h>'
+git:
+  repository: mongodb/mongo-cxx-driver
+  tag: r3.0.1
+path:
+  includeDirs:
+  - source/src
+  install:
+    headers:
+    - from: source/src/mongocxx
+      to: include/mongocxx
+    - from: source/src/bsoncxx
+      to: include/bsoncxx
+require:
+  mongoc:
+    link: ../mongoc
+  boost:
+    link: ../boost

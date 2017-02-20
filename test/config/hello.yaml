@@ -1,0 +1,16 @@
+---
+git: structuresound/hello
+configure:
+  for: ninja
+build:
+  with: ninja
+outputType: executable
+require:
+  googletest:
+    git:
+      repository: google/googletest
+      archive: release-1.7.0
+    build:
+      with: cmake
+    path:
+      project: source
