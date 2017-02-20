@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import { contains, check, safeOLHM } from 'js-object-tools';
+import { contains, check, safeOLHM, OLHM } from 'js-object-tools';
 
 export interface CmdObj {
   cmd: string;
@@ -58,12 +58,13 @@ export function iterateOLHM(obj: any, fn: (any: any) => Promise<any>) {
   return Bluebird.each(it, fn);
 }
 
-export function mapOLHM(obj: any, fn: (any: any) => Promise<any>) {
+export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>) {
   const it = safeOLHM(obj);
   if (!check(it, Array)
   ) {
     throw new Error('safeOLHM did not produce array');
   }
+  console.log('mapping olhm', it);
   return Bluebird.map(it, fn);
 }
 

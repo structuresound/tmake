@@ -6,6 +6,8 @@ build:
     with: cmake
     linkerFlags:
       ldl: true
-deps:
-- link: mongocxx
-- link: served
+require:
+  mongocxx:
+    link: mongocxx
+  served: 
+    link: served

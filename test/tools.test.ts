@@ -1,14 +1,14 @@
-import {expect} from 'chai';
-import path from 'path';
-import fs from 'fs';
+import { expect } from 'chai';
+import * as path from 'path';
+import * as fs from 'fs';
 
-import args from '../lib/util/args';
-import {stringHash} from '../lib/util/hash';
-import {Project} from '../lib/node';
-import {fetch as fetchToolchain, pathForTool} from '../lib/tools';
+import { args } from '../src/args';
+import { stringHash } from '../src/hash';
+import { Project } from '../src/project';
+import { fetch as fetchToolchain, pathForTool } from '../src/tools';
 
 describe('tools', function () {
-  const project = new Project({name: 'tools-test'});
+  const project = new Project({ name: 'tools-test' });
   const env = project.environments[0];
 
   this.timeout(120000);

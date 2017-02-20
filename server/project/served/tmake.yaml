@@ -8,53 +8,17 @@ path:
       from: source/lib
     headers:
       from: source/src
-configure:
-  defines:
-    BOOST_ROOT: "~/include"
-    RE2_LIBRARY: "~/lib/libre2.a"
-    RE2_INCLUDE_DIR: "~/include/re2"
-    SERVED_BUILD_STATIC: 'ON'
-    SERVED_BUILD_TESTS: 'OFF'
-    SERVED_BUILD_SHARED: 'OFF'
 build:
-  with: cmake
-deps:
-- link: ../boost
-- git:
-    repository: google/re2
-    archive: "2016-10-01"
-  path:
-    includeDirs:
-    - source
-    install:
-      headers:
-      - from: source/re2
-        to: include/re2
-      - from: source/util
-        to: include/re2/util
-  build:
-    with: ninja
-    sources:
-    - re2/*.cc
-    - util/*.cc
-    linux:
-      sources:
-      - re2/*.cc
-      - util/*.cc
-      - "!util/threadwin.cc"
-    mac:
-      sources:
-      - re2/*.cc
-      - util/*.cc
-      - "!util/threadwin.cc"
-    cFlags:
-      O3: true
-      std: c++11
-      g: true
-      Wall: true
-      Wextra: true
-      Wno-unused-parameter: true
-      Wno-missing-field-initializers: true
-      pthread: true
-      mac:
-        stdlib: libc++
+  cmake:
+    defines:
+      BOOST_ROOT: "~/include"
+      RE2_LIBRARY: "~/lib/libre2.a"
+      RE2_INCLUDE_DIR: "~/include/re2"
+      SERVED_BUILD_STATIC: 'ON'
+      SERVED_BUILD_TESTS: 'OFF'
+      SERVED_BUILD_SHARED: 'OFF'
+require:
+  boost:
+    link: ../boost
+  re2: 
+    link: ../re2

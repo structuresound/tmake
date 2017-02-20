@@ -5,4 +5,5 @@
 /tests
 /tests_cache
 /test
+/coverage
 node_modules

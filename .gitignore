@@ -2,6 +2,8 @@
 node_modules
 .DS_Store
 .tscache
+.istanbul.yml
+.nyc_output
 .vscode
 coverage/
 meteor/

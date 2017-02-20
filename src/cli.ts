@@ -272,8 +272,11 @@ function run() {
           return Promise.resolve();
         })
         .catch((e: Error) => {
-          if (args.verbose) log.error(e.stack);
-          else log.error(e);
+          if (args.verbose) {log.error(e.stack);}
+          else {
+            log.error(e);
+            log.quiet('run with -v (--verbose) for more info');
+          }
         });
   }
 }

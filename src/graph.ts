@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as file from './file';
-import { combine, check, NodeGraph } from 'js-object-tools';
+import { combine, check, NodeGraph, OLHM } from 'js-object-tools';
 import { log } from './log';
 import { args } from './args';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
@@ -9,7 +9,7 @@ import { absolutePath } from './parse';
 import { cache as db } from './db';
 import { jsonStableHash } from './hash';
 
-import { Project, ProjectFile } from './project';
+import { Project, ProjectFile, resolveName } from './project';
 import { Environment, EnvironmentCacheFile, CacheProperty } from './environment';
 
 function loadCache(project: Project): PromiseLike<Project> {
@@ -46,56 +46,80 @@ interface Cache {
   [index: string]: Project;
 }
 
+interface FileCache {
+  [index: string]: ProjectFile;
+}
+
+function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: NodeGraph<Project>,
+  cache: Cache, fileCache: FileCache) {
+  return mapOLHM(require || {},
+    (dep) => {
+      console.log('process dep', dep.name || dep.git || dep.link);
+      return graphNode(dep, node, graph, cache, fileCache);
+    })
+    .then((deps) => {
+      if (deps.length) {
+        node.require = {}
+        for (const dep of deps) {
+          node.require[dep.name] = <any>dep;
+          console.log('resolved dep', dep.name);
+        }
+      }
+      return Promise.resolve(node);
+    });
+}
 
 function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project>,
-  cache: Cache) {
+  cache: Cache, fileCache: FileCache): PromiseLike<Project> {
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.dir : '');
-    const linkedConfig = file.readConfigSync(configDir);
-    linkedConfig.dir = configDir;
-    if (!linkedConfig) {
-      throw new Error(`can't resolve symlink ${conf.link} relative to parent ${parent.dir} fullpath: ${file.getConfigPath(configDir)}`)
+    if (fileCache[configDir]) {
+      conf = fileCache[configDir];
+      log.verbose(`file @ ${configDir} already loaded`);
+    } else {
+      const linkedConfig = file.readConfigSync(configDir);
+      linkedConfig.dir = configDir;
+      if (!linkedConfig) {
+        throw new Error(`can't resolve symlink ${conf.link} relative to parent ${parent.dir} fullpath: ${file.getConfigPath(configDir)}`)
+      }
+      fileCache[configDir] = <ProjectFile>combine(linkedConfig, conf);
+      conf = fileCache[configDir]
     }
-    conf = <ProjectFile>combine(linkedConfig, conf);
+  }
+  const name = resolveName(conf);
+  if (parent && (name === parent.name)) {
+    throw new Error(`recursive dependency ${parent.name}`);
+  }
+  if (cache[name]) {
+    log.verbose(`project ${name} already loaded`);
+    return Promise.resolve(cache[name]);
   }
   return createNode(conf, parent)
     .then((node: Project) => {
-      if (parent && (node.name === parent.name)) {
-        throw new Error(`recursive dependency ${parent.name}`);
-      }
-      graph.addNode(node.name);
+      log.verbose(`graph >> ${name} ${node.dir ? '@ ' + node.dir : ''}`);
+      graph.addNode(name);
       if (parent) {
-        graph.addDependency(parent.name, node.name);
+        log.verbose(`graph >> ${parent.name} ${name}`);
+        graph.addDependency(parent.name, name);
       }
       cache[node.name] = node;
+      return scanDependencies(conf.require, node, graph, cache, fileCache);
+    }).then((node: Project) => {
       if (args.verbose) {
-        log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
+        log.add(`+${name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
-      return mapOLHM(conf.require || {},
-        (dep: ProjectFile) => {
-          if (dep) {
-            return graphNode(dep, node, graph, cache);
-          }
-        })
-        .then((deps) => {
-          if (deps.length && deps[0] != undefined) {
-            node.require = {}
-            for (const dep of deps) {
-              node.require[dep.name] = dep;
-            }
-          }
-          return Promise.resolve(node);
-        });
+      return Promise.resolve(node);
     });
 }
 
 function _map(node: ProjectFile, graphType: string,
   graphArg?: string): PromiseLike<Project[]> {
   const cache: Cache = {};
+  const fileCache: FileCache = {};
   const graph = new NodeGraph();
 
-  return graphNode(node, undefined, graph, cache)
+  return graphNode(node, undefined, graph, cache, fileCache)
     .then(() => {
       const nodeNames = graph[graphType](graphArg);
       const nodes: Project[] =
