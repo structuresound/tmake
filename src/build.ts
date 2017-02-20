@@ -20,12 +20,13 @@ export interface Build {
   compilerFlags?: any;
   linkerFlags?: any;
   defines?: any;
+  prefix?: any;
+  shell?: any;
   frameworks?: any;
   sources?: any;
   headers?: any;
   libs?: any;
   includeDirs?: any;
-  cmake?: any;
   outputFile?: string;
 }
 
@@ -65,24 +66,26 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
   }
 }
 
+function buildCommand(c: any, env: Environment) {
+  let lc: CmdObj = check(c, String) ? <CmdObj>{ cmd: <any>c } : c;
+  const cwd = env.pathSetting(lc.cwd || env.project.d.source);
+  return execAsync(env.parse(lc.cmd, env), { cwd: cwd });
+}
+
 export function build(env: Environment, isTest: boolean) {
   if (!env.build) {
+    console.log('no build for environment');
     return Promise.resolve();
   }
   return iterate(getCommands(env.build), (i: CmdObj) => {
     switch (i.cmd) {
-      case 'ninja':
-      case 'cmake':
-      case 'make':
-        return buildWith(env, i.arg, isTest);
       case 'with':
         return buildWith(env, i.arg, isTest);
       default:
+        return buildCommand(i.arg, env);
       case 'shell':
         return iterate(i.arg, (c: CmdObj) => {
-          let lc: CmdObj = check(c, String) ? <CmdObj>{ cmd: <any>c } : c;
-          const cwd = env.pathSetting(lc.cwd || env.project.d.source);
-          return execAsync(env.parse(lc.cmd, env), { cwd: cwd });
+          return buildCommand(c, env);
         });
     }
   });

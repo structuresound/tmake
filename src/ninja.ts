@@ -1,10 +1,10 @@
 import * as path from 'path';
-import * as sh from 'shelljs';
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import ninja_build_gen = require('ninja-build-gen');
 import { log } from './log';
 import { fetch } from './tools';
+import { execAsync } from './sh';
 
 import { Environment } from './environment';
 
@@ -20,17 +20,7 @@ function build(env: Environment) {
       command = `${toolpaths.ninja} -C ${directory}`;
     }
     log.verbose(command);
-    return new Promise((resolve, reject) => {
-      sh.exec(command, (code, stdout, stderr) => {
-        if (code) {
-          return reject(new Error(`ninja exited with code ${code}\n${command}`));
-        } else if (stdout) {
-          return resolve(stdout);
-        } else if (stderr) {
-          return resolve(stderr);
-        }
-      });
-    });
+    return execAsync(command, { cwd: env.d.build });
   });
 }
 
@@ -45,10 +35,11 @@ function getRule(ext: string) {
       throw new Error('unknown extension, no coresponding ninja rule');
   }
 }
-
 function generate(env: Environment, fileName: string): void {
   log.add('generate new ninja config');
-  const ninjaConfig = ninja_build_gen(ninjaVersion, env.d.build);
+  const relative = path.relative(env.d.project, env.d.build);
+  console.log(`project to build dir = ${relative}`);
+  const ninjaConfig = ninja_build_gen(ninjaVersion, relative);
   const includeString = _.map(env.includeDirs(), (dir) => {
     return `-I${dir}`;
   }).join(' ');
@@ -78,12 +69,10 @@ function generate(env: Environment, fileName: string): void {
     .run(cxxCommand)
     .description(cxxCommand);
 
-  let linkCommand = `ar rv ${env.d.build}/$out $in`;
+  let linkCommand = 'ar rv $out $in';
   let libName = env.build.outputFile;
   let staticLibs = '';
-  if (env.project.libs) {
-    log.verbose('    ', 'link:', env.project.libs);
-  }
+  log.verbose('    ', 'link:', env.project.libs);
   switch (env.outputType) {
     case 'static':
     default:
@@ -94,16 +83,16 @@ function generate(env: Environment, fileName: string): void {
       } else if (!libName) {
         libName = `${env.project.name}.a`;
       }
-      linkCommand = `ar rv ${env.d.build}/$out $in`;
+      linkCommand = 'ar rv $out $in';
       break;
     case 'executable':
       if (!libName) {
         libName = `${env.project.name}`;
       }
-      linkCommand = `${cc} -o ${env.d.build}/$out $in${env.build.libs ? ' ' + env.build.libs.join(' ') : ''}${env
-        .linkerFlags() ? ' ' + env
-          .linkerFlags()
-          .join(' ') : ''}`;
+
+      const libs = env.build.libs ? ' ' + env.build.libs.join(' ') : ''
+      const flags = env.linkerFlags() ? ' ' + env.linkerFlags().join(' ') : '';
+      linkCommand = `${cc} -o $out $in${libs}${flags}`;
       break;
   }
 
@@ -113,16 +102,12 @@ function generate(env: Environment, fileName: string): void {
     .description(linkCommand);
 
   const linkNames = [];
-
   for (const filePath of env.s) {
-    // console.log('process source file', filePath);
-    // const dir = path.dirname(filePath);
-    // const relative = path.relative(env.p.clone, dir);
-    // console.log(`relative from ${env.p.clone} is ${relative}`);
-    // const outBase = path.join('build', relative);
+    console.log('process source file', filePath);
+    const dir = path.dirname(filePath);
     const ext = path.extname(filePath);
     const name = path.basename(filePath, ext);
-    const linkName = `${env.d.build}/${name}.o`;
+    const linkName = `${relative}/${dir}/${name}.o`;
     console.log('add build file', linkName);
     ninjaConfig
       .edge(linkName)
@@ -133,11 +118,12 @@ function generate(env: Environment, fileName: string): void {
 
   const linkInput = linkNames.join(' ');
   ninjaConfig
-    .edge(libName)
+    .edge(`${relative}/${libName}`)
     .from(linkInput)
     .using('link');
 
   ninjaConfig.save(fileName);
+  log.add(`  + ${fileName}`);
 }
 
 export { generate, build };

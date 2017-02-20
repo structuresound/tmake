@@ -58,11 +58,7 @@ function globHeaders(env: Environment) {
       '!tests/**',
       '!build/**'
     ]);
-  return Bluebird.map(env.project.d.includeDirs,
-    (includePath: string) => {
-      return file.glob(patterns, env.d.project, includePath);
-    })
-    .then((stack) => { return Promise.resolve(_.flatten(stack)); });
+  return file.glob(patterns, env.d.source, env.d.source);
 }
 
 function globSources(env: Environment) {
@@ -72,6 +68,7 @@ function globSources(env: Environment) {
 }
 
 function globFiles(env: Environment) {
+  log.verbose('  gather files for build configuration');
   return globHeaders(env)
     .then((headers) => {
       env.build.headers = headers;
@@ -91,7 +88,6 @@ function globFiles(env: Environment) {
         })
         env.build.libs = _.flatten(stack);
       }
-      console.log('flattened libs = ', env.build.libs);
       env.build.includeDirs = _.union
         ([`${env.project.d.home}/include`], env.project.d.includeDirs);
       return Promise.resolve(env);
@@ -103,15 +99,14 @@ interface StringObject {
 }
 
 function createBuildFileFor(env: Environment, systemName: string) {
-  return file.existsAsync(env.getProjectFilePath(systemName))
-    .then((exists) => {
-      if (exists) {
-        const buildFileName = env.getProjectFile(systemName);
-        log.quiet(`using pre-existing build file ${buildFileName}`);
-        return updateEnvironment(env, { $set: { 'cache.generatedBuildFilePath': buildFileName } });
-      }
-      return generateConfig(env, systemName);
-    });
+  // return file.existsAsync(env.getProjectFilePath(systemName))
+  //   .then((exists) => {
+  //     if (exists) {
+  //       const buildFileName = env.getProjectFile(systemName);
+  //       log.quiet(`using pre-existing build file ${buildFileName}`);
+  //     }
+  return generateConfig(env, systemName);
+  // });
 }
 
 function generateConfig(env: Environment, systemName: string) {
@@ -119,12 +114,9 @@ function generateConfig(env: Environment, systemName: string) {
     .then(() => { return generateBuildFile(env, systemName); })
     .then(() => {
       const buildFileName = env.getProjectFile(systemName);
-      return updateEnvironment(env, {
-        $set: {
-          'cache.buildFilePath': buildFileName,
-          'cache.generatedBuildFilePath': buildFileName
-        }
-      });
+      env.cache.buildFilePath.set(buildFileName);
+      env.cache.generatedBuildFilePath.set(buildFileName);
+      return updateEnvironment(env);
     });
 }
 
@@ -142,6 +134,17 @@ function generateBuildFile(env: Environment, systemName: string) {
   }
 }
 
+function shCommand(env: Environment, command: any) {
+  const c: CmdObj = check(command, String) ?
+    <CmdObj>{ cmd: command } :
+    command;
+  const cwd = env.pathSetting(c.cwd || env.project.d.source);
+  log.verbose(`    ${c.cmd}`);
+  return execAsync(
+    c.cmd,
+    <ShellOptions>{ cwd: cwd, silent: !args.quiet });
+}
+
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
   if (env.project.force() || env.cache.configure.dirty()) {
     const commands = env.getConfigurationIterable();
@@ -153,19 +156,11 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
           case 'for':
             log.verbose(`    ${i.arg}`);
             return createBuildFileFor(env, i.arg);
-          case 'ninja':
-          case 'cmake':
-            return createBuildFileFor(env, i.cmd);
           default:
+            return shCommand(env, i.arg);
           case 'shell':
             return iterateOLHM(i.arg, (command: any) => {
-              const c: CmdObj = check(command, String) ?
-                <CmdObj>{ cmd: command } :
-                command;
-              const setting = env.pathSetting(c.cwd || env.project.d.source);
-              return execAsync(
-                env.parse(c.cmd, env),
-                <ShellOptions>{ cwd: setting, silent: !args.quiet });
+              return shCommand(env, command);
             });
           case 'replace':
             return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
@@ -199,7 +194,10 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
                   { from: fromDir, to: env.pathSetting(e.to) });
               });
         }
-      }).then(() => Promise.resolve());
+      }).then(() => {
+        env.cache.configure.update();
+        return updateEnvironment(env);
+      });
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);
   return Promise.resolve(env);

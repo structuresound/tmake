@@ -6,8 +6,6 @@ import * as colors from 'chalk';
 import { check } from 'js-object-tools';
 import { args as environment } from './args';
 
-const debug = true;
-
 function getMessage(...args: any[]): string {
   return _.map(args, (el: any) => {
     if (check(el, String)) {
@@ -39,8 +37,8 @@ class Log {
       return this.log(...args);
     }
   }
-  debug(...args: any[]) {
-    if (environment.verbose || debug) {
+  dev(...args: any[]) {
+    if (environment.dev) {
       return this.log(...args);
     }
   }

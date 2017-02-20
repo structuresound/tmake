@@ -11,8 +11,10 @@ export interface Args {
   compiler: string;
   program: string;
   verbose: boolean;
+  debug: boolean;
+  dev: boolean;
   quiet: boolean;
-  nodeps: boolean;
+  noDeps: boolean;
   f: string;
   force: string;
   v: boolean;

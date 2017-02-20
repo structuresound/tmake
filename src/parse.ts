@@ -110,8 +110,8 @@ function parseString(val: string, conf: Object, mustPass?: boolean) {
 
 function _parse(input: string | MacroObject, dict: any,
   localContext?: Object): any {
-  let parsed = input;
   if (check(input, String)) {
+    let parsed = input;
     if (localContext) {
       parsed = parseString(<string>parsed, localContext);
     }
@@ -131,7 +131,7 @@ function _parse(input: string | MacroObject, dict: any,
 };
 
 function parse(input: string | MacroObject, dict: any): any {
-  return _parse(clone(input), dict);
+  return _parse(input, dict);
 }
 
 // function parseObject(obj: {[index:string]: any}, conf: Object) {

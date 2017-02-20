@@ -3,13 +3,14 @@ import * as fs from 'fs';
 import stringify = require('json-stable-stringify');
 import { check } from 'js-object-tools';
 
-export function jsonStableHash(obj: Object) {
+export function jsonStableHash(obj: any) {
   if (!check(obj, 'Object')) {
     throw new Error(`jsonStableHash expects an obj | got: ${obj}`);
   }
+  const canonical = stringify(obj);
   return crypto
     .createHash('md5')
-    .update(stringify(obj))
+    .update(canonical)
     .digest('hex');
 }
 

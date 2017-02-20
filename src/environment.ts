@@ -85,13 +85,17 @@ export interface Environment$Set {
 
 export interface EnvironmentCacheFile {
     [index: string]: any;
-
-    buildFilePath?: string;
-    generatedBuildFilePath?: string;
-    buildFile?: string;
-    build?: string;
-    configure?: string;
-    assets?: string[];
+    _id?: string,
+    hash?: string,
+    project?: string,
+    cache?: {
+        buildFilePath?: string;
+        generatedBuildFilePath?: string;
+        buildFile?: string;
+        build?: string;
+        configure?: string;
+        assets?: string[];
+    }
 }
 
 export interface EnvironmentCache {
@@ -149,6 +153,19 @@ const DEFAULT_TOOLCHAIN = {
     'host-mac': { clang: { bin: '$(which gcc)' } },
     'host-linux': { gcc: { bin: '$(which gcc)' } }
 };
+
+function mergeEnvironment(a: Environment, b: any) {
+    if (!a || !b) return;
+    if (b.cache) {
+        for (const k of Object.keys(b.cache)) {
+            const v = b.cache[k]
+            if (v) {
+                log.dev('cache -->', k, ':', v);
+                a.cache[k].set(v);
+            }
+        }
+    }
+}
 
 function parseSelectors(dict: any, prefix: string) {
     const _selectors: string[] = [];
@@ -226,10 +243,10 @@ function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
     if (!check(paths.project, String)) {
         paths.project = paths.clone;
     }
-    if (!check(paths.install.libraries, String)) {
+    if (!(paths.install.libraries)) {
         paths.install.libraries = [{ from: paths.build }];
     }
-    if (!check(paths.install.binaries, String)) {
+    if (!(paths.install.binaries)) {
         paths.install.binaries = [{ from: paths.build, to: 'bin' }];
     }
 
@@ -281,6 +298,9 @@ class Environment implements Toolchain {
 
     project: Project;
 
+    _configure: Configure;
+    _build: Build;
+
     constructor(t: Toolchain, project: Project) {
         /* set up selectors + environment */
         this.project = project;
@@ -292,23 +312,22 @@ class Environment implements Toolchain {
         this.selectors = hostSelectors.concat(targetSelectors);
 
         const environment =
-            cascade.deep(combine(DEFAULT_ENV, project.environment), keywords,
+            cascade.deep(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
                 this.selectors);
         extend(this, environment);
-
         this.tools = this.selectTools();
-
-        /* copy config + build settings */
-        const mainOperations = _.pick(project, ['configure', 'build']);
-        extend(this, this.select(mainOperations));
 
         /* setup paths + directories */
         this.path = this.select(t.path || project.path || {});
         this.p = getEnvironmentPaths(this, project.p);
         this.d = getEnvironmentDirs(this, project.d);
 
-        this.configure = this.select(combine(project.configure || t.configure));
-        parseBuild(this, <Build>combine(project.build || t.build));
+        /* copy config + build settings */
+        this._configure = this.select(combine(project.configure || t.configure));
+        this.configure = this.select(this._configure);
+
+        this._build = combine(project.build || t.build)
+        parseBuild(this, this._build);
 
         /* extend + select all remaining settings */
         const inOutFields = _.pick(project, ['outputType']);
@@ -317,21 +336,22 @@ class Environment implements Toolchain {
             this.outputType = 'static';
         }
 
+        const self = this;
         this.cache = {
             configure: new CacheProperty<string>(() => {
-                return jsonStableHash(this.configure);
+                return jsonStableHash(self.configure);
             }),
             build: new CacheProperty<string>(() => {
-                return jsonStableHash(this.build);
+                return jsonStableHash(self.build);
             }),
             buildFile: new CacheProperty<string>(() => {
-                return fileHash(this.getProjectFilePath(this.build.with));
+                return fileHash(self.getProjectFilePath(self.build.with));
             }),
             buildFilePath: new CacheProperty<string>(() => {
-                return this.getProjectFilePath(this.build.with);
+                return self.getProjectFilePath(self.build.with);
             }),
             generatedBuildFilePath: new CacheProperty<string>(() => {
-                return this.getProjectFilePath(this.configure.for);
+                return self.getProjectFilePath(self.configure.for);
             }),
             assets: new CacheProperty<string[]>(() => {
                 return [""];
@@ -349,21 +369,32 @@ class Environment implements Toolchain {
         return _.map(arrayify(val), (v) => { return parse(v, this); });
     }
     j() { return this.host.cpu.num; }
-    id() {
-        return jsonStableHash(_.pick(this, ['host', 'target', 'build', 'configure']));
+    hash() {
+        const env = _.pick(this, ['host', 'target']);
+        const phases = { build: this._build, configure: this._configure };
+        const projectSettings = _.pick(this.project, ['name', 'version']);
+        return jsonStableHash(combine(env, phases, projectSettings));
+    }
+    merge(other: EnvironmentCacheFile) {
+        mergeEnvironment(this, other);
     }
     parse(input: any, conf?: any) {
         if (conf) {
-            const dict =
-                combine(this, cascade.deep(conf, keywords, this.selectors));
+            const dict = combine(this, cascade.deep(conf, keywords, this.selectors));
             return parse(input, dict);
         }
         return parse(input, this);
     }
-    safe(): Environment {
-        const plain = <Environment>_.omit(
-            toJSON(this), ['project']);
-        return plain;
+    toCache(): EnvironmentCacheFile {
+        const ret: EnvironmentCacheFile = { hash: this.hash(), project: this.project.name, cache: {} };
+        for (const k of Object.keys(this.cache)) {
+            const v = this.cache[k].value();
+            if (v) {
+                log.dev(`cache <-- ${k}: ${v}`);
+                ret.cache[k] = v;
+            }
+        }
+        return ret;
     }
     select(base: any, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
         if (!base) {

@@ -1,18 +1,20 @@
-build:
-  with: ninja
-  sources:
-  - src/bsoncxx/**/*.cpp
-  - "!src/bsoncxx/test/**"
-  - src/mongocxx/**/*.cpp
-  - "!src/mongocxx/test/**"
-  cFlags:
-    DMONGO_CXX_DRIVER_COMPILING: true
-    DMONGOC_ENABLE_SSL: true
-    DMONGOC_ENABLE_SSL_OPENSSL: true
-    DMONGOC_HAVE_SSL: true
-    DBSON_CXX_DRIVER_COMPILING: true
-    O3: true
-    std: c++11
+git:
+  repository: mongodb/mongo-cxx-driver
+  tag: r3.0.1
+require:
+  mongoc:
+    link: ../mongoc
+  boost:
+    link: ../boost
+path:
+  includeDirs:
+  - source/src
+  install:
+    headers:
+    - from: source/src/mongocxx
+      to: include/mongocxx
+    - from: source/src/bsoncxx
+      to: include/bsoncxx
 configure:
   for: ninja
   create:
@@ -79,20 +81,18 @@ configure:
         bson:
         - '#include <bson.h>'
         - '#include <libbson-1.0/bson.h>'
-git:
-  repository: mongodb/mongo-cxx-driver
-  tag: r3.0.1
-path:
-  includeDirs:
-  - source/src
-  install:
-    headers:
-    - from: source/src/mongocxx
-      to: include/mongocxx
-    - from: source/src/bsoncxx
-      to: include/bsoncxx
-require:
-  mongoc:
-    link: ../mongoc
-  boost:
-    link: ../boost
+build:
+  with: ninja
+  sources:
+  - src/bsoncxx/**/*.cpp
+  - "!src/bsoncxx/test/**"
+  - src/mongocxx/**/*.cpp
+  - "!src/mongocxx/test/**"
+  cFlags:
+    DMONGO_CXX_DRIVER_COMPILING: true
+    DMONGOC_ENABLE_SSL: true
+    DMONGOC_ENABLE_SSL_OPENSSL: true
+    DMONGOC_HAVE_SSL: true
+    DBSON_CXX_DRIVER_COMPILING: true
+    O3: true
+    std: c++11

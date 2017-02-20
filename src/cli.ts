@@ -8,7 +8,7 @@ import { check } from 'js-object-tools';
 import { log } from './log';
 import { args } from './args';
 import * as file from './file';
-import { execute, list, unlink, push, parse } from './tmake';
+import { execute, list, unlink, push } from './tmake';
 import { cache, user } from './db';
 import { graph, createNode } from './graph';
 
@@ -98,7 +98,7 @@ function commands(): Commands {
       `link the current or specified ${c.y('package')} to your local package repository`),
     unlink: packageCommand(
       `remove the current or specified ${c.y('package')} from your local package repository`),
-    // clean: packageCommand(`clean ${c.y('package')}, or 'all'`),
+    clean: packageCommand(`clean ${c.y('package')}, or 'all'`),
     reset: { description: 'nuke the cache' },
     nuke: { description: 'nuke the cache' },
     parse: packageCommand(`parse project, ${c.y('setting')}, or 'package'`),
@@ -163,31 +163,34 @@ function tmake(rootConfig: ProjectFile,
   switch (positionalArgs[0]) {
     case 'rm':
       return cache.remove({ name: resolvedName })
-        .then(() => log.quiet(`cleared cache for ${resolvedName}`));
+        .then(() => {
+          return cache.remove({ project: resolvedName })
+        }).then(() => {
+          log.quiet(`cleared cache for ${resolvedName}`)
+        });
     case 'link':
-      return execute(rootConfig, 'link');
+      return execute(rootConfig, 'link', resolvedName);
     case 'unlink':
       return cache.findOne({ name: resolvedName })
         .then((dep: ProjectFile) => unlink(dep || rootConfig));
     case 'push':
-      return execute(rootConfig, 'push');
+      return execute(rootConfig, 'push', resolvedName);
     case 'test':
-      return execute(rootConfig, 'test');
+      return execute(rootConfig, 'test', resolvedName);
     case 'fetch':
-      return execute(rootConfig, 'fetch');
+      return execute(rootConfig, 'fetch', resolvedName);
     case 'parse':
-      if (positionalArgs[1]) {
-        return parse(rootConfig, positionalArgs[1]);
-      }
-      return parse(rootConfig, 'node');
+      return execute(rootConfig, 'parse', resolvedName);
+    case 'clean':
+      return execute(rootConfig, 'clean', resolvedName);
     case 'configure':
-      return execute(rootConfig, 'configure');
+      return execute(rootConfig, 'configure', resolvedName);
     case 'build':
-      return execute(rootConfig, 'build');
+      return execute(rootConfig, 'build', resolvedName);
     case 'install':
-      return execute(rootConfig, 'install');
+      return execute(rootConfig, 'install', resolvedName);
     case 'all':
-      return execute(rootConfig, 'install');
+      return execute(rootConfig, 'install', resolvedName);
     case 'ls':
     case 'list':
       return (() => {
@@ -197,7 +200,7 @@ function tmake(rootConfig: ProjectFile,
           return list('cache', { name: positionalArgs[1] })
         }
         return list('cache', {});
-      })().then(nodes => log.info(nodes));
+      })().then(nodes => log.log(nodes));
     default:
       throw new Error(`unknown command ${positionalArgs[0]}`);
   }
@@ -272,7 +275,7 @@ function run() {
           return Promise.resolve();
         })
         .catch((e: Error) => {
-          if (args.verbose) {log.error(e.stack);}
+          if (args.verbose) { log.error(e.stack); }
           else {
             log.error(e);
             log.quiet('run with -v (--verbose) for more info');

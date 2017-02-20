@@ -157,8 +157,7 @@ describe('main: ', function () {
   });
 
   it('can clean libbson project', () => {
-    return findAndClean(helloNode.name).then((cleanProject) => {
-      return expect(cleanProject.cache).to.deep.equal({});
-    });
+    return findAndClean(helloNode.name)
+      .then(res => expect(res).to.not.be.ok);
   });
 });

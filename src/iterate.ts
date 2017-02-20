@@ -64,7 +64,6 @@ export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>) {
   ) {
     throw new Error('safeOLHM did not produce array');
   }
-  console.log('mapping olhm', it);
   return Bluebird.map(it, fn);
 }
 
