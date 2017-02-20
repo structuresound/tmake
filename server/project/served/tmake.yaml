@@ -9,14 +9,14 @@ path:
     headers:
       from: source/src
 build:
-  cmake:
-    defines:
-      BOOST_ROOT: "~/include"
-      RE2_LIBRARY: "~/lib/libre2.a"
-      RE2_INCLUDE_DIR: "~/include/re2"
-      SERVED_BUILD_STATIC: 'ON'
-      SERVED_BUILD_TESTS: 'OFF'
-      SERVED_BUILD_SHARED: 'OFF'
+  with: cmake
+  defines:
+    BOOST_ROOT: "~/include"
+    RE2_LIBRARY: "~/lib/libre2.a"
+    RE2_INCLUDE_DIR: "~/include/re2"
+    SERVED_BUILD_STATIC: 'ON'
+    SERVED_BUILD_TESTS: 'OFF'
+    SERVED_BUILD_SHARED: 'OFF'
 require:
   boost:
     link: ../boost

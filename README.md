@@ -1,4 +1,4 @@
-# TrieMake uses JSON to configure/build/test large c++ dependency trees [![Build Status](https://secure.travis-ci.org/structuresound/tmake.png?branch=master)](http://travis-ci.org/structuresound/tmake) [![COVERALLS](https://img.shields.io/coveralls/structuresound/tmake.svg)]()
+# TrieMake uses JSON to configure/build/test large c++ dependency trees [![Build Status](https://secure.travis-ci.org/structuresound/tmake.png?branch=master)](http://travis-ci.org/structuresound/tmake) [![Coverage Status](https://coveralls.io/repos/github/structuresound/tmake/badge.svg?branch=master)](https://coveralls.io/github/structuresound/tmake?branch=master)
 [![NPM](https://nodei.co/npm/tmake.png?downloads=true)](https://nodei.co/npm/tmake/)
 
 ### warning

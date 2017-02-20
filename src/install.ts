@@ -82,21 +82,20 @@ function bin(env: Environment) {
       mv(from, to);
       binaries.push(to);
     });
-    let cumulativeHash = '';
-    return Bluebird.each(binaries, (binPath) => {
-      log.quiet('hash binary', binPath);
-      return fileHash(binPath).then((hash) => {
-        cumulativeHash = stringHash(cumulativeHash + hash);
-        return Promise.resolve(cumulativeHash);
-      });
-    }).then(() => {
-      return Promise.resolve('executable');
-    })
+    return Promise.resolve();
+    // let cumulativeHash = '';
+    // return Bluebird.each(binaries, (binPath) => {
+    //   log.quiet('hash binary', binPath);
+    //   return fileHash(binPath).then((hash) => {
+    //     cumulativeHash = stringHash(cumulativeHash + hash);
+    //     return Promise.resolve();
+    //   });
+    // })
   }
-  return Promise.resolve('executable');
+  return Promise.resolve();
 }
 
-function assets(env: Environment) {
+function assets(env: Environment): PromiseLike<any> {
   if (env.d.install.assets) {
     return Bluebird.map(env.d.install.assets, (ft: InstallOptions) => {
       const patterns = ft.sources || ['**/*.*'];
@@ -109,17 +108,14 @@ function assets(env: Environment) {
         }
       });
     }).then(assetPaths => {
-      return updateEnvironment(env, {
-        $set: {
-          'cache.assets': _.flatten(assetPaths)
-        }
-      });
+      env.cache.assets.set(_.flatten(assetPaths));
+      return updateEnvironment(env);
     });
-  }
-  return Promise.resolve('assets');
+  };
+  return Promise.resolve();
 }
 
-function libs(env: Environment) {
+function libs(env: Environment): PromiseLike<any> {
   if (contains([
     'static', 'dynamic'
   ], env.outputType)) {
@@ -128,7 +124,7 @@ function libs(env: Environment) {
       if (env.project.outputType === 'dynamic') {
         patterns = ft.sources || ['*.dylib', '*.so', '*.dll'];
       }
-      log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
+      log.verbose(`[ configure ] from ${ft.from} to ${ft.to}`);
       return link({
         patterns, from: ft.from, to: ft.to, opt: {
           flatten: true,
@@ -137,11 +133,12 @@ function libs(env: Environment) {
         }
       });
     }).then((libPaths) => {
-      let cumulativeHash = '';
+      if (!libPaths.length) {
+        return Promise.resolve();
+      }
       return Bluebird.each(_.flatten(libPaths), (libPath) => {
         fileHash(path.join(env.project.d.home, libPath));
       }).then((hash) => {
-        cumulativeHash = stringHash(cumulativeHash + hash);
         return updateNode(env.project, {
           $set: {
             'cache.libs': _.flatten(libPaths)
@@ -150,10 +147,10 @@ function libs(env: Environment) {
       });
     });
   }
-  return Bluebird.resolve('libs');
+  return Promise.resolve();
 }
 
-export function installHeaders(project: Project) {
+export function installHeaders(project: Project): PromiseLike<any> {
   if (contains([
     'static', 'dynamic'
   ], project.outputType)) {
@@ -169,11 +166,9 @@ export function installHeaders(project: Project) {
           relative: project.d.home
         }
       });
-    }).then(() => {
-      return Bluebird.resolve();
     })
   }
-  return Bluebird.resolve();
+  return Promise.resolve();
 }
 
 export function installProject(project: Project) {

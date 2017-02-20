@@ -9,7 +9,9 @@ path:
     - from: source/re2
       to: include/re2
     - from: source/util
-      to: include/re2/utÏil
+      to: include/re2/util
+configure:
+  for: ninja
 build:
   with: ninja
   sources:
@@ -36,5 +38,3 @@ build:
     pthread: true
     mac:
       stdlib: libc++
-  configure:
-    for: ninja

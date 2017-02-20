@@ -8,7 +8,7 @@ import { log } from './log';
 import { mkdir } from './sh';
 
 import { Project, ProjectModifier } from './project'
-import { Environment, EnvironmentModifier } from './environment'
+import { Environment, EnvironmentCacheFile, EnvironmentModifier } from './environment'
 
 
 let cacheDbPath: string;
@@ -30,18 +30,24 @@ const userDbPath: string = `${args.userCache}/packages.db`;
 export const cache = new Datastore({ filename: cacheDbPath, autoload: testMode });
 export const user = new Datastore({ filename: userDbPath, autoload: testMode });
 
-export function nodeNamed(name: string) {
+export function projectNamed(name: string): PromiseLike<Project> {
   return cache.findOne({ name: name });
 }
 
-export function environmentWithId(name: string) {
-  return cache.findOne({ name: name });
+export function environmentCache(hash: string): PromiseLike<EnvironmentCacheFile> {
+  return cache.findOne({ hash: hash });
 }
 
 export function updateNode(node: Project, modifier: ProjectModifier) {
-  return cache.update({ name: node.name }, modifier, {});
+  return cache.update({ name: node.name }, modifier, { upsert: true });
 }
 
-export function updateEnvironment(env: Environment, modifier: EnvironmentModifier) {
-  return cache.update({ _id: env.id() }, modifier, { upsert: true });
+export function updateEnvironment(env: Environment) {
+  const envCache = env.toCache();
+  return environmentCache(envCache.hash).then((res) => {
+    if (res) {
+      return cache.update({ hash: envCache.hash }, { $set: envCache }, { upsert: true });
+    }
+    return cache.insert(envCache);
+  }).then(() => Promise.resolve());
 }

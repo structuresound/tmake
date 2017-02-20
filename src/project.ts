@@ -90,7 +90,7 @@ export interface ProjectFile extends Toolchain {
   environment?: any;
 }
 
-export const metaDataKeys = ['name', 'version', 'user', 'dir', 'git', 'archive'];
+export const metaDataKeys = ['name', 'version', 'user', 'dir', 'path', 'git', 'archive'];
 export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure'];
 export const dependencyKeys = ['require'];
 export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
@@ -133,13 +133,13 @@ function getProjectDirs(project: Project): ProjectDirs {
   return d;
 }
 
-function getProjectPaths(node: Project) {
+function getProjectPaths(project: Project) {
   const defaultPaths = {
     source: '',
     headers: '',
     clone: 'source',
   };
-  const pathOptions = <ProjectDirs>extend(defaultPaths, node.path);
+  const pathOptions = <ProjectDirs>extend(defaultPaths, project.path);
   if (pathOptions.install == null) {
     pathOptions.install = {};
   }
@@ -199,7 +199,7 @@ function mergeNodes(a: Project, b: any) {
     for (const k of Object.keys(b.cache)) {
       const v = b.cache[k]
       if (v) {
-        log.verbose('cache -->', k, ':', v);
+        log.dev('cache -->', k, ':', v);
         a.cache[k].set(v);
       }
     }
@@ -376,7 +376,7 @@ export class Project implements ProjectFile {
     for (const k of Object.keys(this.cache)) {
       const v = this.cache[k].value();
       if (v) {
-        log.verbose(`cache <-- ${k}: ${v}`);
+        log.dev(`cache <-- ${k}: ${v}`);
         ret.cache[k] = v;
       }
     }

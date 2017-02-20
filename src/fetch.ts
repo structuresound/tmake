@@ -102,7 +102,7 @@ function updateCache(node: Project) {
 }
 
 function upsertCache(node: Project) {
-  return cache.findOne(node.name).then((res: any) => {
+  return cache.findOne({ name: node.name }).then((res: any) => {
     if (res) {
       return updateCache(node);
     }

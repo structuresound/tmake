@@ -2,11 +2,17 @@ import * as Bluebird from 'bluebird';
 
 import { execAsync } from './sh';
 import { args } from './args';
+import { log } from './log';
 
-function build(node) {
-  return execAsync(`make -j ${node.j()}`, {
-    cwd: node.d.project,
-    silent: !args.quiet
+import { Environment } from './environment';
+
+function build(env: Environment) {
+  const prefix = env.build.prefix ? env.build.prefix + ' ' : '';
+  const command = `${prefix}make -j ${env.j()}`
+  log.quiet(command);
+  return execAsync(command, {
+    cwd: env.d.project,
+    silent: !args.verbose
   });
 }
 

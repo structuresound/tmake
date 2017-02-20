@@ -5,37 +5,48 @@ import * as colors from 'chalk';
 import * as fs from 'fs';
 import { plain as toJSON, safeOLHM } from 'js-object-tools';
 
-import { linkSource, destroy as destroySource } from './fetch';
-import { log } from './log';
 import { args } from './args';
-import * as file from './file';
-
-import { prompt } from './prompt';
-import { createNode, graph } from './graph';
-import { login, get, post } from './cloud';
-import { nodeNamed, updateNode, updateEnvironment, user as userDb, cache } from './db';
-
-import { fetch } from './fetch';
 import { build } from './build';
+import { login, get, post } from './cloud';
 import { configure } from './configure';
+import {
+  projectNamed, updateNode, updateEnvironment,
+  user as userDb, cache
+} from './db';
+import { Environment } from './environment';
+import { fetch, linkSource, destroy as destroySource } from './fetch';
+import * as file from './file';
+import { createNode, graph } from './graph';
 import { installProject, installEnvironment, installHeaders } from './install';
+import { Project, ProjectFile, ProjectModifier, resolveName } from './project';
+import { prompt } from './prompt';
+import { log } from './log';
 import test from './test';
 
-import { Project, ProjectFile, ProjectModifier, resolveName } from './project';
-import { Environment } from './environment';
-
-function execute(conf: ProjectFile, phase: string) {
+function execute(conf: ProjectFile, phase: string, subProject?: string) {
   let root: Project;
   return graph(_.extend(conf, { d: { root: args.runDir } }))
-    .then((nodes: Project[]) => {
-      root = nodes[nodes.length - 1];
+    .then((deps: Project[]) => {
+      let selectedDeps = deps;
+      root = deps[deps.length - 1];
+      if (subProject) {
+        selectedDeps = []
+        for (const project of deps) {
+          selectedDeps.push(project);
+          if (project.name === subProject) {
+            root = project;
+            log.warn(`restrict to submodule: ${subProject}`);
+            break;
+          }
+        }
+      }
+      if (args.noDeps) {
+        return processDep(root, phase);
+      }
       if (!args.quiet) {
-        log.add(_.map(nodes, d => d.name).join(' >> '));
+        log.add(_.map(selectedDeps, d => d.name).join(' >> '));
       }
-      if (args.nodeps) {
-        return processDep(nodes[nodes.length - 1], phase);
-      }
-      return <any>Bluebird.each(nodes, (node) => {
+      return <any>Bluebird.each(selectedDeps, (node) => {
         return processDep(node, phase);
       });
     })
@@ -58,7 +69,10 @@ class ProjectRunner {
     const doConfigure = () => {
       log.quiet(`>> configure >>`);
       return this.do(configure, isTest)
-        .then(() => { return installHeaders(this.project); });
+        .then(() => {
+          log.verbose('install headers');
+          return installHeaders(this.project);
+        });
     }
     return this.fetch().then(() => {
       return doConfigure();
@@ -96,47 +110,49 @@ class ProjectRunner {
         });
       });
   }
+  parse(aspect: string) {
+    log.log(this.project.toRegistry());
+    return Promise.resolve();
+  }
   clean() {
     log.quiet(`cleaning ${this.project.name}`);
-    _.each(this.project.libs, (libFile) => {
-      log.quiet(`rm ${libFile}`);
+    _.each(this.project.cache.libs.value(), (libFile) => {
+      log.verbose(`rm ${libFile}`);
       if (fs.existsSync(libFile)) {
         fs.unlinkSync(libFile);
       }
     });
-    for (const env of this.project.environments) {
+    return Bluebird.each(this.project.environments, (env) => {
       if (fs.existsSync(env.d.build)) {
-        log.quiet(`rm -R ${env.d.build}`);
+        log.verbose(`rm -R ${env.d.build}`);
         file.nuke(env.d.build);
       }
-      const projectModifier: ProjectModifier = {
-        $set: {
-          cache: {}
-        }
-      };
-      return updateNode(this.project, projectModifier)
-        .then(() => {
-          if (env.cache.generatedBuildFilePath.value()) {
-            const filePath =
-              path.join(env.d.project, env.cache.generatedBuildFilePath.value());
-            try {
-              if (fs.existsSync(filePath)) {
-                log.quiet(`clean generatedBuildFile ${filePath}`);
-                if (fs.lstatSync(filePath).isDirectory()) {
-                  file.nuke(filePath);
-                } else {
-                  fs.unlinkSync(filePath);
-                }
-              }
-            } catch (err) {
-              log.error(err.message || err);
+      if (env.cache.generatedBuildFilePath.value()) {
+        const filePath =
+          path.join(env.d.project, env.cache.generatedBuildFilePath.value());
+        try {
+          if (fs.existsSync(filePath)) {
+            log.verbose(`clean generatedBuildFile ${filePath}`);
+            if (fs.lstatSync(filePath).isDirectory()) {
+              file.nuke(filePath);
+            } else {
+              fs.unlinkSync(filePath);
             }
-            const unsetter = { $set: { 'cache': {} } };
-            return updateEnvironment(env, unsetter);
           }
-          return Promise.resolve();
-        });
-    }
+        } catch (err) {
+          log.error(err.message || err);
+        }
+        const unsetter = { $set: { 'cache': {} } };
+        const hash = env.hash();
+        return cache.remove({ hash: hash });
+      }
+    }).then(() => {
+      log.verbose('clean environment caches');
+      return cache.remove({ project: this.project.name })
+    }).then(() => {
+      log.verbose('clean project cache');
+      return cache.remove({ name: this.project.name })
+    })
   }
 }
 
@@ -168,7 +184,7 @@ function push(config: ProjectFile) {
       }
       return Promise.reject('user aborted push command');
     })
-    .then(() => { return nodeNamed(config.name); })
+    .then(() => { return projectNamed(config.name); })
     .then((json: any) => {
       if (json.cache.bin || json.cache.libs) {
         return post(json).then((res) => {
@@ -193,21 +209,8 @@ function list(repo: string, selector: Object) {
   }
 }
 
-function parse(config: ProjectFile, aspect: string) {
-  return createNode(config, undefined)
-    .then((project) => {
-      switch (aspect) {
-        case 'node':
-          log.log(project.toRegistry());
-        default:
-          log.log(toJSON(project[aspect] || {}));
-      }
-      return Promise.resolve();
-    });
-}
-
 function findAndClean(depName: string): PromiseLike<ProjectFile> {
-  return nodeNamed(depName)
+  return projectNamed(depName)
     .then((config: ProjectFile) => {
       if (config) {
         return createNode(config, undefined)
@@ -215,7 +218,7 @@ function findAndClean(depName: string): PromiseLike<ProjectFile> {
             return new ProjectRunner(project).clean();
           })
           .then(() => {
-            return nodeNamed(depName)
+            return projectNamed(depName)
               .then((cleaned: ProjectFile) => {
                 log.verbose('cleaned project', cleaned);
                 return Promise.resolve(cleaned);
@@ -230,7 +233,6 @@ export {
   ProjectRunner,
   execute,
   list,
-  parse,
   push,
   unlink,
   findAndClean,
