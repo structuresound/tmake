@@ -15,6 +15,7 @@ export interface Args {
   dev: boolean;
   quiet: boolean;
   noDeps: boolean;
+  version: boolean;
   f: string;
   force: string;
   v: boolean;

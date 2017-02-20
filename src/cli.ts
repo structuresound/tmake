@@ -7,7 +7,11 @@ import { check } from 'js-object-tools';
 
 import { log } from './log';
 import { args } from './args';
-import * as file from './file';
+import {
+  src, dest, nuke,
+  readConfigAsync, findConfigAsync,
+  writeFileAsync, parseFileSync
+} from './file';
 import { execute, list, unlink, push } from './tmake';
 import { cache, user } from './db';
 import { graph, createNode } from './graph';
@@ -105,8 +109,15 @@ function commands(): Commands {
     rm: packageCommand(`remove file cache, ${c.y('package')}, or 'all'`),
     test: packageCommand(`test this project or dependency ${c.y('package')}`),
     init: { description: 'create new tmake project file @ config.cson' },
-    help: { description: 'usage guide' }
+    help: { description: 'usage guide' },
+    version: { description: `get current version of ${name}` }
   };
+}
+
+function version() {
+  const packageInfo: any = parseFileSync(path.join(args.npmDir, 'package.json'));
+  const info = _.pick(packageInfo, ['name', 'version', 'homepage', 'author']);
+  log.log(info);
 }
 
 function parseOptions(cmd: string) {
@@ -207,9 +218,9 @@ function tmake(rootConfig: ProjectFile,
 }
 
 function init(): any {
-  if (!file.findConfigAsync(args.runDir)) {
+  if (!findConfigAsync(args.runDir)) {
     return createPackage().then(config => {
-      return file.writeFileAsync(`${args.runDir}/tmake.yaml`,
+      return writeFileAsync(`${args.runDir}/tmake.yaml`,
         yaml.dump(config));
     });
   }
@@ -221,6 +232,9 @@ function run() {
   if (args._[0] == null) {
     args._[0] = 'all';
   }
+  if (args.version) {
+    return version();
+  }
   switch (args._[0]) {
     case 'help':
     case 'man':
@@ -228,7 +242,7 @@ function run() {
       log.log(manual());
       return;
     default:
-      return file.readConfigAsync(args.runDir)
+      return readConfigAsync(args.runDir)
         .then(
         (projectFile) => {
           if (projectFile) {
@@ -244,9 +258,9 @@ function run() {
                 return;
               case 'reset':
               case 'nuke':
-                file.nuke(path.join(args.runDir, 'bin'));
-                file.nuke(path.join(args.runDir, 'build'));
-                file.nuke(path.join(args.runDir, args.cachePath));
+                nuke(path.join(args.runDir, 'bin'));
+                nuke(path.join(args.runDir, 'build'));
+                nuke(path.join(args.runDir, args.cachePath));
                 log.quiet(`rm -R bin build ${args.cachePath}`);
                 return;
               default:
@@ -267,8 +281,8 @@ function run() {
               return init();
             case 'example':
               log.quiet(`copy from ${example} to ${targetFolder}`);
-              return file.src(['**/*'], { cwd: examplePath })
-                .pipe(file.dest(path.join(args.runDir, targetFolder)));
+              return src(['**/*'], { cwd: examplePath })
+                .pipe(dest(path.join(args.runDir, targetFolder)));
             default:
               log.log(hello());
           }
