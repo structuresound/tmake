@@ -9,9 +9,9 @@ export function terminate(msg?: Error | string, error?: Error) {
   if (check(msg, Error)) {
     throw (msg);
   } else if (check(msg, String)) {
-    log.throw(msg, error);
+    log.error(msg, error);
   } else {
-    log.throw('terminating due to unknown error: ', msg);
+    log.error('terminating due to unknown error: ', msg);
   }
   process.exit((msg as any).status || (msg as any).code || 1);
 }
@@ -25,7 +25,7 @@ export const errors = {
   build: {
     command: {
       failed: function (command: string, error: Error) {
-        terminate(`command ${command} failed`, error);
+        terminate(`command ${command} failed on `, error);
       }
     }
   },

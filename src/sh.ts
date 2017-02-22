@@ -32,7 +32,12 @@ function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
         spinner.stop(true)
       }
       if (error) {
-        reject(new Error(error));
+        if (code) {
+          reject(new Error(error));
+        } else {
+          log.warn(error);
+          resolve();
+        }
       } else {
         resolve(output.replace('\r', '').replace('\n', ''))
       }

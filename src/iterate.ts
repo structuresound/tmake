@@ -77,7 +77,11 @@ export function iterate(obj: any, fn: (cmd: CmdObj) => Promise<any> | Bluebird<a
   }
   return Bluebird.each(it, (i: CmdObj) => {
     return fn(i).catch((error: Error) => {
-      errors.build.command.failed(i.cmd, error);
+      if (i.cmd === 'with') {
+        errors.build.command.failed(i.arg, error);
+      } else {
+        errors.build.command.failed(i.cmd, error);
+      }
     });
   });
 }
