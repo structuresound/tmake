@@ -1,77 +1,53 @@
 name: boost
+override:
+  force:
+    git.tag: boost-1.63.0
+    git.organization: boostorg
 require:
   assert: 
-    git: boostorg/assert
+    git: assert
   asio: 
-    git: boostorg/asio
+    git: asio
     require:
       date_time: 
-        git: boostorg/date_time
+        git: date_time
         require:
-          range: 
-            git: boostorg/range
-          iterator: 
-            git: boostorg/iterator
-          detail: 
-            git: boostorg/detail
-          concept_check: 
-            git: boostorg/concept_check
-          lexical_cast: 
-            git: boostorg/lexical_cast
-          numeric_conversion: 
-            git: boostorg/numeric_conversion
-          mpl: 
-            git: boostorg/mpl
-          preprocessor: 
-            git: boostorg/preprocessor
-          bind: 
-            git: boostorg/bind
-          container: 
-            git: boostorg/container
-          math: 
-            git: boostorg/math
-          regex: 
-            git: boostorg/regex
-          integer: 
-            git: boostorg/integer
-          array: 
-            git: boostorg/array
-          tokenizer: 
-            git: boostorg/tokenizer
-          io: 
-            git: boostorg/io
-          algorithm: 
-            git: boostorg/algorithm
+          range: range
+          iterator: iterator
+          detail: detail
+          concept_check: concept_check
+          lexical_cast: lexical_cast
+          numeric_conversion: numeric_conversion
+          mpl: mpl
+          preprocessor: preprocessor
+          bind: bind
+          container: container
+          math: math
+          regex: regex
+          integer: integer
+          array: array
+          tokenizer: tokenizer
+          io: io
+          algorithm: algorithm
   system: 
-    git: boostorg/system
+    git: system
     build:
       with: ninja
       outputFile: libboost_system.a
     configure:
       for: ninja
     require:
-      predef: 
-        git: boostorg/predef
-      core: 
-        git: boostorg/core
-      config: 
-        git: boostorg/config
-  utility: 
-    git: boostorg/utility
-  move: 
-    git: boostorg/move
-  optional:
-    git: boostorg/optional
-  static_asert: 
-    git: boostorg/static_assert
-  throw_exception:
-    git: boostorg/throw_exception
-  type_traits: 
-    git: boostorg/type_traits
-  smart_ptr: 
-    git: boostorg/smart_ptr
+      predef: predef
+      core: core
+      config: config
+  utility: utility
+  move: move
+  optional: optional
+  static_asert: static_assert
+  throw_exception: throw_exception
+  type_traits: type_traits
+  smart_ptr: smart_ptr
   functional: 
-    git: boostorg/functional
+    git: functional
     require:
-      config:
-        git: boostorg/config
+      config: config

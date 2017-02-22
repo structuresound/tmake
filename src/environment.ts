@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
 
-import cascade from './cascade';
+import { cascade } from './cascade';
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from './file';
@@ -317,7 +317,7 @@ class Environment implements Toolchain {
         this.selectors = hostSelectors.concat(targetSelectors);
 
         const environment =
-            cascade.deep(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
+            cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
                 this.selectors);
         extend(this, environment);
         this.tools = this.selectTools();
@@ -385,7 +385,7 @@ class Environment implements Toolchain {
     }
     parse(input: any, conf?: any) {
         if (conf) {
-            const dict = combine(this, cascade.deep(conf, keywords, this.selectors));
+            const dict = combine(this, cascade(conf, keywords, this.selectors));
             return parse(input, dict);
         }
         return parse(input, this);
@@ -413,7 +413,7 @@ class Environment implements Toolchain {
             _.difference(this.selectors, mutableOptions.ignore.selectors);
 
         const flattened =
-            cascade.deep(base, mutableOptions.keywords, mutableOptions.selectors);
+            cascade(base, mutableOptions.keywords, mutableOptions.selectors);
         const parsed = this.parse(flattened, mutableOptions.dict);
         return parsed;
     }

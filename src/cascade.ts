@@ -88,7 +88,7 @@ function parseOr(input: string[], cssString: string): boolean {
   return parseAnd(input, repl);
 }
 
-function select(input: string[], cssString: string): boolean {
+export function select(input: string[], cssString: string): boolean {
   return parseOr(input, cssString);
 }
 
@@ -102,12 +102,10 @@ function search(tree: any, keywords: string[], selectors: string[], searchFn: Fu
   return searchFn(tree, keywords, selectors, [], 0);
 }
 
-export default {
-  shallow(tree: any, keywords: string[], selectors: string[]) {
-    return flatten(search(tree, keywords, selectors, shallowSearch));
-  }
-  , deep(tree: any, keywords: string[], selectors: string[]) {
-    return search(tree, keywords, selectors, deepSearch);
-  }
-  , select
-};
+export function cascadeShallow(tree: any, keywords: string[], selectors: string[]) {
+  return flatten(search(tree, keywords, selectors, shallowSearch));
+}
+
+export function cascade(tree: any, keywords: string[], selectors: string[]) {
+  return search(tree, keywords, selectors, deepSearch);
+}

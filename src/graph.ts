@@ -9,7 +9,7 @@ import { absolutePath } from './parse';
 import { cache as db, environmentCache } from './db';
 import { jsonStableHash } from './hash';
 
-import { Project, ProjectFile, resolveName } from './project';
+import { Project, ProjectFile, resolveName, fromString as projectFromString } from './project';
 import { Environment, EnvironmentCacheFile, CacheProperty } from './environment';
 
 function loadCache(project: Project): PromiseLike<Project> {
@@ -50,6 +50,9 @@ function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: Node
   cache: Cache, fileCache: FileCache) {
   return mapOLHM(require || {},
     (dep) => {
+      if (check(dep, String)) {
+        return graphNode(projectFromString(dep), node, graph, cache, fileCache);
+      }
       return graphNode(dep, node, graph, cache, fileCache);
     })
     .then((deps) => {

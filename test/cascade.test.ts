@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import cascade from '../src/cascade';
+import { select, cascadeShallow, cascade } from '../src/cascade';
 
 const keywords = [
   'win',
@@ -153,47 +153,47 @@ const testCExpected = [
 
 describe('select', () => {
   it('matches', () => {
-    assert.ok(cascade.select(['apple'], 'apple'));
+    assert.ok(select(['apple'], 'apple'));
   });
   it('matches OR', () => {
-    assert.ok(cascade.select([
+    assert.ok(select([
       'ios', 'mac', 'win'
     ], 'x86, mac, win'));
   });
   it('matches AND', () => {
-    assert.ok(cascade.select([
+    assert.ok(select([
       'apple', 'bananna'
     ], 'apple bananna'));
   });
   it('fails', () => {
-    assert.ok(!cascade.select([
+    assert.ok(!select([
       'apple', 'bananna'
     ], 'x86'));
   });
   it('fails AND', () => {
-    assert.ok(!cascade.select(['apple'], 'apple bananna'));
+    assert.ok(!select(['apple'], 'apple bananna'));
   });
   it('fails OR/AND', () => {
-    assert.ok(!cascade.select(['bananna'], 'apple, bananna orange'));
+    assert.ok(!select(['bananna'], 'apple, bananna orange'));
   });
 });
 
 describe('cascade', () => {
   for (const i in testASelectors) {
     it(`select A${i} ${testASelectors[i]}`, () => {
-      const result = cascade.shallow(testAObject, keywords, testASelectors[i]);
+      const result = cascadeShallow(testAObject, keywords, testASelectors[i]);
       assert.deepEqual(result, testAExpected[i]);
     });
   }
   for (const i in testBSelectors) {
     it(`select B${i} ${testBSelectors[i]}`, () => {
-      const result = cascade.deep(testObjB, keywords, testBSelectors[i]);
+      const result = cascade(testObjB, keywords, testBSelectors[i]);
       assert.deepEqual(result, testBExpected[i]);
     });
   }
   for (const i in testCSelectors) {
     it(`select C${i} ${testCSelectors[i]}`, () => {
-      const result = cascade.shallow(testObjC, keywords, testCSelectors[i]);
+      const result = cascadeShallow(testObjC, keywords, testCSelectors[i]);
       assert.deepEqual(result, testCExpected[i]);
     });
   }

@@ -1,8 +1,8 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
-import cascade from './cascade';
+import { check, setValueForKeyPath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
+import { select } from './cascade';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './args';
@@ -13,7 +13,7 @@ import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 import { Build } from './build';
 import { Configure } from './configure';
 import { Install, InstallOptions } from './install';
-import { Git } from './fetch';
+import { Git, GitConfig } from './git';
 import { CacheProperty } from './cache';
 import { Toolchain, Platform, Environment, EnvironmentDirs } from './environment';
 import { Tools } from './tools';
@@ -66,11 +66,11 @@ export interface ProjectFile extends Toolchain {
 
   // metadata
   name?: string;
-  override?: Project;
+  override?: OLHM<ProjectFile>;
   require?: OLHM<ProjectFile>;
   cache?: any;
   link?: string;
-  git?: Git;
+  git?: GitConfig;
   archive?: { url?: string; }
   tree?: string;
   version?: string;
@@ -90,7 +90,7 @@ export interface ProjectFile extends Toolchain {
   environment?: any;
 }
 
-export const metaDataKeys = ['name', 'version', 'user', 'dir', 'path', 'git', 'archive'];
+export const metaDataKeys = ['name', 'version', 'user', 'dir', 'path', 'git', 'archive', 'override'];
 export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure'];
 export const dependencyKeys = ['require'];
 export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
@@ -151,39 +151,29 @@ function getProjectPaths(project: Project) {
 }
 
 function resolveVersion(conf: ProjectFile | Project) {
+  if (check(conf, String)) {
+    return new Git(<string><any>conf).version();
+  }
+  if (conf.git) {
+    return new Git(conf.git).version();
+  }
   if (check(conf.version, String)) {
-    return conf.name;
-  } else if (check(conf.tag, String)) {
+    return conf.version;
+  }
+  if (check(conf.tag, String)) {
     return conf.tag;
-  } else if (conf.git) {
-    if (check(conf.git.tag, String)) {
-      return conf.git.tag;
-    } else if (check(conf.git.branch, String)) {
-      return conf.git.branch;
-    } else if (check(conf.git.archive, String)) {
-      return conf.git.archive;
-    }
-    return 'master';
   }
 }
 
 export function resolveName(conf: ProjectFile | Project): string {
+  if (check(conf, String)) {
+    return new Git(<string><any>conf).name();
+  }
   if (check(conf.name, String)) {
     return conf.name;
   }
   if (conf.git) {
-    if (check(conf.git, String)) {
-      const str: string = conf.git as string;
-      return str.slice(str.lastIndexOf('/') + 1);
-    }
-    if (conf.git.repository) {
-      return conf.git.repository.slice(conf.git.repository.indexOf('/') + 1);
-    }
-    if (conf.git.url) {
-      const lastPathComponent =
-        conf.git.url.slice(conf.git.url.lastIndexOf('/') + 1);
-      return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
-    }
+    return new Git(conf.git).name();
   }
   throw new Error(`resolveName() failed on module ${JSON.stringify(conf, [], 2)}`);
 }
@@ -213,33 +203,23 @@ function parsePath(s: string) {
   return path.join(args.runDir, s);
 }
 
-function resolveUrl(conf: ProjectFile | Project) {
-  let config: Git = conf.git || conf.archive || {};
+function resolveUrl(conf: Project): string {
   if (conf.git) {
-    if (typeof config === 'string') {
-      config = <Git>{ repository: conf.git as string };
-    }
-    if (!config.repository) {
-      throw new Error(
-        'dependency has git configuration, but no repository was specified');
-    }
-    const base = `https://github.com/${config.repository}`;
-    const archive =
-      config.archive || config.tag || config.branch || conf.tag || 'master';
-    return `${base}/archive/${archive}.tar.gz`;
-  } else if (conf.link) {
-    return 'link';
-  } else if (conf.archive) {
-    if (typeof config === 'string') {
-      config = <Git>{ archive: conf.archive as string };
-    }
-    if (!config.archive) {
-      throw new Error(
-        'dependency has fetch configuration, but no archive was specified');
-    }
-    return config.archive;
+    return new Git(conf.git).fetch();
   }
-  return 'none';
+  if (conf.link) {
+    return 'link';
+  }
+  if (conf.archive) {
+    return conf.archive.url;
+  }
+  if (conf.d.root === conf.d.home) {
+    return 'none';
+  }
+  if (!conf.archive) {
+    log.warn(`cannot resolve source url, is ${conf.name} a meta project?`);
+    return 'none';
+  }
 }
 
 export interface ProjectCache {
@@ -252,11 +232,15 @@ export interface ProjectCache {
 
 type OutputType = "static" | "dynamic" | "executable";
 
+export function fromString(str: string) {
+  return { git: new Git(str) };
+}
+
 export class Project implements ProjectFile {
   [index: string]: any;
   // implements ProjectFile
   name?: string;
-  override?: Project;
+  override?: OLHM<Project>;
   require?: OLHM<Project>;
   cache?: ProjectCache;
   link?: string;
@@ -293,14 +277,20 @@ export class Project implements ProjectFile {
     if (check(_projectFile, Project)) {
       return <any>_projectFile;
     }
-    const projectFile: ProjectFile = <ProjectFile>clone(_projectFile);
+    let projectFile: ProjectFile;
+    if (check(_projectFile, String)) {
+      projectFile = fromString(<string><any>_projectFile);
+    } else {
+      projectFile = <ProjectFile>clone(_projectFile);
+    }
     const metaDataFields = _.pick(projectFile, metaDataKeys);
     extend(this, metaDataFields);
-
     if (!this.name) {
       this.name = resolveName(projectFile);
     }
-
+    if (projectFile.git) {
+      this.git = new Git(projectFile.git);
+    }
     this.p = getProjectPaths(this);
     if (!parent) {
       this.d = <EnvironmentDirs>{ root: args.runDir };
@@ -320,8 +310,24 @@ export class Project implements ProjectFile {
     // Overrides
     if (parent) {
       if (parent.override) {
-        extend(this, parent.override);
-        extend(this.override, parent.override);
+        for (const selector of Object.keys(parent.override)) {
+          if (selector === 'force' || select([this.name], selector)) {
+            if (!this.override) {
+              this.override = <Project>{}
+            }
+            if (!this.override[selector]) {
+              this.override[selector] = <any>{};
+            }
+            // log.log('extending force with:', parent.override['force'])
+            extend(this.override[selector], parent.override[selector]);
+            const override = this.override[selector]
+            for (const kp of Object.keys(override)) {
+              const val = override[kp];
+              // log.log('apply kp', kp, val);
+              setValueForKeyPath(val, kp, this);
+            }
+          }
+        }
       }
     }
     // LAZY Defaults
@@ -331,7 +337,7 @@ export class Project implements ProjectFile {
     if (!this.user) {
       this.user = 'local';
     }
-
+    /* CACHE */
     const fetch = new CacheProperty(() => stringHash(this.url()));
     const metaData = new CacheProperty(() => {
       return jsonStableHash({

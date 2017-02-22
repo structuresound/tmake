@@ -14,14 +14,6 @@ import { cache, updateProject } from './db';
 import { stringHash } from './hash';
 import { Project } from './project';
 
-export interface Git {
-  repository?: string;
-  url?: string;
-  branch?: string;
-  tag?: string;
-  archive?: string;
-}
-
 function download(url: string, cacheDir = path.join(args.userCache,
   'cache')) {
   if (!fs.existsSync(cacheDir)) {
@@ -79,13 +71,6 @@ function download(url: string, cacheDir = path.join(args.userCache,
       .pipe(fs.createWriteStream(cacheFile))
       .on('finish', () => { return resolve(cacheFile); });
   });
-}
-
-function findGit() {
-  if (!which('git')) {
-    log.error('Sorry, this script requires git');
-    return exit(1);
-  }
 }
 
 function unarchiveSource(filePath: string, toDir: string) {
@@ -183,4 +168,4 @@ function fetch(project: Project) {
   return maybeFetch(project).then(() => { return upsertCache(project) });
 }
 
-export { fetch, findGit, download, getSource, linkSource, destroy };
+export { fetch, download, getSource, linkSource, destroy };
