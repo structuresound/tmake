@@ -10,7 +10,7 @@ import { build } from './build';
 import { login, get, post } from './cloud';
 import { configure } from './configure';
 import {
-  projectNamed, updateNode, updateEnvironment,
+  projectNamed, updateProject, updateEnvironment,
   user as userDb, cache
 } from './db';
 import { Environment } from './environment';
@@ -21,6 +21,8 @@ import { installProject, installEnvironment, installHeaders } from './install';
 import { Project, ProjectFile, ProjectModifier, resolveName } from './project';
 import { prompt } from './prompt';
 import { log } from './log';
+import { errors } from './errors';
+
 import test from './test';
 
 function execute(conf: ProjectFile, phase: string, subProject?: string) {
@@ -29,15 +31,20 @@ function execute(conf: ProjectFile, phase: string, subProject?: string) {
     .then((deps: Project[]) => {
       let selectedDeps = deps;
       root = deps[deps.length - 1];
-      if (subProject) {
+      if (subProject !== root.name) {
         selectedDeps = []
+        let notFound = true;
         for (const project of deps) {
           selectedDeps.push(project);
           if (project.name === subProject) {
             root = project;
             log.warn(`restrict to submodule: ${subProject}`);
+            notFound = false;
             break;
           }
+        }
+        if (notFound) {
+          errors.project.notFound(subProject, deps);
         }
       }
       if (args.noDeps) {
@@ -67,7 +74,7 @@ class ProjectRunner {
   fetch() { return fetch(this.project); }
   configure(isTest?: boolean) {
     const doConfigure = () => {
-      log.quiet(`>> configure >>`);
+      log.verbose(`  configure`);
       return this.do(configure, isTest)
         .then(() => {
           log.verbose('install headers');
@@ -81,14 +88,14 @@ class ProjectRunner {
   build(isTest?: boolean) {
     return this.configure(isTest)
       .then(() => {
-        log.quiet(`>> build >>`);
+        log.verbose(`  build`);
         return this.do(build, isTest);
       });
   }
   install() {
     return this.build()
       .then(() => {
-        log.quiet(`>> install >>`);
+        log.verbose(`  install`);
         return installProject(this.project).then(() => {
           return this.do(installEnvironment);
         });
@@ -158,7 +165,7 @@ class ProjectRunner {
 
 function processDep(node: Project, phase: string) {
   if (!args.quiet) {
-    log.log(`<< ${node.name} >>`);
+    log.log(`${node.name}`);
   }
   process.chdir(args.runDir);
   return new ProjectRunner(node)[phase]();

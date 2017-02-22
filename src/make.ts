@@ -9,10 +9,11 @@ import { Environment } from './environment';
 function build(env: Environment) {
   const prefix = env.build.prefix ? env.build.prefix + ' ' : '';
   const command = `${prefix}make -j ${env.j()}`
-  log.quiet(command);
+  log.verbose(command);
   return execAsync(command, {
     cwd: env.d.project,
-    silent: !args.verbose
+    silent: !args.verbose,
+    short: 'make'
   });
 }
 

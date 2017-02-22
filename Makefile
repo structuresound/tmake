@@ -2,7 +2,7 @@ dockerBase:
 	cd docker/base && docker build -t 1e1f/tmake:base .
 
 tmake:
-	grunt build
+	gulp scripts
 docker: tmake
 	docker build -t 1e1f/tmake .
 

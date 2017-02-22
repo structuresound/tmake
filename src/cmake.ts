@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { arrayify, check } from 'js-object-tools';
 
-import { updateNode, updateEnvironment } from './db';
+import { updateProject, updateEnvironment } from './db';
 import { fileHash } from './hash';
 import { log } from './log';
 
@@ -45,11 +45,12 @@ function doConfiguration(env: Environment, ninja: string) {
 }
 
 function cmake(env: Environment, command: string) {
-  log.quiet(command);
   const wd = env.d.build;
+  log.verbose(command);
   return execAsync(command, {
     cwd: wd,
-    silent: !args.verbose
+    silent: !args.verbose,
+    short: 'cmake'
   });
 }
 

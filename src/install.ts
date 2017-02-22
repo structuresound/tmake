@@ -9,7 +9,7 @@ import { log } from './log';
 import { args } from './args';
 import { mv, mkdir } from './sh';
 import { stringHash, fileHash } from './hash';
-import { updateNode, updateEnvironment } from './db';
+import { updateProject, updateEnvironment } from './db';
 import { startsWith } from './string';
 
 import { Project } from './project';
@@ -139,7 +139,7 @@ function libs(env: Environment): PromiseLike<any> {
       return Bluebird.each(_.flatten(libPaths), (libPath) => {
         fileHash(path.join(env.project.d.home, libPath));
       }).then((hash) => {
-        return updateNode(env.project, {
+        return updateProject(env.project, {
           $set: {
             'cache.libs': _.flatten(libPaths)
           }

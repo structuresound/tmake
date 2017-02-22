@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import { contains, check, safeOLHM, OLHM } from 'js-object-tools';
 
+import { errors } from './errors';
+
 export interface CmdObj {
   cmd: string;
   arg?: any;
@@ -73,5 +75,9 @@ export function iterate(obj: any, fn: (cmd: CmdObj) => Promise<any> | Bluebird<a
   ) {
     throw new Error('iterable did not produce array');
   }
-  return Bluebird.each(it, fn);
+  return Bluebird.each(it, (i: CmdObj) => {
+    return fn(i).catch((error: Error) => {
+      errors.build.command.failed(i.cmd, error);
+    });
+  });
 }

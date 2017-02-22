@@ -38,7 +38,7 @@ export function environmentCache(hash: string): PromiseLike<EnvironmentCacheFile
   return cache.findOne({ hash: hash });
 }
 
-export function updateNode(node: Project, modifier: ProjectModifier) {
+export function updateProject(node: Project, modifier: ProjectModifier) {
   return cache.update({ name: node.name }, modifier, { upsert: true });
 }
 

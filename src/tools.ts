@@ -107,12 +107,12 @@ function fetchToolchain(toolchain: any) {
       if (toolpath) {
         return file.existsAsync(toolpath).then((exists) => {
           if (exists) {
-            log.quiet(`have ${name}`);
+            log.verbose(`have ${name}`);
             return Promise.resolve(toolpath);
           }
           log.verbose(`fetch ${name} binary from ${tool.url}`);
           return fetchAndUnarchive(tool).then(() => {
-            log.quiet(`chmod 755 ${toolpath}`);
+            log.verbose(`chmod 755 ${toolpath}`);
             fs.chmodSync(`${toolpath}`, 755);
             return Promise.resolve(toolpath);
           });

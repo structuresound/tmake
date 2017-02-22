@@ -1,4 +1,4 @@
-FROM node:4-slim
+FROM node:6-slim
 MAINTAINER chroma <leif@chroma.io>
 
 RUN apt-get update \

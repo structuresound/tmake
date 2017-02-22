@@ -1,10 +1,13 @@
 import { exec as _exec, cd, mv, mkdir, which, exit, ExecOptions, ExecCallback, ExecOutputReturnValue } from 'shelljs';
 import { log } from './log';
-import child = require("child_process");
+import { args } from './args';
+
+import { Spinner } from 'cli-spinner';
 
 interface ShellOptions {
-  silent?: boolean,
-  cwd?: string;
+  silent?: boolean
+  cwd?: string
+  short?: string
 }
 
 function exec(command: string, options: ShellOptions = {}): string {
@@ -12,14 +15,24 @@ function exec(command: string, options: ShellOptions = {}): string {
   return out.stdout ? out.stdout.replace('\r', '').replace('\n', '') : undefined;
 }
 
-function execAsync(command: string, {cwd, silent}: ShellOptions = {}) {
+
+function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
   return new Promise<string>((resolve: Function, reject: Function) => {
     if (cwd) cd(cwd);
+    const _silent = silent || !args.verbose
+    var spinner = new Spinner(`${short || command} %s`);
+    if (_silent) {
+      spinner.setSpinnerString('|/-\\');
+      spinner.start();
+    }
     _exec(command, <ExecOptions>{
-      silent: silent
+      silent: _silent
     }, <ExecCallback>(code: number, output: string, error: string) => {
+      if (_silent) {
+        spinner.stop(true)
+      }
       if (error) {
-        resolve(new Error(error));
+        reject(new Error(error));
       } else {
         resolve(output.replace('\r', '').replace('\n', ''))
       }

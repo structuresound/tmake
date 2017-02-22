@@ -7,9 +7,10 @@ import * as fs from 'fs';
 import * as file from './file';
 
 import { log } from './log';
+import { info } from './info';
 import { args } from './args';
 import { mkdir, which, exit } from './sh';
-import { cache, updateNode } from './db';
+import { cache, updateProject } from './db';
 import { stringHash } from './hash';
 import { Project } from './project';
 
@@ -92,44 +93,43 @@ function unarchiveSource(filePath: string, toDir: string) {
   return file.unarchive(filePath, tempDir, toDir);
 }
 
-function updateCache(node: Project) {
+function updateCache(project: Project) {
   const modifier = {
     $set: {
-      'cache.fetch': node.cache.fetch.update()
+      'cache.fetch': project.cache.fetch.update()
     }
   };
-  return updateNode(node, modifier);
+  return updateProject(project, modifier);
 }
 
-function upsertCache(node: Project) {
-  return cache.findOne({ name: node.name }).then((res: any) => {
+function upsertCache(project: Project) {
+  return cache.findOne({ name: project.name }).then((res: any) => {
     if (res) {
-      return updateCache(node);
+      return updateCache(project);
     }
-    return cache.insert(node.toCache())
-      .then(() => { return updateCache(node); });
+    return cache.insert(project.toCache())
+      .then(() => { return updateCache(project); });
   }).then(() => Promise.resolve());
 }
 
-function getSource(node: Project) {
-  const url = node.url();
-  mkdir('-p', node.d.root);
-  log.verbose(`fetching source @ ${url}`);
+function getSource(project: Project) {
+  const url = project.url();
+  mkdir('-p', project.d.root);
+  info.fetch.url(project);
   return download(url)
-    .then((filePath) => { return unarchiveSource(filePath, node.d.clone); });
+    .then((filePath) => { return unarchiveSource(filePath, project.d.clone); });
 }
 
-function linkSource(node: Project) {
-  const url = node.url();
-  log.add('link source from', url);
-  log.warn('to', node.d.root);
-  return file.existsAsync(node.d.clone)
+function linkSource(project: Project) {
+  const url = project.url();
+  info.fetch.link(project);
+  return file.existsAsync(project.d.clone)
     .then((exists) => {
       if (exists) {
         return Promise.resolve();
       }
       return new Promise<void>((resolve, reject) => {
-        fs.symlink(url, node.d.root, 'dir', (err) => {
+        fs.symlink(url, project.d.root, 'dir', (err) => {
           if (err) {
             reject(err);
           }
@@ -139,58 +139,48 @@ function linkSource(node: Project) {
     });
 }
 
-function destroy(node: Project) {
-  return file.existsAsync(node.d.clone)
+function destroy(project: Project) {
+  return file.existsAsync(project.d.clone)
     .then((exists) => {
       if (exists) {
-        // log.error(node.cache.debug.url);
-        log.add(node.url());
-        log.error('source url changed ... remove existing source');
-        file.nuke(node.d.clone);
+        info.fetch.nuke(project);
+        file.nuke(project.d.clone);
       }
-      node.cache.fetch.reset();
+      project.cache.fetch.reset();
       const modifier = {
         $unset: {
           'cache.fetch': ''
         }
       };
-      return updateNode(node, modifier);
+      return updateProject(project, modifier);
     });
 }
 
-function reportStale(node: Project) {
-  if (node.cache.fetch.dirty()) {
-    log.error(`cache invalid ${node.cache.fetch.get()}`);
-    log.verbose(node.cache);
-  } else {
-    log.add('forcing re-fetch of source');
+function maybeFetch(project: Project) {
+  if (project.link) {
+    return linkSource(project).then(() => Promise.resolve(true));
   }
-}
-
-function maybeFetch(node: Project) {
-  if (node.link) {
-    return linkSource(node).then(() => Promise.resolve(true));
-  }
-  if (node.archive || node.git) {
-    return file.existsAsync(node.d.clone).then((exists) => {
+  if (project.archive || project.git) {
+    return file.existsAsync(project.d.clone).then((exists) => {
       const getIt = () => {
-        if (!exists || node.cache.fetch.dirty() || node.force()) {
+        if (!exists || project.cache.fetch.dirty() || project.force()) {
+          info.fetch.dirty(project);
           if (exists) {
-            return destroy(node).then(() => getSource(node));
+            return destroy(project).then(() => getSource(project));
           }
-          return getSource(node)
+          return getSource(project)
         }
       }
       const ret = getIt()
       return ret ? ret.then(() => Promise.resolve(true)) : Promise.resolve(false);
     });
   }
-  log.info(`skip fetch, project is local ${node.name}`);
+  info.fetch.local(project);
   return Promise.resolve(false);
 }
 
-function fetch(node: Project) {
-  return maybeFetch(node).then(() => { return upsertCache(node) });
+function fetch(project: Project) {
+  return maybeFetch(project).then(() => { return upsertCache(project) });
 }
 
 export { fetch, findGit, download, getSource, linkSource, destroy };

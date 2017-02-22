@@ -8,6 +8,7 @@ import { execAsync } from './sh';
 import { build as cmake } from './cmake';
 import { build as ninja } from './ninja';
 import { build as make } from './make';
+import { errors } from './errors';
 
 import { CmdObj, iterate, getCommands } from './iterate';
 import { Environment } from './environment';
@@ -88,5 +89,5 @@ export function build(env: Environment, isTest: boolean) {
           return buildCommand(c, env);
         });
     }
-  });
+  })
 }

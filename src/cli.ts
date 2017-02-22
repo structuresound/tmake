@@ -165,43 +165,44 @@ function createPackage() {
 }
 
 function tmake(rootConfig: ProjectFile,
-  positionalArgs = args._) {
+  positionalArgs = args._, projectName?: string) {
   cache.loadDatabase();
   user.loadDatabase();
-  const resolvedName =
-    positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
 
+  if (!projectName){
+    projectName = positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
+  }
   switch (positionalArgs[0]) {
     case 'rm':
-      return cache.remove({ name: resolvedName })
+      return cache.remove({ name: projectName })
         .then(() => {
-          return cache.remove({ project: resolvedName })
+          return cache.remove({ project: projectName })
         }).then(() => {
-          log.quiet(`cleared cache for ${resolvedName}`)
+          log.quiet(`cleared cache for ${projectName}`)
         });
     case 'link':
-      return execute(rootConfig, 'link', resolvedName);
+      return execute(rootConfig, 'link', projectName);
     case 'unlink':
-      return cache.findOne({ name: resolvedName })
+      return cache.findOne({ name: projectName })
         .then((dep: ProjectFile) => unlink(dep || rootConfig));
     case 'push':
-      return execute(rootConfig, 'push', resolvedName);
+      return execute(rootConfig, 'push', projectName);
     case 'test':
-      return execute(rootConfig, 'test', resolvedName);
+      return execute(rootConfig, 'test', projectName);
     case 'fetch':
-      return execute(rootConfig, 'fetch', resolvedName);
+      return execute(rootConfig, 'fetch', projectName);
     case 'parse':
-      return execute(rootConfig, 'parse', resolvedName);
+      return execute(rootConfig, 'parse', projectName);
     case 'clean':
-      return execute(rootConfig, 'clean', resolvedName);
+      return execute(rootConfig, 'clean', projectName);
     case 'configure':
-      return execute(rootConfig, 'configure', resolvedName);
+      return execute(rootConfig, 'configure', projectName);
     case 'build':
-      return execute(rootConfig, 'build', resolvedName);
+      return execute(rootConfig, 'build', projectName);
     case 'install':
-      return execute(rootConfig, 'install', resolvedName);
+      return execute(rootConfig, 'install', projectName);
     case 'all':
-      return execute(rootConfig, 'install', resolvedName);
+      return execute(rootConfig, 'install', projectName);
     case 'ls':
     case 'list':
       return (() => {
@@ -229,8 +230,10 @@ function init(): any {
 }
 
 function run() {
+  let defaultCommand = false;
   if (args._[0] == null) {
     args._[0] = 'all';
+    defaultCommand = true;
   }
   if (args.version) {
     return version();
@@ -266,6 +269,10 @@ function run() {
               default:
                 if (!check(args._[1], parseOptions(cmd).type)) {
                   log.quiet(usage(cmd));
+                }
+                if (defaultCommand){
+                  const projectName = args._[1] || projectFile.name || resolveName(projectFile);
+                  log.log(`tmake all ${resolveName(projectFile)}`)
                 }
                 return tmake(projectFile);
             }

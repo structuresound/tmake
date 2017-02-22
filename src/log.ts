@@ -24,17 +24,23 @@ function getMessage(...args: any[]): string {
   }).join(' ');
 }
 
+function white(...args: any[]) { console.log(colors.white(getMessage(...args))); }
+function gray(...args: any[]) { console.log(colors.gray(getMessage(...args))); }
+
 class Log {
   getMessage(...args: any[]): string { return getMessage(args); }
-  log(...args: any[]) { console.log(colors.white(getMessage(...args))); }
+
+  log(...args: any[]) {
+    white(...args);
+  }
   verbose(...args: any[]) {
     if (environment.verbose) {
-      console.log(colors.gray(getMessage(...args)));
+      gray(...args);
     }
   }
   quiet(...args: any[]) {
     if (!environment.quiet || environment.verbose) {
-      return this.log(...args);
+      gray(...args);
     }
   }
   dev(...args: any[]) {
