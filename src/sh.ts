@@ -1,6 +1,7 @@
 import { exec as _exec, cd, mv, mkdir, which, exit, ExecOptions, ExecCallback, ExecOutputReturnValue } from 'shelljs';
 import { log } from './log';
 import { args } from './args';
+import { terminate } from './errors';
 
 import { Spinner } from 'cli-spinner';
 
@@ -15,6 +16,17 @@ function exec(command: string, options: ShellOptions = {}): string {
   return out.stdout ? out.stdout.replace('\r', '').replace('\n', '') : undefined;
 }
 
+const showStoppers = [
+  'ninja: build stopped: subcommand failed'
+]
+
+function findErrors(body: string, failedOn: Function) {
+  for (const s of showStoppers) {
+    if (body.indexOf(s) !== -1) {
+      failedOn(s);
+    }
+  }
+}
 
 function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
   return new Promise<string>((resolve: Function, reject: Function) => {
@@ -31,11 +43,17 @@ function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
       if (_silent) {
         spinner.stop(true)
       }
+      findErrors(output, (failedOn) => {
+        if (_silent) {
+          terminate(output);
+        }
+        terminate(`failed on message: ${failedOn})`);
+      });
       if (error) {
         if (code) {
           reject(new Error(error));
         } else {
-          log.warn(error);
+          log.warn(error || output);
           resolve();
         }
       } else {

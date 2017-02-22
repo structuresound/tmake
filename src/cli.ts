@@ -3,7 +3,7 @@ import * as Bluebird from 'bluebird';
 import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { check } from 'js-object-tools';
+import { check, contains } from 'js-object-tools';
 
 import { log } from './log';
 import { args } from './args';
@@ -42,10 +42,7 @@ interface Command {
   description?: any;
 }
 
-interface Commands {
-  [index: string]: Command;
-
-  example: Command;
+interface PackageCommands {
   ls: Command;
   install: Command;
   all: Command;
@@ -55,13 +52,26 @@ interface Commands {
   push: Command;
   link: Command;
   unlink: Command;
-  reset: Command;
-  nuke: Command;
   parse: Command;
   rm: Command;
   test: Command;
+  clean: Command;
+  graph: Command;
+}
+
+interface GlobalCommands {
+  [index: string]: Command;
+
+  example: Command;
   init: Command;
   help: Command;
+  reset: Command;
+  nuke: Command;
+  version: Command;
+}
+
+
+interface Commands extends PackageCommands, GlobalCommands {
 }
 
 function packageCommand(desc: string): Command {
@@ -73,22 +83,10 @@ function packageCommand(desc: string): Command {
   };
 }
 
-function commands(): Commands {
+function packageCommands(): PackageCommands {
   return {
-    example: {
-      name: 'example',
-      type: ['String', 'Undefined'],
-      typeName: 'optional',
-      description: [
-        `copy an ${c.y('example')} to the current directory`,
-        `the default is a c++11 http server: ${c.y('served')}`
-      ]
-    },
     ls: packageCommand(
       `list state of a ${c.y('package')} from the local ${name} database`),
-    // path: packageCommand(
-    //     `list local directories for a ${c.y('package')} from the local
-    //     ${name} database`),
     install: packageCommand('copy libs and headers to destination'),
     all: packageCommand('fetch, update, build, install'),
     fetch:
@@ -103,15 +101,34 @@ function commands(): Commands {
     unlink: packageCommand(
       `remove the current or specified ${c.y('package')} from your local package repository`),
     clean: packageCommand(`clean ${c.y('package')}, or 'all'`),
-    reset: { description: 'nuke the cache' },
-    nuke: { description: 'nuke the cache' },
     parse: packageCommand(`parse project, ${c.y('setting')}, or 'package'`),
+    graph: packageCommand(`list dependencies of ${c.y('project')}, or 'all'`),
     rm: packageCommand(`remove file cache, ${c.y('package')}, or 'all'`),
     test: packageCommand(`test this project or dependency ${c.y('package')}`),
+  }
+}
+
+function globalCommands(): GlobalCommands {
+  return {
+    example: {
+      name: 'example',
+      type: ['String', 'Undefined'],
+      typeName: 'optional',
+      description: [
+        `copy an ${c.y('example')} to the current directory`,
+        `the default is a c++11 http server: ${c.y('served')}`
+      ]
+    },
+    reset: { description: 'nuke the cache' },
+    nuke: { description: 'nuke the cache' },
+
     init: { description: 'create new tmake project file @ config.cson' },
     help: { description: 'usage guide' },
     version: { description: `get current version of ${name}` }
   };
+}
+function commands(): Commands {
+  return Object.assign(packageCommands(), globalCommands())
 }
 
 function version() {
@@ -169,10 +186,11 @@ function tmake(rootConfig: ProjectFile,
   cache.loadDatabase();
   user.loadDatabase();
 
-  if (!projectName){
+  if (!projectName) {
     projectName = positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
   }
-  switch (positionalArgs[0]) {
+  const command = positionalArgs[0]
+  switch (command) {
     case 'rm':
       return cache.remove({ name: projectName })
         .then(() => {
@@ -180,29 +198,9 @@ function tmake(rootConfig: ProjectFile,
         }).then(() => {
           log.quiet(`cleared cache for ${projectName}`)
         });
-    case 'link':
-      return execute(rootConfig, 'link', projectName);
     case 'unlink':
       return cache.findOne({ name: projectName })
         .then((dep: ProjectFile) => unlink(dep || rootConfig));
-    case 'push':
-      return execute(rootConfig, 'push', projectName);
-    case 'test':
-      return execute(rootConfig, 'test', projectName);
-    case 'fetch':
-      return execute(rootConfig, 'fetch', projectName);
-    case 'parse':
-      return execute(rootConfig, 'parse', projectName);
-    case 'clean':
-      return execute(rootConfig, 'clean', projectName);
-    case 'configure':
-      return execute(rootConfig, 'configure', projectName);
-    case 'build':
-      return execute(rootConfig, 'build', projectName);
-    case 'install':
-      return execute(rootConfig, 'install', projectName);
-    case 'all':
-      return execute(rootConfig, 'install', projectName);
     case 'ls':
     case 'list':
       return (() => {
@@ -214,6 +212,9 @@ function tmake(rootConfig: ProjectFile,
         return list('cache', {});
       })().then(nodes => log.log(nodes));
     default:
+      if (contains(Object.keys(packageCommands()), command)) {
+        return execute(rootConfig, command, projectName);
+      }
       throw new Error(`unknown command ${positionalArgs[0]}`);
   }
 }
@@ -270,7 +271,7 @@ function run() {
                 if (!check(args._[1], parseOptions(cmd).type)) {
                   log.quiet(usage(cmd));
                 }
-                if (defaultCommand){
+                if (defaultCommand) {
                   const projectName = args._[1] || projectFile.name || resolveName(projectFile);
                   log.log(`tmake all ${resolveName(projectFile)}`)
                 }

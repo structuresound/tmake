@@ -3,7 +3,7 @@ import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
-import { plain as toJSON, safeOLHM } from 'js-object-tools';
+import { contains, plain as toJSON, safeOLHM } from 'js-object-tools';
 
 import { args } from './args';
 import { build } from './build';
@@ -21,9 +21,43 @@ import { installProject, installEnvironment, installHeaders } from './install';
 import { Project, ProjectFile, ProjectModifier, resolveName } from './project';
 import { prompt } from './prompt';
 import { log } from './log';
+import { info } from './info';
 import { errors } from './errors';
 
 import test from './test';
+
+function isSingleCommand(phase: string) {
+  return contains(['parse', 'graph'], phase);
+}
+
+function singleCommand(project: Project, phase: string, selectedDeps: Project[]) {
+  switch (phase) {
+    case 'graph':
+      if (args.verbose) {
+        log.log(selectedDeps);
+      } else {
+        log.log(_.map(selectedDeps, (project) => project.name));
+      }
+      break;
+    case 'parse':
+      const aspect = args._[2];
+      if (aspect) {
+        log.verbose(`parse ${aspect} for project ${project.name}`);
+        if (project[aspect]) {
+          log.log(project[aspect]);
+        } else if (project.environments[0][aspect]) {
+          log.verbose(`aspect ${aspect} found in environment`);
+          log.log(project.environments[0][aspect]);
+        } else {
+          log.error(`${aspect} not found`);
+        }
+      } else {
+        log.log(project.toRegistry());
+      }
+      break;
+  }
+  return Promise.resolve();
+}
 
 function execute(conf: ProjectFile, phase: string, subProject?: string) {
   let root: Project;
@@ -46,6 +80,9 @@ function execute(conf: ProjectFile, phase: string, subProject?: string) {
         if (notFound) {
           errors.project.notFound(subProject, deps);
         }
+      }
+      if (isSingleCommand(phase)) {
+        return singleCommand(root, phase, selectedDeps);
       }
       if (args.noDeps) {
         return processDep(root, phase);
@@ -92,6 +129,9 @@ class ProjectRunner {
         return this.do(build, isTest);
       });
   }
+  all() {
+    return this.install();
+  }
   install() {
     return this.build()
       .then(() => {
@@ -116,10 +156,6 @@ class ProjectRunner {
           })
         });
       });
-  }
-  parse(aspect: string) {
-    log.log(this.project.toRegistry());
-    return Promise.resolve();
   }
   clean() {
     log.quiet(`cleaning ${this.project.name}`);
