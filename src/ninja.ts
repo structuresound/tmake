@@ -20,7 +20,7 @@ function build(env: Environment) {
       command = `${toolpaths.ninja} -C ${directory}`;
     }
     log.verbose(command);
-    return execAsync(command, { cwd: env.d.build });
+    return execAsync(command, { cwd: env.d.build, short: 'ninja' });
   });
 }
 
@@ -103,12 +103,12 @@ function generate(env: Environment, fileName: string): void {
 
   const linkNames = [];
   for (const filePath of env.s) {
-    console.log('process source file', filePath);
+    // console.log('process source file', filePath);
     const dir = path.dirname(filePath);
     const ext = path.extname(filePath);
     const name = path.basename(filePath, ext);
     const linkName = `${relative}/${dir}/${name}.o`;
-    console.log('add build file', linkName);
+    // console.log('add build file', linkName);
     ninjaConfig
       .edge(linkName)
       .from(filePath)

@@ -8,7 +8,7 @@ import { log } from './log';
 import { args } from './args';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, stringHash } from './hash';
-import { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
+import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
 import { Build } from './build';
 import { Configure } from './configure';

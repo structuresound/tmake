@@ -4,6 +4,7 @@ import * as path from 'path';
 import { contains } from 'js-object-tools';
 import * as fs from 'fs';
 
+import { defaults } from './defaults';
 import { VinylOptions, VinylFile, src, map, dest, wait, symlink } from './file';
 import { log } from './log';
 import { args } from './args';
@@ -98,7 +99,7 @@ function bin(env: Environment) {
 function assets(env: Environment): PromiseLike<any> {
   if (env.d.install.assets) {
     return Bluebird.map(env.d.install.assets, (ft: InstallOptions) => {
-      const patterns = ft.sources || ['**/*.*'];
+      const patterns = ft.sources || defaults.assets.images.glob.concat(defaults.assets.fonts.glob);
       log.verbose(`[ install assets ] from ${ft.from} to ${ft.to}`);
       return copy({
         patterns, from: ft.from, to: ft.to, opt: {
@@ -155,7 +156,7 @@ export function installHeaders(project: Project): PromiseLike<any> {
     'static', 'dynamic'
   ], project.outputType)) {
     return Bluebird.each(project.d.install.headers, (ft: InstallOptions) => {
-      const patterns = ft.sources || ['**/*.h', '**/*.hpp', '**/*.ipp'];
+      const patterns = ft.sources || defaults.headers.glob;
       if (args.verbose) {
         log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', ft.to);
       }

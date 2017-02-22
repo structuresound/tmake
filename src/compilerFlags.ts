@@ -7,20 +7,7 @@ import { startsWith } from './string';
 import { jsonStableHash } from './hash';
 import { Project } from './project';
 
-const stdCxxFlags = {
-    O: 2,
-    mac: { std: 'c++11', stdlib: 'libc++' },
-    linux: { std: 'c++0x', pthread: true }
-};
-
-const stdFrameworks = { mac: { CoreFoundation: true } };
-
-const stdLinkerFlags = {
-    // static: true
-    linux: { 'lstdc++': true, lpthread: true },
-    mac: { 'lc++': true }
-};
-
+import { defaults } from './defaults';
 
 function jsonToFrameworks(object: any) {
     const flags: string[] = [];
@@ -74,20 +61,6 @@ function jsonToFlags(object: any, options?: any) {
     return _jsonToFlags(object, defaultOptions);
 }
 
-const stdCompilerFlags = {
-    clang: {
-        ios: {
-            arch: 'arm64',
-            isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}',
-            'miphoneos-version-min': '={SDK_VERSION}',
-            simulator: {
-                'mios-simulator-version-min': '=6.1',
-                isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}'
-            }
-        }
-    }
-};
-
 function jsonToCFlags(object: any) {
     const opt = _.clone(object);
     if (opt.O) {
@@ -131,4 +104,4 @@ function jsonToCFlags(object: any) {
     return jsonToFlags(opt);
 }
 
-export { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags };
+export { jsonToFrameworks, jsonToCFlags, jsonToFlags };

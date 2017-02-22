@@ -28,11 +28,19 @@ function findErrors(body: string, failedOn: Function) {
   }
 }
 
+const maxSpinnerLength = 64;
+function truncate(s) {
+  if (s.length > maxSpinnerLength) {
+    return s.substring(0, maxSpinnerLength) + ' ...truncated (use -v)';
+  }
+  return s;
+}
+
 function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
   return new Promise<string>((resolve: Function, reject: Function) => {
     if (cwd) cd(cwd);
     const _silent = silent || !args.verbose
-    var spinner = new Spinner(`${short || command} %s`);
+    var spinner = new Spinner(`%s ${short || truncate(command)}`);
     if (_silent) {
       spinner.setSpinnerString('|/-\\');
       spinner.start();

@@ -13,13 +13,14 @@ import { mkdir } from './sh';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, fileHash, stringHash } from './hash';
 import { CmdObj, iterable, getCommands } from './iterate';
-import { stdCxxFlags, stdFrameworks, stdLinkerFlags, stdCompilerFlags, jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
+import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
 import { CacheProperty } from './cache';
 import { Build } from './build';
 import { Configure } from './configure';
 import { Install, InstallOptions } from './install';
 import { Project, ProjectDirs } from './project';
+import { defaults } from './defaults';
 import { Tools } from './tools';
 
 export interface Docker {
@@ -241,7 +242,11 @@ function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
         paths.build = path.join(paths.root, 'build', env.target.architecture);
     }
     if (!check(paths.project, String)) {
-        paths.project = paths.clone;
+        if (env.project.outputType === 'executable') {
+            paths.project = paths.root;
+        } else {
+            paths.project = paths.clone;
+        }
     }
     if (!(paths.install.libraries)) {
         paths.install.libraries = [{ from: paths.build }];
@@ -272,11 +277,11 @@ function parseBuild(env: Environment, config: Build) {
     const linkerFlags = b.linkerFlags || {};
     const compilerFlags = b.compilerFlags || {};
 
-    b.compilerFlags = _.extend(env.select(stdCompilerFlags), compilerFlags);
-    b.linkerFlags = _.extend(env.select(stdLinkerFlags), linkerFlags);
-    b.cxxFlags = _.extend(env.select(stdCxxFlags), cxxFlags);
-    b.cFlags = _.omit(_.extend(env.select(stdCxxFlags), cFlags), ['std', 'stdlib']);
-    b.frameworks = env.select(b.frameworks || env.select(stdFrameworks) || {});
+    b.compilerFlags = _.extend(env.select(defaults.flags.compiler), compilerFlags);
+    b.linkerFlags = _.extend(env.select(defaults.flags.linker), linkerFlags);
+    b.cxxFlags = _.extend(env.select(defaults.flags.cxx), cxxFlags);
+    b.cFlags = _.omit(_.extend(env.select(defaults.flags.cxx), cFlags), ['std', 'stdlib']);
+    b.frameworks = env.select(b.frameworks || env.select(defaults.flags.frameworks) || {});
 
     env.build = b;
 }

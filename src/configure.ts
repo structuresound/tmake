@@ -18,6 +18,7 @@ import { CmdObj, iterateOLHM } from './iterate';
 
 import { Environment } from './environment';
 import { Project } from './project';
+import { defaults } from './defaults';
 
 export interface Configure {
   create?: any;
@@ -50,20 +51,13 @@ function copy(patterns: string[], options: file.VinylOptions) {
 
 function globHeaders(env: Environment) {
   const patterns = env.globArray(
-    env.build.headers ? env.build.headers : [
-      '**/*.h',
-      '**/*.hpp',
-      '**/*.ipp',
-      '!test/**',
-      '!tests/**',
-      '!build/**'
-    ]);
+    env.build.headers ? env.build.headers : defaults.headers.glob);
   return file.glob(patterns, env.d.source, env.d.source);
 }
 
 function globSources(env: Environment) {
   const patterns = env.globArray(
-    env.build.sources || ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**']);
+    env.build.sources || defaults.sources.glob);
   return file.glob(patterns, env.d.project, env.project.d.source);
 }
 

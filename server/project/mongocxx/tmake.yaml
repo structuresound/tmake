@@ -1,6 +1,7 @@
+name: mongocxx
 git:
   repository: mongodb/mongo-cxx-driver
-  tag: r3.0.1
+  tag: r3.0.3
 require:
   mongoc:
     link: ../mongoc
@@ -33,6 +34,11 @@ configure:
           #define BSONCXX_API_H
           #define BSONCXX_API
           #define BSONCXX_PRIVATE
+          #define BSONCXX_DEPRECATED
+          #define BSONCXX_DEPRECATED_EXPORT
+          #define BSONCXX_DEPRECATED_NO_EXPORT
+          #define DEFINE_NO_DEPRECATED
+          #define BSONCXX_NO_DEPRECATED
         #endif
   replace:
     versions:
@@ -40,24 +46,26 @@ configure:
       - src/bsoncxx/config/version.hpp.in
       - src/mongocxx/config/version.hpp.in
       inputs:
-        MONGOCXX_VERSION_MAJOR: '3'
-        MONGOCXX_VERSION_MINOR: '0'
-        MONGOCXX_VERSION_PATCH: '2'
-        MONGOCXX_VERSION_EXTRA: "-rc0-pre"
+        MONGOCXX_VERSION_MAJOR: 3
+        MONGOCXX_VERSION_MINOR: 0
+        MONGOCXX_VERSION_PATCH: 3
+        MONGOCXX_VERSION_EXTRA: ""
+        BSONCXX_VERSION_MAJOR: 3
+        BSONCXX_VERSION_MINOR: 0
+        BSONCXX_VERSION_PATCH: 3
+        BSONCXX_VERSION_EXTRA: ""
       directive:
         prepost: "@"
-      ext: "hpp"
     src/mongocxx/config:
       sources:
       - src/mongocxx/config/config.hpp.in
-      - src/mongocxx/config/private/config.hpp.in
+      - src/mongocxx/config/private/config.hh.in
       inputs:
-        "@MONGOCXX_INLINE_NAMESPACE@": v3_0_2
-      ext: "hpp"
+        "@MONGOCXX_INLINE_NAMESPACE@": v3_0_3
     src/bsoncxx/config:
       sources:
       - src/bsoncxx/config/config.hpp.in
-      - src/bsoncxx/config/private/config.hpp.in
+      - src/bsoncxx/config/private/config.hh.in
       inputs:
         "#cmakedefine BSONCXX_POLY_USE_STD_EXPERIMENTAL": "//#define BSONCXX_POLY_USE_STD_EXPERIMENTAL
           0"
@@ -67,11 +75,11 @@ configure:
           0"
         "#cmakedefine BSONCXX_POLY_USE_BOOST": "#define BSONCXX_POLY_USE_BOOST
           1"
-        "@BSONCXX_INLINE_NAMESPACE@": v3_0_2
-      ext: "hpp"
+        "@BSONCXX_INLINE_NAMESPACE@": v3_0_3
     namespaceIncludes:
       sources:
       - src/**/*.h
+      - src/**/*.hh
       - src/**/*.hpp
       - src/**/*.cpp
       inputs:

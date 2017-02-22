@@ -15,9 +15,12 @@ interface MacroObject {
 }
 
 interface ReplEntry {
-  inputs: any, sources: any, directive: {
+  inputs: any
+  sources: any
+  directive: {
     prepost?: string, pre?: string, post?: string
   }
+  ext: string
 }
 
 function absolutePath(s: string, relative?: string) {
@@ -134,61 +137,64 @@ function parse(input: string | MacroObject, dict: any): any {
   return _parse(input, dict);
 }
 
-// function parseObject(obj: {[index:string]: any}, conf: Object) {
-//   for (const k of Object.keys(obj)){
-//     if (check(obj[k], String)){
-//       return
-//     }
-//   }
-//   return allStrings(_.clone(obj),
-//                     (val: string) => { return parseString(val, conf); });
-// }
+function insertBeforeExtension(val: string, prefix: string) {
+  return val.replace(/\.([^.]+)$/, `${prefix}.$1`);
+}
 
-// function parse(input: any, conf: Object) {
-//   //  log.debug('in:', input);
-//   let out: any;
-//   if (check(input, String)) {
-//     out = parseString(input, conf);
-//   } else if (check(input, Object)) {
-//     out = parseObject(input, conf);
-//   }
-//   //  log.debug('out:', out || input);
-//   return out || input;
-// }
+function rewriteExtension(f: string, ext: string) {
+  if (ext) {
+    var i = f.lastIndexOf('.');
+    if (i != -1) {
+      return f.substr(0, i) + '.' + ext;
+    }
+    return f + '.' + ext;
+  }
+  return f;
+}
 
 function readWritePathsForFile(f: string, r: ReplEntry) {
   if (f.endsWith('.in')) {
     return {
       readPath: f,
       cachePath: undefined,
-      writePath: f.replace(new RegExp('.in' + '$'), '')
+      writePath: rewriteExtension(f.replace(new RegExp('.in' + '$'), ''), r.ext)
     }
   }
   return {
-    readPath: f + '.tmake',
+    readPath: f,
     cachePath: f + '.tmake',
-    writePath: f
+    writePath: rewriteExtension(f, r.ext)
+  }
+}
+
+function backupIfNeeded({readPath, cachePath, writePath}) {
+  if (cachePath && writePath === readPath && !fs.existsSync(cachePath)) {
+    // log.warn('cache input file to', cachePath);
+    if (!fs.existsSync(readPath)) {
+      throw new Error(`but no original source file located at ${readPath}`);
+    }
+    log.verbose(`moving original file to ${cachePath}`);
+    fs.renameSync(readPath, cachePath);
+  }
+}
+
+function sourceString({readPath, cachePath}) {
+  if (!fs.existsSync(readPath)) {
+    throw new Error(`no input file at ${readPath}`);
+  }
+  if (fs.existsSync(cachePath)) {
+    return fs.readFileSync(cachePath, 'utf8');
+  } else {
+    return fs.readFileSync(readPath, 'utf8');
   }
 }
 
 function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
   const {readPath, cachePath, writePath} = readWritePathsForFile(f, r);
-  if (cachePath && !fs.existsSync(cachePath)) {
-    // log.warn('cache input file to', cachePath);
-    if (!fs.existsSync(f)) {
-      throw new Error(`but no original source file located at ${f}`);
-    }
-    fs.renameSync(f, cachePath);
-  }
-  if (!fs.existsSync(readPath)) {
-    throw new Error(`no input file at ${readPath}`);
-  }
-  let inputString = fs.readFileSync(readPath, 'utf8');
-
+  let inputString = sourceString({readPath, cachePath});
   if (!r.inputs) {
     throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
   }
-
   for (const k of Object.keys(r.inputs)) {
     const v = r.inputs[k];
     let parsedKey: string;
@@ -218,11 +224,7 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     existingString = fs.readFileSync(writePath, 'utf8');
   }
   if (existingString !== inputString) {
-    // if (!existingString) {
-    //   log.add('write new file to', writePath);
-    // } else {
-    //   log.warn('overwrite file', writePath);
-    // }
+    backupIfNeeded({ readPath, cachePath, writePath });
     return file.writeFileAsync(writePath, inputString, { encoding: 'utf8' });
   }
   return Promise.resolve();
