@@ -90,7 +90,7 @@ function generate(env: Environment, fileName: string): void {
         libName = `${env.project.name}`;
       }
 
-      const libs = env.build.libs ? ' ' + env.build.libs.join(' ') : ''
+      const libs = env.build.libs ? ' ' + env.build.libs.reverse().join(' ') : ''
       const flags = env.linkerFlags() ? ' ' + env.linkerFlags().join(' ') : '';
       linkCommand = `${cc} -o $out $in${libs}${flags}`;
       break;

@@ -147,11 +147,11 @@ function target(env: Environment): string {
 }
 
 function link(env: Environment): string {
-  let libs = cmakeArrayToQuotedList(env.build.libs);
+  let linkLibs = cmakeArrayToQuotedList(env.build.libs.reverse());
   const frameworks = cmakeArrayToQuotedList(env.frameworks());
-  if (libs.length || frameworks.length) {
+  if (linkLibs.length || frameworks.length) {
     return `
-target_link_libraries(\${PROJECT_NAME} ${libs} ${frameworks} ${env.linkerFlags().join(' ')})
+target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${env.linkerFlags().join(' ')})
 `;
   }
   return '';
