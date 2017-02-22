@@ -103,7 +103,7 @@ describe('main: ', function () {
   it('configure: for: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).configure().then(() => {
-        const fp = path.join(args.runDir, 'source', 'build.ninja')
+        const fp = path.join(args.runDir, 'build.ninja')
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
