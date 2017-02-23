@@ -77,6 +77,8 @@ export interface ProjectFile extends Toolchain {
   tag?: string;
   user?: string;
   dir?: string;
+  d?: ProjectDirs;
+  p?: ProjectDirs;
   toolchains?: OLHM<Toolchain>;
 
   // implements Toolchain

@@ -82,6 +82,12 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
       fileCache[configDir] = <ProjectFile>combine(linkedConfig, conf);
     }
     _.extend(conf, fileCache[configDir]);
+    if (!conf.d){
+      conf.d = <any>{};
+    }
+    if (!conf.d.root){
+      conf.d.root = configDir;
+    }
   }
   const name = resolveName(conf);
   if (parent && (name === parent.name)) {
