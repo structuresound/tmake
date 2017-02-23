@@ -1,7 +1,7 @@
 {
   "name": "tmake",
   "description": "trieMake can fetch, build, and manage c++ dependencies",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "Leif Shackelford",
