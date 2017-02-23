@@ -4,8 +4,7 @@ override:
     git.tag: boost-1.63.0
     git.organization: boostorg
 require:
-  assert: 
-    git: assert
+  assert: assert
   asio: 
     git: asio
     require:

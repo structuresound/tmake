@@ -40,10 +40,13 @@ export class Git implements GitConfig {
     } else {
       extend(this, config as Git);
     }
-    if (this.repository.indexOf('@') !== -1) {
+    if (!this.repository) {
+      log.throw('constructing git without repository string', this);
+    }
+    if (this.repository.indexOf(':') !== -1) {
       const str = this.repository;
-      this.tag = str.slice(str.lastIndexOf('@') + 1);
-      this.repository = str.slice(0, str.lastIndexOf('@'));
+      this.tag = str.slice(str.lastIndexOf(':') + 1);
+      this.repository = str.slice(0, str.lastIndexOf(':'));
     }
     if (this.repository.indexOf('/') !== -1) {
       const str = this.repository;

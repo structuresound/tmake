@@ -207,7 +207,7 @@ function tmake(rootConfig: ProjectFile,
         if (positionalArgs[1] === 'local') {
           return list('user', { name: positionalArgs[2] })
         } else if (positionalArgs[1]) {
-          return list('cache', { name: positionalArgs[1] })
+          return list('cache', { $or: [{ name: positionalArgs[1] }, { project: positionalArgs[1] }] })
         }
         return list('cache', {});
       })().then(nodes => log.log(nodes));

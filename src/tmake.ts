@@ -27,18 +27,27 @@ import { errors } from './errors';
 import test from './test';
 
 function isSingleCommand(phase: string) {
-  return contains(['parse', 'graph'], phase);
+  return contains(['parse', 'graph', 'clean'], phase);
 }
 
 function singleCommand(project: Project, phase: string, selectedDeps: Project[]) {
   switch (phase) {
+    case 'clean':
+      return graph(project)
+        .then((deps: Project[]) => {
+          return <any>Bluebird.each(deps, (node) => {
+            return processDep(node, phase);
+          });
+        });
     case 'graph':
-      if (args.verbose) {
-        log.log(selectedDeps);
-      } else {
-        log.log(_.map(selectedDeps, (project) => project.name));
-      }
-      break;
+      return graph(project)
+        .then((deps: Project[]) => {
+          if (args.verbose) {
+            log.log(deps);
+          } else {
+            log.log(_.map(deps, (project) => project.name));
+          }
+        });
     case 'parse':
       const aspect = args._[2];
       if (aspect) {

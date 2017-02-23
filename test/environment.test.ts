@@ -24,7 +24,6 @@ describe('environment', () => {
   it('creates folder locations', () => { assert.ok(check(env.d, Object)); });
 
   it('creates correct paths', () => {
-    assert.equal(env.d.includeDirs[0], path.join(args.runDir, 'source'), 'include dirs');
     assert.equal(env.d.source, path.join(args.runDir, 'source'), 'source dir');
     assert.equal(env.d.project, path.join(args.runDir, 'source'), 'project dir');
     assert.equal(env.d.build, path.join(args.runDir, 'build/test-arch'), 'build dir');

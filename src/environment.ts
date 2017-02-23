@@ -11,7 +11,7 @@ import { parseFileSync } from './file';
 import { args } from './args';
 import { mkdir } from './sh';
 import { parse, absolutePath, pathArray } from './parse';
-import { jsonStableHash, fileHash, stringHash } from './hash';
+import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { CmdObj, iterable, getCommands } from './iterate';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
@@ -78,6 +78,7 @@ export interface Environment$Set {
     'cache.buildFilePath'?: string;
     'cache.generatedBuildFilePath'?: string;
     'cache.buildFile'?: string;
+    'cache.cmake'?: string;
 
     'cache.build'?: string;
     'cache.configure'?: string;
@@ -94,6 +95,7 @@ export interface EnvironmentCacheFile {
         generatedBuildFilePath?: string;
         buildFile?: string;
         build?: string;
+        cmake?: string;
         configure?: string;
         assets?: string[];
     }
@@ -108,6 +110,7 @@ export interface EnvironmentCache {
     build: CacheProperty<string>;
     configure: CacheProperty<string>;
     assets: CacheProperty<string[]>;
+    cmake: CacheProperty<string>;
 }
 
 const platformNames = {
@@ -350,18 +353,28 @@ class Environment implements Toolchain {
                 return jsonStableHash(self.build);
             }),
             buildFile: new CacheProperty<string>(() => {
-                return fileHash(self.getProjectFilePath(self.build.with));
+                if (self.build.with) {
+                    return fileHashSync(self.getProjectFilePath(self.build.with));
+                }
+                return "";
             }),
             buildFilePath: new CacheProperty<string>(() => {
                 return self.getProjectFilePath(self.build.with);
             }),
+            cmake: new CacheProperty<string>(() => {
+                return fileHashSync(path.join(self.d.build, 'build.ninja'));
+            }),
             generatedBuildFilePath: new CacheProperty<string>(() => {
-                return self.getProjectFilePath(self.configure.for);
+                if (self.configure.for) {
+                    return self.getProjectFilePath(self.configure.for);
+                }
+                return "";
             }),
             assets: new CacheProperty<string[]>(() => {
                 return [""];
             })
         }
+        this.cache.configure.require = this.cache.buildFile;
     }
 
     frameworks() { return jsonToFrameworks(this.build.frameworks); }

@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, setValueForKeyPath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
+import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
 import { select } from './cascade';
 import { startsWith } from './string';
 import { log } from './log';
@@ -48,6 +48,7 @@ export interface ProjectDirs {
   source: string;
   install: Install;
   includeDirs: string[];
+  localCache: string;
 }
 
 export interface PersistedProjectCache {
@@ -76,9 +77,9 @@ export interface ProjectFile extends Toolchain {
   version?: string;
   tag?: string;
   user?: string;
+  // ephemeral
   dir?: string;
-  d?: ProjectDirs;
-  p?: ProjectDirs;
+  cacheDir?: string
   toolchains?: OLHM<Toolchain>;
 
   // implements Toolchain
@@ -92,30 +93,36 @@ export interface ProjectFile extends Toolchain {
   environment?: any;
 }
 
-export const metaDataKeys = ['name', 'version', 'user', 'dir', 'path', 'git', 'archive', 'override'];
+export const metaDataKeys = ['name', 'version', 'user', 'path', 'git', 'archive', 'override'];
 export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure'];
 export const dependencyKeys = ['require'];
 export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
 
-function getProjectDirs(project: Project): ProjectDirs {
+export const ephemeralKeys = ['dir']
+
+function getProjectDirs(project: Project, parent: Project): ProjectDirs {
   const pathOptions = project.p;
   const d: ProjectDirs = <ProjectDirs>clone(project.d || {});
-  // fetch
   if (!d.home) {
-    d.home = `${args.runDir}/${args.cachePath}`;
-  }  // reference for build tools, should probably remove
-  if (!d.root) { // dependency
+    d.home = path.join(args.runDir, args.cachePath);
+  }
+  if (project.dir) {
+    d.localCache = path.join(project.dir, args.cachePath);
+  }
+  if (parent) {
     if (!project.name) {
       log.error(project);
       throw new Error('node has no name');
     }
-    d.root = path.join(d.home, project.name);
-    if (pathOptions.includeDirs) {
-      d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
+    if (parent.d.localCache && !d.localCache) {
+      d.localCache = parent.d.localCache;
     }
-  }  // lowest level a package should have access to
-  else {
-    d.includeDirs = pathArray((pathOptions.includeDirs || 'source'), d.root);
+    d.root = project.dir || path.join(d.localCache || d.home, project.name);
+  }
+  if (pathOptions.includeDirs) {
+    d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
+  } else {
+    d.includeDirs = [];
   }
   if (!d.clone) {
     d.clone = path.join(d.root, pathOptions.clone);
@@ -152,12 +159,9 @@ function getProjectPaths(project: Project) {
   return pathOptions;
 }
 
-function resolveVersion(conf: ProjectFile | Project) {
-  if (check(conf, String)) {
-    return new Git(<string><any>conf).version();
-  }
+function resolveVersion(conf: Project) {
   if (conf.git) {
-    return new Git(conf.git).version();
+    return conf.git.version();
   }
   if (check(conf.version, String)) {
     return conf.version;
@@ -177,7 +181,7 @@ export function resolveName(conf: ProjectFile | Project): string {
   if (conf.git) {
     return new Git(conf.git).name();
   }
-  throw new Error(`resolveName() failed on module ${JSON.stringify(conf, [], 2)}`);
+  log.throw('resolveName() failed on module', conf);
 }
 
 function mergeNodes(a: Project, b: any) {
@@ -206,6 +210,10 @@ function parsePath(s: string) {
 }
 
 function resolveUrl(conf: Project): string {
+  if (!args.test && conf.d.root === args.runDir) {
+    // this is the root module
+    return 'none';
+  }
   if (conf.git) {
     return new Git(conf.git).fetch();
   }
@@ -215,13 +223,8 @@ function resolveUrl(conf: Project): string {
   if (conf.archive) {
     return conf.archive.url;
   }
-  if (conf.d.root === conf.d.home) {
-    return 'none';
-  }
-  if (!conf.archive) {
-    log.warn(`cannot resolve source url, is ${conf.name} a meta project?`);
-    return 'none';
-  }
+  log.warn(`cannot resolve source url, is ${conf.name} a meta project?`);
+  return 'none';
 }
 
 export interface ProjectCache {
@@ -252,7 +255,9 @@ export class Project implements ProjectFile {
   tag?: string;
   tree?: string;
   user?: string;
+  // ephemeral
   dir?: string;
+  cacheDir?: string
   toolchains?: OLHM<Toolchain>;
 
   // implements Toolchain
@@ -287,17 +292,22 @@ export class Project implements ProjectFile {
     }
     const metaDataFields = _.pick(projectFile, metaDataKeys);
     extend(this, metaDataFields);
+    if (this.git) {
+      this.git = new Git(this.git);
+    }
+
+    const ephemeralFields = _.pick(projectFile, ephemeralKeys);
+    extend(this, ephemeralFields);
+
     if (!this.name) {
       this.name = resolveName(projectFile);
     }
-    if (projectFile.git) {
-      this.git = new Git(projectFile.git);
-    }
+
     this.p = getProjectPaths(this);
     if (!parent) {
-      this.d = <EnvironmentDirs>{ root: args.runDir };
+      this.d = <ProjectDirs>{ root: args.runDir };
     }
-    this.d = getProjectDirs(this);
+    this.d = getProjectDirs(this, parent);
 
     const toolchainFields = _.pick(projectFile, toolchainKeys);
     extend(this, toolchainFields);
@@ -313,20 +323,12 @@ export class Project implements ProjectFile {
     if (parent) {
       if (parent.override) {
         for (const selector of Object.keys(parent.override)) {
+          const override = parent.override[selector];
+          mergeValueAtKeypath(override, `override.${selector}`, this);
           if (selector === 'force' || select([this.name], selector)) {
-            if (!this.override) {
-              this.override = <Project>{}
-            }
-            if (!this.override[selector]) {
-              this.override[selector] = <any>{};
-            }
-            // log.log('extending force with:', parent.override['force'])
-            extend(this.override[selector], parent.override[selector]);
-            const override = this.override[selector]
             for (const kp of Object.keys(override)) {
               const val = override[kp];
-              // log.log('apply kp', kp, val);
-              setValueForKeyPath(val, kp, this);
+              mergeValueAtKeypath(val, kp, this);
             }
           }
         }

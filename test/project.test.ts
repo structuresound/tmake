@@ -6,7 +6,7 @@ import { parseFileAsync } from '../src/file';
 import { args } from '../src/args';
 import { Project, ProjectFile } from '../src/project';
 
-describe('node', () => {
+describe('project', () => {
   let project: Project;
 
   before(() => {
@@ -21,7 +21,8 @@ describe('node', () => {
   it('creates folder locations', () => { assert.ok(check(project.d, Object)); });
 
   it('creates correct paths', () => {
-    assert.equal(project.d.includeDirs[0], path.join(args.runDir, 'source'));
+    // assert.equal(project.d.includeDirs[0], path.join(args.runDir, 'source'));
     assert.equal(project.d.source, path.join(args.runDir, 'source'));
+    assert.equal(project.d.root, args.runDir, 'root dir');
   });
 });

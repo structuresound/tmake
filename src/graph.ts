@@ -72,7 +72,7 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.dir : '');
     if (fileCache[configDir]) {
-      log.verbose(`file @ ${configDir} already loaded`);
+      log.verbose(`file @ ${fileCache[configDir].dir} already loaded`);
     } else {
       const linkedConfig = file.readConfigSync(configDir);
       linkedConfig.dir = configDir;
@@ -82,12 +82,6 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
       fileCache[configDir] = <ProjectFile>combine(linkedConfig, conf);
     }
     _.extend(conf, fileCache[configDir]);
-    if (!conf.d){
-      conf.d = <any>{};
-    }
-    if (!conf.d.root){
-      conf.d.root = configDir;
-    }
   }
   const name = resolveName(conf);
   if (parent && (name === parent.name)) {

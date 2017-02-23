@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import * as fs from 'fs';
+import { existsSync, readFileSync, createReadStream } from 'fs';
 import stringify = require('json-stable-stringify');
 import { check } from 'js-object-tools';
 
@@ -24,15 +24,26 @@ export function stringHash(string: string) {
     .digest('hex');
 }
 
+export function fileHashSync(filePath: string) {
+  if (existsSync(filePath)) {
+    const contents = readFileSync(filePath, 'utf8');
+    return stringHash(contents);
+  }
+  return Promise.resolve("");
+}
+
 export function fileHash(filePath: string) {
-  return new Promise<string>((resolve) => {
-    const hash = crypto.createHash('md5');
-    const stream = fs.createReadStream(filePath);
-    stream.on('data', (data: any) => {
-      return hash.update(data, 'utf8');
+  if (existsSync(filePath)) {
+    return new Promise<string>((resolve) => {
+      const hash = crypto.createHash('md5');
+      const stream = createReadStream(filePath);
+      stream.on('data', (data: any) => {
+        return hash.update(data, 'utf8');
+      });
+      stream.on('end', () => {
+        return resolve(hash.digest('hex'));
+      });
     });
-    stream.on('end', () => {
-      return resolve(hash.digest('hex'));
-    });
-  });
+  }
+  return Promise.resolve("");
 }

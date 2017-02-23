@@ -2,7 +2,7 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
-import * as fs from 'fs';
+import { existsSync } from 'fs';
 import { arrayify, check } from 'js-object-tools';
 
 import { updateProject, updateEnvironment } from './db';
@@ -55,12 +55,14 @@ function cmake(env: Environment, command: string) {
 }
 
 function configure(env: Environment) {
-  return fileHash(env.getProjectFilePath('cmake')).then((buildFileHash) => {
-    if (!env.cache.buildFile.dirty(buildFileHash)) {
+  const ninjaFile = path.join(env.d.build, 'build.ninja');
+  return fileHash(ninjaFile).then((buildFileHash) => {
+    if (existsSync(ninjaFile) && env.cache.cmake.value() === buildFileHash) {
       return Promise.resolve();
     }
     return fetch(env.tools).then((toolpaths: Toolpaths) => {
       return doConfiguration(env, toolpaths.ninja).then(() => {
+        env.cache.cmake.update();
         return updateEnvironment(env);
       });
     });
@@ -127,7 +129,7 @@ function assets(env: Environment): string {
   let copy = '';
   if (env.configure.cmake && env.configure.cmake.copy) {
     _.each(arrayify(env.configure.cmake.copy), (ft) => {
-      if (fs.existsSync(`${env.d.project}/${ft.from}`)) {
+      if (existsSync(`${env.d.project}/${ft.from}`)) {
         copy += `\nfile(COPY \${CMAKE_CURRENT_SOURCE_DIR}/${ft.from} DESTINATION \${CMAKE_CURRENT_BINARY_DIR}/${ft.to})`;
       }
       throw new Error(`@CMake gen -> file doesn't exist @ ${env.d.project}/${ft.from}`);

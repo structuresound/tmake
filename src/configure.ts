@@ -189,6 +189,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               });
         }
       }).then(() => {
+        env.cache.buildFile.update();
         env.cache.configure.update();
         return updateEnvironment(env);
       });

@@ -887,6 +887,10 @@ cli-cursor@^1.0.1, cli-cursor@^1.0.2:
   dependencies:
     restore-cursor "^1.0.1"
 
+cli-spinner@^0.2.6:
+  version "0.2.6"
+  resolved "https://registry.yarnpkg.com/cli-spinner/-/cli-spinner-0.2.6.tgz#8a59703324e93a908f6e601e4e74f5b85b371e5c"
+
 cli-spinners@0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/cli-spinners/-/cli-spinners-0.2.0.tgz#85078737913b880f6ec9ffe7b65e83ec7776284f"
@@ -2459,9 +2463,9 @@ jodid25519@^1.0.0:
   dependencies:
     jsbn "~0.1.0"
 
-js-object-tools@^0.12.7:
-  version "0.12.7"
-  resolved "https://registry.yarnpkg.com/js-object-tools/-/js-object-tools-0.12.7.tgz#e263a865c0e8ce54a76d4d59481645899e15f149"
+js-object-tools@^0.12.9:
+  version "0.12.9"
+  resolved "https://registry.yarnpkg.com/js-object-tools/-/js-object-tools-0.12.9.tgz#575760c3f42089d83916f23e40630d495d5dfd9e"
 
 js-tokens@^2.0.0:
   version "2.0.0"

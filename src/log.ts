@@ -13,12 +13,12 @@ function getMessage(...args: any[]): string {
     }
     if (check(el, Array)) {
       if (check(el[0], Object)) {
-        return '\n---\n' + dump(el, <DumpOptions>{ sortKeys: true });
+        return '---\n' + dump(el, <DumpOptions>{ sortKeys: true });
       }
       return '[' + el.join(', ') + ']';
     }
     if (check(el, Object)) {
-      return '\n---\n' + dump(el, <DumpOptions>{ sortKeys: true });
+      return '---\n' + dump(el, <DumpOptions>{ sortKeys: true });
     }
     return '' + el;
   }).join(' ');
