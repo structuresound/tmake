@@ -10,6 +10,7 @@ before_install:
 script: npm run cover
 after_script:
 - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
+- gulp scripts
 deploy:
   provider: npm
   on:
