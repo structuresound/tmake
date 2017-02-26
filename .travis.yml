@@ -7,10 +7,10 @@ node_js:
 - '6'
 before_install:
 - npm config set progress=false
-script: npm run cover
+
+script: npm run build && npm run cover
 after_script:
 - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
-- gulp scripts
 deploy:
   provider: npm
   on:
