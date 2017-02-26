@@ -18,6 +18,8 @@ import { CacheProperty } from './cache';
 import { Toolchain, Platform, Environment, EnvironmentDirs } from './environment';
 import { Tools } from './tools';
 
+import { errors } from './errors';
+
 export interface Project$Set {
   libs?: string[];
 
@@ -98,16 +100,13 @@ export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputT
 export const dependencyKeys = ['require'];
 export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
 
-export const ephemeralKeys = ['dir']
+export const ephemeralKeys = ['dir', 'd', 'p']
 
 function getProjectDirs(project: Project, parent: Project): ProjectDirs {
   const pathOptions = project.p;
   const d: ProjectDirs = <ProjectDirs>clone(project.d || {});
   if (!d.home) {
     d.home = path.join(args.runDir, args.cachePath);
-  }
-  if (project.dir) {
-    d.localCache = path.join(project.dir, args.cachePath);
   }
   if (parent) {
     if (!project.name) {
@@ -118,6 +117,11 @@ function getProjectDirs(project: Project, parent: Project): ProjectDirs {
       d.localCache = parent.d.localCache;
     }
     d.root = project.dir || path.join(d.localCache || d.home, project.name);
+  } else {
+    d.root = args.configDir
+  }
+  if (project.link) {
+    d.localCache = path.join(project.dir, args.cachePath);
   }
   if (pathOptions.includeDirs) {
     d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
@@ -210,10 +214,6 @@ function parsePath(s: string) {
 }
 
 function resolveUrl(conf: Project): string {
-  if (!args.test && conf.d.root === args.runDir) {
-    // this is the root module
-    return 'none';
-  }
   if (conf.git) {
     return new Git(conf.git).fetch();
   }
@@ -222,6 +222,10 @@ function resolveUrl(conf: Project): string {
   }
   if (conf.archive) {
     return conf.archive.url;
+  }
+  if (!args.test && conf.d.root === args.runDir) {
+    // this is the root module
+    return 'none';
   }
   log.warn(`cannot resolve source url, is ${conf.name} a meta project?`);
   return 'none';
@@ -304,9 +308,6 @@ export class Project implements ProjectFile {
     }
 
     this.p = getProjectPaths(this);
-    if (!parent) {
-      this.d = <ProjectDirs>{ root: args.runDir };
-    }
     this.d = getProjectDirs(this, parent);
 
     const toolchainFields = _.pick(projectFile, toolchainKeys);

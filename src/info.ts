@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import { check } from 'js-object-tools';
-
+import * as colors from 'chalk';
 import { args } from './args';
 import { log } from './log';
 import { Project } from './project';
@@ -15,10 +15,10 @@ export const info = {
     local: function (project) {
       verbose(`skip fetch, project is local ${project.name}`);
     },
-    dirty: function (project) {
+    dirty: function (project: Project) {
       if (project.cache.fetch.dirty()) {
         verbose(`cache invalid ${project.cache.fetch.get()}`);
-        verbose(project.cache);
+        verbose(project.toCache());
       } else {
         verbose('forcing re-fetch of source');
       }
@@ -35,6 +35,12 @@ export const info = {
     names: function (graph: Project[]) {
       quiet(_.map(graph, (project) => project.name));
     }
+  },
+  report: function (report: any) {
+    log.log(`
+command: ${colors.magenta(report.command)}
+date: ${colors.yellow(report.createdAt)}
+${report.output}`);
   },
   exit: function () {
     if (!args.verbose) {

@@ -1,12 +1,21 @@
 os:
-  - linux
-  - osx
+- linux
+- osx
 dist: trusty
 language: node_js
 node_js:
-  - '6'
+- '6'
 before_install:
 - npm config set progress=false
 script: npm run cover
 after_script:
-  - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
+- cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
+deploy:
+  provider: npm
+  on:
+    branch: release
+  api_key:
+    secure: oTdK7pwSz0svQH131HKunG/q95XYiEEXt/+gtc6WKoHOU/UdqqFObOYdF1796pweeFwAOZ55YIPwPlqaAU8N0cOygIlCl81BvQEDrG0wX9JI1b7UDc56mORQrli3Bv5sOLuxDmF9ZsHYZolia7GtuWxEEuCFkuPTyzZB6nQK7nZzdPQ7kPGtbikpDx1JGmCCFitXEFaJ6wyfd6VPZRpOHCOitgktF23jRjkUKS6QNE53pwcVxsCCGeFIquNWxQq5IeoZLgidXRoP8pGcWm4tikOPTpxMBWZjcx3/qdSVJ7o4WY5sG3BD4fTFsdO3yBV+MgnRHvgthfEjBUfR5ExJGGXuk2O2/BJe+5pp+vQvQ6HtFVmTIwE1Nl6tOdJ9/JYKkWhoxkfyYt4bml7h9dnEb4cKUMgtQg7EiIj0vNKRtAQaSbri+DvoQBycVm2Jey+DF/MsSwJRgMf0cYFo2z2AoXCYSnTlH20zwkL6uNP/Iyp86+rRiYjwGXAxKd3zZ+WMCM2ZMD9x4Molh2Fcfe2Ev8c5u2hnT/kycuORH7FEkyce8pl0xP6tyJSUn7a61dj752nWIwdPnLdvm7BcLyNy0sZbB4QmcWLp0cHqAYKPysgFb5AebhVI7qC1mvoDTIJLyI2mAD8UDlu5t0taG2tKF1i4YJkqK4J5FhK1q65/Ow4=
+after_deploy:
+- npm i -g tmake
+- tmake example hello && cd hello && tmake

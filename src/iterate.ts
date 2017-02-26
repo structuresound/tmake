@@ -51,7 +51,7 @@ export function getCommands(it: any, ignore?: string[]) {
   return validCommands;
 }
 
-export function iterateOLHM(obj: any, fn: (any: any) => Promise<any>) {
+export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>) {
   const it = safeOLHM(obj);
   if (!check(it, Array)
   ) {
@@ -60,11 +60,11 @@ export function iterateOLHM(obj: any, fn: (any: any) => Promise<any>) {
   return Bluebird.each(it, fn);
 }
 
-export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>) {
+export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>): PromiseLike<T[]> {
   const it = safeOLHM(obj);
   if (!check(it, Array)
   ) {
-    throw new Error('safeOLHM did not produce array');
+    return Promise.reject(new Error('safeOLHM did not produce array'));
   }
   return Bluebird.map(it, fn);
 }
@@ -78,9 +78,9 @@ export function iterate(obj: any, fn: (cmd: CmdObj) => Promise<any> | Bluebird<a
   return Bluebird.each(it, (i: CmdObj) => {
     return fn(i).catch((error: Error) => {
       if (i.cmd === 'with') {
-        errors.build.command.failed(i.arg, error);
+        return Promise.reject(errors.build.command.failed(i.arg, error));
       } else {
-        errors.build.command.failed(i.cmd, error);
+        return Promise.reject(errors.build.command.failed(i.cmd, error));
       }
     });
   });

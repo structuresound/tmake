@@ -37,9 +37,10 @@ function getRule(ext: string) {
 }
 function generate(env: Environment, fileName: string): void {
   log.add('generate new ninja config');
-  const relative = path.relative(env.d.project, env.d.build);
-  console.log(`project to build dir = ${relative}`);
-  const ninjaConfig = ninja_build_gen(ninjaVersion, relative);
+  const relativeToBuild = path.relative(env.d.project, env.d.build) || '.';
+  const relativeToSource = path.relative(env.d.project, env.d.source) || '.';
+  console.log(`project to build dir = ${relativeToBuild}`);
+  const ninjaConfig = ninja_build_gen(ninjaVersion, relativeToBuild);
   const includeString = _.map(env.includeDirs(), (dir) => {
     return `-I${dir}`;
   }).join(' ');
@@ -72,7 +73,9 @@ function generate(env: Environment, fileName: string): void {
   let linkCommand = 'ar rv $out $in';
   let libName = env.build.outputFile;
   let staticLibs = '';
-  log.verbose('    ', 'link:', env.project.libs);
+  if (env.build.libs) {
+    log.verbose('    ', 'link:', env.build.libs);
+  }
   switch (env.outputType) {
     case 'static':
     default:
@@ -101,24 +104,24 @@ function generate(env: Environment, fileName: string): void {
     .run(linkCommand)
     .description(linkCommand);
 
-  const linkNames = [];
+  const edges = [];
   for (const filePath of env.s) {
-    // console.log('process source file', filePath);
     const dir = path.dirname(filePath);
     const ext = path.extname(filePath);
     const name = path.basename(filePath, ext);
-    const linkName = `${relative}/${dir}/${name}.o`;
-    // console.log('add build file', linkName);
+    const from = path.join(relativeToSource, filePath);
+    const edge = path.join(relativeToBuild, `${dir}/${name}.o`);
+    log.verbose('+ edge:', edge, 'from:', from);
     ninjaConfig
-      .edge(linkName)
-      .from(filePath)
+      .edge(edge)
+      .from(from)
       .using(getRule(ext));
-    linkNames.push(linkName);
+    edges.push(edge);
   };
 
-  const linkInput = linkNames.join(' ');
+  const linkInput = edges.join(' ');
   ninjaConfig
-    .edge(`${relative}/${libName}`)
+    .edge(path.join(relativeToBuild, libName))
     .from(linkInput)
     .using('link');
 

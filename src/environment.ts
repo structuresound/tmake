@@ -210,7 +210,6 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
             return {
                 sources: ft.sources,
                 from: path.join(d.root, ft.from),
-                to: path.join(d.root, (ft.to || 'bin'))
             };
         }),
         libraries: _.map(arrayify(pathOptions.install.libraries), (ft: InstallOptions) => {
@@ -227,7 +226,6 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
                 return {
                     sources: ft.sources,
                     from: path.join(d.root, ft.from),
-                    to: path.join(d.root, (ft.to || 'bin'))
                 };
             });
     }
@@ -236,17 +234,17 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
 
 
 function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
-    const defaultPaths = combine(projectPaths, {
+    const defaultPaths = combine({
         root: '',
         test: 'build_tests'
-    });
+    }, projectPaths);
     const paths = <EnvironmentDirs>extend(defaultPaths, env.path);
     if (!check(paths.build, String)) {
         paths.build = path.join(paths.root, 'build', env.target.architecture);
     }
     if (!check(paths.project, String)) {
         if (env.project.outputType === 'executable') {
-            paths.project = paths.root;
+            paths.project = paths.build;
         } else {
             paths.project = paths.clone;
         }
@@ -255,7 +253,7 @@ function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
         paths.install.libraries = [{ from: paths.build }];
     }
     if (!(paths.install.binaries)) {
-        paths.install.binaries = [{ from: paths.build, to: 'bin' }];
+        paths.install.binaries = [{ from: paths.build }];
     }
 
     return paths;
@@ -267,6 +265,7 @@ function getProjectFile(env: Environment, systemName: string): string {
         cmake: 'CMakeLists.txt',
         gyp: 'binding.gyp',
         make: 'Makefile',
+        tmake: 'tmake.yaml',
         xcode: `${env.project}.xcodeproj`
     };
     return (<any>buildFileNames)[systemName];

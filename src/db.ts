@@ -10,7 +10,6 @@ import { mkdir } from './sh';
 import { Project, ProjectModifier } from './project'
 import { Environment, EnvironmentCacheFile, EnvironmentModifier } from './environment'
 
-
 let cacheDbPath: string;
 
 const testMode =

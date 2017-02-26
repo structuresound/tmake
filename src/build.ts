@@ -12,7 +12,9 @@ import { errors } from './errors';
 
 import { CmdObj, iterate, getCommands } from './iterate';
 import { Environment } from './environment';
+import { args } from './args';
 import { log } from './log';
+import { encode as encodeArgs } from './args';
 
 export interface Build {
   with?: string;
@@ -53,6 +55,10 @@ function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
 }
 
 function buildWith(env: Environment, system: string, isTest: boolean) {
+  if (system == 'tmake') {
+    args.configDir = env.project.d.clone;
+    return execAsync(`TMAKE_ARGS="${encodeArgs()}" tmake`, { cwd: env.project.d.source, short: 'tmake' });
+  }
   ensureBuildFolder(env, isTest);
   ensureBuildFile(env, system, isTest);
   switch (system) {
@@ -70,7 +76,10 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
 function buildCommand(c: any, env: Environment) {
   let lc: CmdObj = check(c, String) ? <CmdObj>{ cmd: <any>c } : c;
   const cwd = env.pathSetting(lc.cwd || env.project.d.source);
-  return execAsync(env.parse(lc.cmd, env), { cwd: cwd });
+  if (lc.cwd) {
+    log.verbose(`  cwd: ${lc.cwd}`);
+  }
+  return execAsync(env.parse(lc.cmd), { cwd: cwd });
 }
 
 export function build(env: Environment, isTest: boolean) {

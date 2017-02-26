@@ -114,8 +114,13 @@ include_directories(${cmakeArrayToQuotedList(env.includeDirs())})`;
 }
 
 function sources(env: Environment): string {
+  const relativeToSource = path.relative(env.d.project, env.d.source) || '.';
+  const src = _.map(env.s, (fp) => {
+    console.log(path.join(relativeToSource, fp));
+    return path.join(relativeToSource, fp);
+  })
   return `\n
-set(SOURCE_FILES \${SOURCE_FILES} ${cmakeArrayToQuotedList(env.s)})`;
+set(SOURCE_FILES \${SOURCE_FILES} ${cmakeArrayToQuotedList(src)})`;
 }
 
 function flags(env: Environment): string {
@@ -160,25 +165,6 @@ target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${env.linkerFla
 }
 
 function generate(env: Environment) {
-  const b = env.build;
-
-  // for (const filePath of env.s) {
-  //   // console.log 'process source file', filePath
-  //   const dir = path.dirname(filePath);
-  //   const relative = path.relative(env.p.clone, dir);
-  //   // console.log 'relative from #{env.p.clone} is #{relative}'
-  //   const outBase = path.join('build', relative);
-  //   const ext = path.extname(filePath);
-  //   const name = path.basename(filePath, ext);
-  //   const linkName = `${outBase}/${name}.o`;
-  //   // console.log 'add build file', linkName
-  //   ninjaConfig
-  //     .edge(linkName)
-  //     .from(filePath)
-  //     .using(getRule(ext));
-  //   linkNames.push(linkName);
-  // };Î
-
   return header(env) +
     includeDirectories(env) +
     sources(env) +

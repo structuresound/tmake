@@ -1,8 +1,9 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as file from './file';
-import { combine, check, NodeGraph, OLHM } from 'js-object-tools';
+import { combine, check, NodeGraph, OLHM, extend } from 'js-object-tools';
 import { log } from './log';
+import { errors } from './errors';
 import { args } from './args';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
@@ -12,7 +13,7 @@ import { jsonStableHash } from './hash';
 import { Project, ProjectFile, resolveName, fromString as projectFromString } from './project';
 import { Environment, EnvironmentCacheFile, CacheProperty } from './environment';
 
-function loadCache(project: Project): PromiseLike<Project> {
+function loadCache(project: Project): Promise<Project> {
   return db.findOne({ name: project.name })
     .then((result: ProjectFile) => {
       if (result) {
@@ -47,8 +48,8 @@ interface FileCache {
 }
 
 function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: NodeGraph<Project>,
-  cache: Cache, fileCache: FileCache) {
-  return mapOLHM(require || {},
+  cache: Cache, fileCache: FileCache): PromiseLike<Project> {
+  return mapOLHM(require || <OLHM<ProjectFile>>{},
     (dep) => {
       if (check(dep, String)) {
         return graphNode(projectFromString(dep), node, graph, cache, fileCache);
@@ -67,18 +68,19 @@ function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: Node
 }
 
 function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project>,
-  cache: Cache, fileCache: FileCache): PromiseLike<Project> {
+  cache: Cache, fileCache: FileCache): Promise<Project> {
   let conf = _conf;
   if (conf.link) {
-    const configDir = absolutePath(conf.link, parent ? parent.dir : '');
+    const configDir = absolutePath(conf.link, parent ? parent.d.root : args.configDir);
+    console.log('extend config', configDir);
     if (fileCache[configDir]) {
       log.verbose(`file @ ${fileCache[configDir].dir} already loaded`);
     } else {
       const linkedConfig = file.readConfigSync(configDir);
-      linkedConfig.dir = configDir;
       if (!linkedConfig) {
         throw new Error(`can't resolve symlink ${conf.link} relative to parent ${parent.dir} fullpath: ${file.getConfigPath(configDir)}`)
       }
+      linkedConfig.dir = configDir;
       fileCache[configDir] = <ProjectFile>combine(linkedConfig, conf);
     }
     _.extend(conf, fileCache[configDir]);
@@ -111,7 +113,7 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
 }
 
 function _map(node: ProjectFile, graphType: string,
-  graphArg?: string): PromiseLike<Project[]> {
+  graphArg?: string): Promise<Project[]> {
   const cache: Cache = {};
   const fileCache: FileCache = {};
   const graph = new NodeGraph();
@@ -122,6 +124,9 @@ function _map(node: ProjectFile, graphType: string,
       const nodes: Project[] =
         _.map(nodeNames, (name: string) => { return cache[name]; });
       return Promise.resolve(nodes);
+    }).catch((error) => {
+      const nodeNames = graph[graphType](graphArg);
+      return Promise.reject(errors.graph.failed(nodeNames, error));
     });
 }
 

@@ -70,7 +70,7 @@ function singleCommand(project: Project, phase: string, selectedDeps: Project[])
 
 function execute(conf: ProjectFile, phase: string, subProject?: string) {
   let root: Project;
-  return graph(_.extend(conf, { d: { root: args.runDir } }))
+  return graph(conf)
     .then((deps: Project[]) => {
       let selectedDeps = deps;
       root = deps[deps.length - 1];

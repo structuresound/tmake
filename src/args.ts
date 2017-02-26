@@ -2,11 +2,14 @@ import * as minimist from 'minimist';
 import * as path from 'path';
 import * as _ from 'lodash';
 import * as fs from 'fs';
+import { clone, extend } from 'js-object-tools';
+import stringify = require('json-stable-stringify');
 
 export interface Args {
   runDir: string;
   npmDir: string;
   binDir: string;
+  configDir: string;
   cachePath: string;
   compiler: string;
   program: string;
@@ -37,6 +40,9 @@ function homeDir() {
 const runDir = process.cwd();
 if (!args.runDir) {
   args.runDir = runDir;
+}
+if (!args.configDir) {
+  args.configDir = args.runDir;
 }
 
 const npmDir = path.join(path.dirname(fs.realpathSync(__filename)), '../');
@@ -72,6 +78,7 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
   _.extend(args, {
     npmDir,
     runDir: path.join(npmDir, 'tests'),
+    configDir: path.join(npmDir, 'tests'),
     binDir: path.join(npmDir, 'bin'),
     userCache: path.join(npmDir, 'tests_cache'),
     cachePath: 'trie_modules',
@@ -82,4 +89,21 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
     yes: true,
     _: []
   });
+}
+
+export function encode() {
+  const cp = clone(args);
+  delete cp._
+  return new Buffer(stringify(cp)).toString('base64');
+}
+
+export function decode(str) {
+  const decoded = new Buffer(str, 'base64').toString('ascii');
+  const json = JSON.parse(decoded);
+  delete json._;
+  return json;
+}
+
+if (process.env.TMAKE_ARGS) {
+  extend(args, decode(process.env.TMAKE_ARGS));
 }

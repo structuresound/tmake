@@ -74,12 +74,15 @@ export class Git implements GitConfig {
       return lastPathComponent.slice(0, lastPathComponent.lastIndexOf('.'));
     }
   }
+  clone() {
+    return `https://github.com/${this.organization}/${this.repository}`;
+  }
   fetch() {
     if (!this.repository) {
       throw new Error(
         'dependency has git configuration, but no repository was specified');
     }
-    const base = `https://github.com/${this.organization}/${this.repository}`;
+    const base = this.clone();
     const archive = this.archive || this.tag || this.branch || 'master';
     return `${base}/archive/${archive}.tar.gz`;
   }

@@ -74,11 +74,12 @@ function link({patterns, from, to, opt}: CopyOptions) {
 
 function bin(env: Environment) {
   if (contains(['executable'], env.outputType)) {
+    const base = path.join(args.runDir, 'bin');
     mkdir('-p', path.join(args.runDir, 'bin'));
     const binaries: string[] = [];
     _.each(env.d.install.binaries, (ft: InstallOptions) => {
       const from = path.join(ft.from, env.project.name);
-      const to = path.join(ft.to, env.project.name);
+      const to = path.join(ft.to || base, env.project.name);
       log.verbose(`[ install bin ] from ${from} to ${to}`);
       mv(from, to);
       binaries.push(to);

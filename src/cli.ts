@@ -6,6 +6,8 @@ import * as yaml from 'js-yaml';
 import { check, contains } from 'js-object-tools';
 
 import { log } from './log';
+import { info } from './info';
+
 import { args } from './args';
 import {
   src, dest, nuke,
@@ -14,11 +16,13 @@ import {
 } from './file';
 import { execute, list, unlink, push } from './tmake';
 import { cache, user } from './db';
+import { example } from './example';
 import { graph, createNode } from './graph';
 
 import { ProjectFile, resolveName } from './project';
-
+import { TMakeError } from './errors';
 const name = 'tmake';
+
 Bluebird.onPossiblyUnhandledRejection(function (error) { throw error; });
 
 function sortKeysBy(obj: any, comparator?: Function) {
@@ -124,6 +128,7 @@ function globalCommands(): GlobalCommands {
 
     init: { description: 'create new tmake project file @ config.cson' },
     help: { description: 'usage guide' },
+    report: { description: 'show details of an error report' },
     version: { description: `get current version of ${name}` }
   };
 }
@@ -211,6 +216,10 @@ function tmake(rootConfig: ProjectFile,
         }
         return list('cache', {});
       })().then(nodes => log.log(nodes));
+    case 'report':
+      return cache.findOne({ type: 'report' }).then((report) => {
+        info.report(report);
+      })
     default:
       if (contains(Object.keys(packageCommands()), command)) {
         return execute(rootConfig, command, projectName);
@@ -240,13 +249,15 @@ function run() {
     return version();
   }
   switch (args._[0]) {
+    case 'version':
+      return version();
     case 'help':
     case 'man':
     case 'manual':
       log.log(manual());
       return;
     default:
-      return readConfigAsync(args.runDir)
+      return readConfigAsync(args.configDir || args.runDir)
         .then(
         (projectFile) => {
           if (projectFile) {
@@ -278,31 +289,37 @@ function run() {
                 return tmake(projectFile);
             }
           }
-          // No config present
-          const example = args._[1] || 'served';
-          const examplePath =
-            path.join(args.npmDir, `examples/${example}`);
-          const targetFolder = args._[2] || example;
-
           switch (args._[0]) {
             case 'init':
               return init();
             case 'example':
-              log.quiet(`copy from ${example} to ${targetFolder}`);
-              return src(['**/*'], { cwd: examplePath })
-                .pipe(dest(path.join(args.runDir, targetFolder)));
+              return example();
             default:
               log.log(hello());
           }
           return Promise.resolve();
         })
-        .catch((e: Error) => {
-          if (args.verbose) { log.error(e.stack); }
-          else {
-            log.error(e);
-            log.quiet('run with -v (--verbose) for more info');
+        .catch((e: TMakeError) => {
+          try {
+            if (check(e, TMakeError)) {
+              e.postMortem();
+            } else {
+              if (args.verbose) {
+                if (check(e, Error)) {
+                  console.log('logging node error:');
+                  log.error(e.stack);
+                }
+              }
+              else {
+                log.error(e);
+              }
+            }
+            console.log('exit with code:', (e as any).code || 1);
+            process.exit((e as any).code || 1);
+          } catch (e) {
+            console.log('... inception')
           }
-        });
+        })
   }
 }
 

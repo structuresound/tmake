@@ -99,6 +99,9 @@ function upsertCache(project: Project) {
 
 function getSource(project: Project) {
   const url = project.url();
+  if (url === 'none') {
+    return Promise.resolve('');
+  }
   mkdir('-p', project.d.root);
   info.fetch.url(project);
   return download(url)

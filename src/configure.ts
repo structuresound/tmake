@@ -58,7 +58,7 @@ function globHeaders(env: Environment) {
 function globSources(env: Environment) {
   const patterns = env.globArray(
     env.build.sources || defaults.sources.glob);
-  return file.glob(patterns, env.d.project, env.project.d.source);
+  return file.glob(patterns, env.d.source, env.project.d.source);
 }
 
 function globFiles(env: Environment) {
@@ -93,14 +93,7 @@ interface StringObject {
 }
 
 function createBuildFileFor(env: Environment, systemName: string) {
-  // return file.existsAsync(env.getProjectFilePath(systemName))
-  //   .then((exists) => {
-  //     if (exists) {
-  //       const buildFileName = env.getProjectFile(systemName);
-  //       log.quiet(`using pre-existing build file ${buildFileName}`);
-  //     }
   return generateConfig(env, systemName);
-  // });
 }
 
 function generateConfig(env: Environment, systemName: string) {
