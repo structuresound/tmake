@@ -2,9 +2,8 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
+import { cascade, check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
 
-import { cascade } from './cascade';
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from './file';
@@ -123,11 +122,14 @@ const platformNames = {
     android: 'android'
 };
 
-const archNames = { x64: 'x86_64', arm: 'armv7a', arm64: 'arm64' };
+const additionalArchKeywords = {
+    x64: 'x86_64',
+    arm: 'armv7a'
+}
 
 const HOST_ENDIANNESS = os.endianness();
 const HOST_PLATFORM = platformNames[os.platform()];
-const HOST_ARCHITECTURE = archNames[os.arch()];
+const HOST_ARCHITECTURE = os.arch();
 const HOST_CPU = os.cpus();
 
 const ninjaVersion = 'v1.7.1';
@@ -174,7 +176,7 @@ function mergeEnvironment(a: Environment, b: any) {
 function parseSelectors(dict: any, prefix: string) {
     const _selectors: string[] = [];
     const selectables =
-        _.pick(dict, ['platform', 'compiler']);
+        _.pick(dict, ['platform', 'compiler', 'architecture']);
     for (const key of Object.keys(selectables)) {
         _selectors.push(`${prefix || ''}${selectables[key]}`);
     }
@@ -188,6 +190,7 @@ const _keywords: any =
 const keywords =
     [].concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
         .concat(_keywords.target)
+        .concat(_keywords.architecture)
         .concat(_keywords.build)
         .concat(_keywords.compiler)
         .concat(_keywords.sdk)
@@ -226,6 +229,7 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
                 return {
                     sources: ft.sources,
                     from: path.join(d.root, ft.from),
+                    to: path.join(args.runDir, ft.to)
                 };
             });
     }

@@ -50,7 +50,7 @@ function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
     throw new Error('no build file specified');
   }
   if (!fs.existsSync(buildFilePath)) {
-    throw new Error(`no build file @ ${buildFilePath}`);
+    errors.build.noBuildFile(env, system);
   }
 }
 
