@@ -1,8 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM } from 'js-object-tools';
-import { select } from './cascade';
+import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select} from 'js-object-tools';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './args';
@@ -74,7 +73,7 @@ export interface ProjectFile extends Toolchain {
   cache?: any;
   link?: string;
   git?: GitConfig;
-  archive?: { url?: string; }
+  archive?: string;
   tree?: string;
   version?: string;
   tag?: string;
@@ -175,7 +174,7 @@ function resolveVersion(conf: Project) {
   }
 }
 
-export function resolveName(conf: ProjectFile | Project): string {
+export function resolveName(conf: ProjectFile | Project, fallback?: string): string {
   if (check(conf, String)) {
     return new Git(<string><any>conf).name();
   }
@@ -184,6 +183,9 @@ export function resolveName(conf: ProjectFile | Project): string {
   }
   if (conf.git) {
     return new Git(conf.git).name();
+  }
+  if (fallback){
+    return fallback;
   }
   log.throw('resolveName() failed on module', conf);
 }
@@ -221,7 +223,7 @@ function resolveUrl(conf: Project): string {
     return 'link';
   }
   if (conf.archive) {
-    return conf.archive.url;
+    return conf.archive;
   }
   if (!args.test && conf.d.root === args.runDir) {
     // this is the root module
@@ -254,7 +256,7 @@ export class Project implements ProjectFile {
   cache?: ProjectCache;
   link?: string;
   git?: Git;
-  archive?: { url?: string; }
+  archive?: string;
   version?: string;
   tag?: string;
   tree?: string;

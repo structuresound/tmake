@@ -52,11 +52,12 @@ function singleCommand(project: Project, phase: string, selectedDeps: Project[])
       const aspect = args._[2];
       if (aspect) {
         log.verbose(`parse ${aspect} for project ${project.name}`);
-        if (project[aspect]) {
-          log.log(project[aspect]);
-        } else if (project.environments[0][aspect]) {
+        if (project.environments[0][aspect]) {
           log.verbose(`aspect ${aspect} found in environment`);
           log.log(project.environments[0][aspect]);
+        }
+        else if (project[aspect]) {
+          log.log(project[aspect]);
         } else {
           log.error(`${aspect} not found`);
         }

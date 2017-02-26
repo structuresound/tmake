@@ -20,6 +20,20 @@ sdk:
   - cocoa
   - sdl
   - juce
+architecture:
+  - x86
+  - x64
+  - arm
+  - arm64
+  - mips
+  - mipsel
+  - mips64
+  - mips64el
+  - ppc
+  - ppc64
+  - s390
+  - s390x
+  - x87
 compiler:
   - clang
   - gcc

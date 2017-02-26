@@ -49,10 +49,18 @@ interface FileCache {
 
 function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: NodeGraph<Project>,
   cache: Cache, fileCache: FileCache): PromiseLike<Project> {
-  return mapOLHM(require || <OLHM<ProjectFile>>{},
-    (dep) => {
+  const keys = [];
+  for (const k of Object.keys(require || {})) {
+    keys.push(k);
+  }
+  return Bluebird.map(keys,
+    (key) => {
+      let dep: ProjectFile = <any>require[key]
       if (check(dep, String)) {
-        return graphNode(projectFromString(dep), node, graph, cache, fileCache);
+        dep = projectFromString(<string><any>dep);
+      }
+      if (!dep.name) {
+        dep.name = resolveName(dep, key);
       }
       return graphNode(dep, node, graph, cache, fileCache);
     })
@@ -85,28 +93,27 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project
     }
     _.extend(conf, fileCache[configDir]);
   }
-  const name = resolveName(conf);
-  if (parent && (name === parent.name)) {
+  if (parent && (conf.name === parent.name)) {
     throw new Error(`recursive dependency ${parent.name}`);
   }
-  if (cache[name]) {
-    log.verbose(`project ${name} already loaded`);
-    return Promise.resolve(cache[name]);
+  if (cache[conf.name]) {
+    log.verbose(`project ${conf.name} already loaded`);
+    return Promise.resolve(cache[conf.name]);
   }
   return createNode(conf, parent)
     .then((node: Project) => {
-      graph.addNode(name);
+      graph.addNode(node.name);
       if (parent) {
-        log.verbose(`  ${parent.name} requires ${name}`);
-        graph.addDependency(parent.name, name);
+        log.verbose(`  ${parent.name} requires ${node.name}`);
+        graph.addDependency(parent.name, node.name);
       } else {
-        log.verbose(`graph >> ${name} ${node.dir ? '@ ' + node.dir : ''}`);
+        log.verbose(`graph >> ${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
       cache[node.name] = node;
       return scanDependencies(conf.require, node, graph, cache, fileCache);
     }).then((node: Project) => {
       if (args.verbose) {
-        log.add(`+${name} ${node.dir ? '@ ' + node.dir : ''}`);
+        log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
       return Promise.resolve(node);
     });

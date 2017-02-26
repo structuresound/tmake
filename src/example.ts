@@ -5,7 +5,8 @@ import * as colors from 'chalk';
 
 const examples = [
   { name: 'hello world', type: 'binary', git: 'structuresound/tmakeExample' },
-  { name: 'tmake repository server', type: 'binary', git: 'structuresound/tmakeServer' }
+  { name: 'tmake repository server', type: 'binary', git: 'structuresound/tmakeServer' },
+  { name: 'nodeKitten', type: 'library', git: 'structuresound/nodeKitten' }
 ]
 
 export function example() {
