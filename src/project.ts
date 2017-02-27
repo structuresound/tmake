@@ -87,6 +87,7 @@ export interface ProjectFile extends Toolchain {
   build?: Build;
   configure?: Configure;
   host?: Platform;
+  options?: OLHM<any>;
   target?: Platform;
   tools?: Tools;
   outputType?: string;

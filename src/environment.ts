@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { cascade, check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
+import { cascade, check, clone, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
 
 import { startsWith } from './string';
 import { log } from './log';
@@ -35,6 +35,7 @@ export interface Toolchain {
     target?: Platform;
     tools?: Tools;
     outputType?: string;
+    options?: OLHM<any>;
     path?: EnvironmentDirs;
     environment?: any;
     configure?: Configure;
@@ -297,6 +298,8 @@ class Environment implements Toolchain {
     build: Build;
     path: EnvironmentDirs;
     selectors: string[];
+    options: OLHM<any>;
+    keywords: string[];
     d: EnvironmentDirs;
     p: EnvironmentDirs;
     s: string[];
@@ -321,10 +324,24 @@ class Environment implements Toolchain {
         const hostSelectors = parseSelectors(this.host, 'host-');
         const targetSelectors = parseSelectors(this.target, undefined);
         this.selectors = hostSelectors.concat(targetSelectors);
+        this.keywords = keywords;
+        const additionalOptions = cascade(this.options || {}, keywords, this.selectors);
+        const additionalKeywords = Object.keys(additionalOptions);
+        let additionalSelectors = [];
+        for (const k of additionalKeywords) {
+            if (additionalOptions[k]) {
+                additionalSelectors.push[k];
+            }
+        }
+        if (additionalKeywords.length) {
+            this.keywords = this.keywords.concat(additionalKeywords);
+            if (additionalSelectors.length) {
+                this.selectors = this.selectors.concat(additionalSelectors);
+            }
+        }
 
-        const environment =
-            cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
-                this.selectors);
+        const environment = cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
+            this.selectors);
         extend(this, environment);
         this.tools = this.selectTools();
 
