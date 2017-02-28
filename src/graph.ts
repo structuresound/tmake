@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as file from './file';
-import { combine, check, NodeGraph, OLHM, extend } from 'js-object-tools';
+import { combine, check, Graph, OLHM, extend } from 'js-object-tools';
 import { log } from './log';
 import { errors } from './errors';
 import { args } from './args';
@@ -47,7 +47,7 @@ interface FileCache {
   [index: string]: ProjectFile;
 }
 
-function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: NodeGraph<Project>,
+function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: Graph<Project>,
   cache: Cache, fileCache: FileCache): PromiseLike<Project> {
   const keys = [];
   for (const k of Object.keys(require || {})) {
@@ -75,7 +75,7 @@ function scanDependencies(require: OLHM<ProjectFile>, node: Project, graph: Node
     });
 }
 
-function graphNode(_conf: ProjectFile, parent: Project, graph: NodeGraph<Project>,
+function graphNode(_conf: ProjectFile, parent: Project, graph: Graph<Project>,
   cache: Cache, fileCache: FileCache): Promise<Project> {
   let conf = _conf;
   if (conf.link) {
@@ -123,7 +123,7 @@ function _map(node: ProjectFile, graphType: string,
   graphArg?: string): Promise<Project[]> {
   const cache: Cache = {};
   const fileCache: FileCache = {};
-  const graph = new NodeGraph();
+  const graph = new Graph();
 
   return graphNode(node, undefined, graph, cache, fileCache)
     .then(() => {
