@@ -80,7 +80,7 @@ function graphNode(_conf: ProjectFile, parent: Project, graph: Graph<Project>,
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.d.root : args.configDir);
-    console.log('extend config', configDir);
+    // console.log('extend config', configDir);
     if (fileCache[configDir]) {
       log.verbose(`file @ ${fileCache[configDir].dir} already loaded`);
     } else {
