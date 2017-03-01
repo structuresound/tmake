@@ -23,10 +23,11 @@ export interface Build {
   compilerFlags?: any;
   linkerFlags?: any;
   defines?: any;
+  arguments?: any;
   prefix?: any;
   shell?: any;
   frameworks?: any;
-  sources?: any;
+  matching?: any;
   headers?: any;
   libs?: any;
   includeDirs?: any;
@@ -44,7 +45,7 @@ function ensureBuildFolder(env: Environment, isTest?: boolean) {
   }
 }
 
-function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
+export function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
   const buildFilePath = env.getProjectFilePath(system);
   if (!check(buildFilePath, 'String')) {
     throw new Error('no build file specified');
@@ -60,7 +61,6 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
     return execAsync(`TMAKE_ARGS="${encodeArgs()}" tmake`, { cwd: env.project.d.source, short: 'tmake' });
   }
   ensureBuildFolder(env, isTest);
-  ensureBuildFile(env, system, isTest);
   switch (system) {
     case 'ninja':
       return ninja(env);

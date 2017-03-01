@@ -23,11 +23,11 @@ export interface InterpolateOptions {
 
 function _interpolate(template: string, func: Function | Object,
   opt: InterpolateOptions): string {
-  const commands = template.match(/{[^}\r\n]*}/g);
+  const commands = template.match(/\$\{[^}\r\n]*\}/g);
   if (commands) {
     if (commands[0].length ===
       template.length) {  // allow for object replacement of single command
-      const res = (<Function>func)(commands[0].slice(1, -1));
+      const res = (<Function>func)(commands[0].slice(2, -1));
       if (check(res, String)) {
         return _interpolate(res, func, opt);
       }
@@ -36,7 +36,7 @@ function _interpolate(template: string, func: Function | Object,
     let interpolated = _.clone(template);
     let modified = false;
     for (const c of commands) {
-      const lookup = (<Function>func)(c.slice(1, -1));
+      const lookup = (<Function>func)(c.slice(2, -1));
       if (lookup) {
         modified = true;
         interpolated = interpolated.replace(c, lookup);

@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select} from 'js-object-tools';
+import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select } from 'js-object-tools';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './args';
@@ -136,7 +136,7 @@ function getProjectDirs(project: Project, parent: Project): ProjectDirs {
   d.install = <Install>{
     headers: _.map(arrayify(pathOptions.install.headers), (ft: InstallOptions) => {
       return {
-        sources: ft.sources,
+        matching: ft.matching,
         from: path.join(d.root, ft.from),
         to: path.join(d.home, (ft.to || 'include')),
         includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
@@ -185,7 +185,7 @@ export function resolveName(conf: ProjectFile | Project, fallback?: string): str
   if (conf.git) {
     return new Git(conf.git).name();
   }
-  if (fallback){
+  if (fallback) {
     return fallback;
   }
   log.throw('resolveName() failed on module', conf);
@@ -224,7 +224,7 @@ function resolveUrl(conf: Project): string {
     return 'link';
   }
   if (conf.archive) {
-    return conf.archive;
+    return parse(conf.archive, conf);
   }
   if (!args.test && conf.d.root === args.runDir) {
     // this is the root module

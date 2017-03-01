@@ -15,6 +15,8 @@ import { execAsync } from './sh';
 import { args } from './args';
 import { Environment } from './environment';
 
+import { ensureBuildFile } from './build';
+
 interface CMakeDefines {
   [index: string]: string;
 }
@@ -73,6 +75,7 @@ function build(env: Environment) {
   return configure(env).then(() => {
     const hostChain = env.tools;
     return fetch(hostChain).then((toolpaths: Toolpaths) => {
+      ensureBuildFile(env, 'cmake');
       return cmake(env, `${toolpaths.ninja}`);
     });
   });
@@ -113,7 +116,7 @@ include_directories(${cmakeArrayToQuotedList(env.includeDirs())})`;
   }
 }
 
-function sources(env: Environment): string {
+function matching(env: Environment): string {
   const relativeToSource = path.relative(env.d.project, env.d.source) || '.';
   const src = _.map(env.s, (fp) => {
     console.log(path.join(relativeToSource, fp));
@@ -167,7 +170,7 @@ target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${env.linkerFla
 function generate(env: Environment) {
   return header(env) +
     includeDirectories(env) +
-    sources(env) +
+    matching(env) +
     flags(env) +
     target(env) +
     link(env) +

@@ -16,7 +16,7 @@ interface MacroObject {
 
 interface ReplEntry {
   inputs: any
-  sources: any
+  matching: any
   directive: {
     prepost?: string, pre?: string, post?: string
   }

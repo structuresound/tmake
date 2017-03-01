@@ -5,6 +5,7 @@ import * as unzip from 'unzip';
 import * as tar from 'tar-fs';
 import * as lzma from 'lzma-native';
 import gunzip = require('gunzip-maybe');
+import bz2 = require('unbzip2-stream');
 import * as readChunk from 'read-chunk';
 import fileType = require('file-type');
 import pstream = require('progress-stream');
@@ -50,6 +51,15 @@ function unarchive(filePath: string, toDir: string) {
     } else if (fileExt === 'gz') {
       return stream
         .pipe(gunzip())
+        .pipe(tar.extract(toDir))
+        .on('progress', (p: string) => console.log(p))
+        .on('finish', finish)
+        .on('close', finish)
+        .on('end', finish)
+        .on('error', reject);
+    } else if (fileExt === 'bz2') {
+      return stream
+        .pipe(bz2())
         .pipe(tar.extract(toDir))
         .on('progress', (p: string) => console.log(p))
         .on('finish', finish)

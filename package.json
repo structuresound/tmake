@@ -14,10 +14,12 @@
   "bugs": {
     "url": "https://github.com/structuresound/tmake/issues"
   },
-  "licenses": [{
-    "type": "MIT",
-    "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
-  }],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+    }
+  ],
   "engines": {
     "node": ">= 6.0.0",
     "npm": ">= 3"
@@ -111,6 +113,7 @@
     "shelljs": "^0.7.6",
     "source-map-support": "^0.4.0",
     "tar-fs": "^1.13.0",
+    "unbzip2-stream": "^1.0.10",
     "unzip": "^0.1.11",
     "vinyl-fs": "^2.3.1",
     "which": "^1.2.11"

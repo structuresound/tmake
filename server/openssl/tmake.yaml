@@ -15,8 +15,8 @@ environment:
   ios:
     ARCH: arm64
     SDK_VERSION: "$(xcrun --sdk iphoneos --show-sdk-version)"
-    CROSS_TOP: "{DEVELOPER}/Platforms/iPhoneOS.platform/Developer"
-    CROSS_SDK: iPhoneOS{SDK_VERSION}.sdk
+    CROSS_TOP: "${DEVELOPER}/Platforms/iPhoneOS.platform/Developer"
+    CROSS_SDK: iPhoneOS${SDK_VERSION}.sdk
     IPHONEOS_DEPLOYMENT_VERSION: '6.0'
     IPHONEOS_SDK_VERSION: "$(xcrun --sdk iphoneos --show-sdk-version)"
     IPHONEOS_PLATFORM: "$(xcrun --sdk iphoneos --show-sdk-platform-path)"
@@ -26,25 +26,25 @@ configure:
     bignum: sed -ie "s/BIGNUM \*I,/BIGNUM \*i,/g" crypto/rsa/rsa.h
   mac:
     shell:
-      configure: ./Configure {PLATFORM} --openssldir="{d.build}/openssl-{OPENSSL_VERSION}"
-      sed: sed -ie "s!^CFLAG=!CFLAG=-isysroot {OSX_SDK} -arch {ARCH} -mmacosx-version-min={OSX_DEPLOYMENT_VERSION}!" "Makefile"
+      configure: ./Configure ${PLATFORM} --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
+      sed: sed -ie "s!^CFLAG=!CFLAG=-isysroot ${OSX_SDK} -arch ${ARCH} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}!" "Makefile"
   linux:
-    configure: ./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir="{d.build}/openssl-{OPENSSL_VERSION}"
+    configure: ./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
     make: make depend
   ios:
-    configure: ./Configure iphoneos-cross -no-asm --openssldir="/tmp/openssl-{OPENSSL_VERSION}-{ARCH}"
+    configure: ./Configure iphoneos-cross -no-asm --openssldir="/tmp/openssl-${OPENSSL_VERSION}-${ARCH}"
     perl: perl -i -pe 's|static volatile sig_atomic_t intr_signal|static volatile int intr_signal|' crypto/ui/ui_openssl.c
     replace:
       files:
         matching:
         - Makefile
         inputs:
-          "-isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)": "-isysroot {CROSS_TOP}/SDKs/{CROSS_SDK}
-            -miphoneos-version-min={SDK_VERSION}"
+          "-isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)": "-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK}
+            -miphoneos-version-min=${SDK_VERSION}"
 build:
   with: make
   ios:
-    prefix: CC="{DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch {ARCH}"
+    prefix: CC="${DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch ${ARCH}"
 path:
   project: source
   install:

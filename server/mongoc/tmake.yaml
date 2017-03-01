@@ -5,7 +5,7 @@ configure:
   for: ninja
   replace:
     files:
-      sources:
+      matching:
       - src/mongoc/mongoc-config.h.in
       - src/mongoc/mongoc-version.h.in
       inputs:
@@ -33,7 +33,7 @@ configure:
         prepost: "@"
       ext: "h"
     include_bson:
-      sources:
+      matching:
       - src/**/*.h
       - src/**/*.c
       inputs:
@@ -48,7 +48,7 @@ configure:
         - '#include <libbson-1.0/bcon.h>'
 build:
   with: ninja
-  sources:
+  matching:
   - src/mongoc/*.c
   - "!src/mongoc/mongoc-rand-cng.c"
   - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"

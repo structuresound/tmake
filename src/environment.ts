@@ -111,6 +111,7 @@ export interface EnvironmentCache {
     configure: CacheProperty<string>;
     assets: CacheProperty<string[]>;
     cmake: CacheProperty<string>;
+    make: CacheProperty<string>;
 }
 
 const platformNames = {
@@ -155,7 +156,7 @@ const DEFAULT_TOOLCHAIN = {
     ninja: {
         version: ninjaVersion,
         url:
-        'https://github.com/ninja-build/ninja/releases/download/{version}/ninja-{host.platform}.zip'
+        'https://github.com/ninja-build/ninja/releases/download/${version}/ninja-${host.platform}.zip'
     },
     'host-mac': { clang: { bin: '$(which gcc)' } },
     'host-linux': { gcc: { bin: '$(which gcc)' } }
@@ -212,13 +213,13 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
     d.install = <Install>{
         binaries: _.map(arrayify(pathOptions.install.binaries), (ft: InstallOptions) => {
             return {
-                sources: ft.sources,
+                matching: ft.matching,
                 from: path.join(d.root, ft.from),
             };
         }),
         libraries: _.map(arrayify(pathOptions.install.libraries), (ft: InstallOptions) => {
             return {
-                sources: ft.sources,
+                matching: ft.matching,
                 from: path.join(d.root, ft.from),
                 to: path.join(d.home, (ft.to || 'lib'))
             };
@@ -228,7 +229,7 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
         d.install.assets = _.map(arrayify(pathOptions.install.assets),
             (ft: InstallOptions) => {
                 return {
-                    sources: ft.sources,
+                    matching: ft.matching,
                     from: path.join(d.root, ft.from),
                     to: path.join(args.runDir, ft.to)
                 };
@@ -383,6 +384,9 @@ class Environment implements Toolchain {
             }),
             cmake: new CacheProperty<string>(() => {
                 return fileHashSync(path.join(self.d.build, 'build.ninja'));
+            }),
+            make: new CacheProperty<string>(() => {
+                return fileHashSync(path.join(self.d.project, 'Makefile'));
             }),
             generatedBuildFilePath: new CacheProperty<string>(() => {
                 if (self.configure.for) {

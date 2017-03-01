@@ -11,8 +11,9 @@ import { deps } from './graph';
 import { args } from './args';
 import { replaceInFile, ReplEntry } from './parse';
 import { updateEnvironment } from './db';
-import { generate as cmake } from './cmake';
+import { generate as cmake, configure as configureCMake } from './cmake';
 import { generate as ninja } from './ninja';
+import { configure as configureMake } from './make';
 import { stringHash } from './hash';
 import { CmdObj, iterateOLHM } from './iterate';
 
@@ -26,6 +27,8 @@ export interface Configure {
   shell?: any;
   cmake?: any;
   for?: any;
+  arguments?: any;
+  with?: any;
 }
 
 function copy(patterns: string[], options: file.VinylOptions) {
@@ -57,7 +60,7 @@ function globHeaders(env: Environment) {
 
 function globSources(env: Environment) {
   const patterns = env.globArray(
-    env.build.sources || defaults.sources.glob);
+    env.build.matching || defaults.sources.glob);
   return file.glob(patterns, env.d.source, env.project.d.source);
 }
 
@@ -68,8 +71,8 @@ function globFiles(env: Environment) {
       env.build.headers = headers;
       return globSources(env);
     })
-    .then((sources) => {
-      env.s = sources;
+    .then((matching) => {
+      env.s = matching;
       return deps(env.project);
     })
     .then((depGraph) => {
@@ -121,6 +124,24 @@ function generateBuildFile(env: Environment, systemName: string) {
   }
 }
 
+function configureWithSystem(env: Environment, systemName: string) {
+  env.ensureProjectFolder();
+  const buildFile = env.getProjectFilePath(systemName);
+  switch (systemName) {
+    case 'ninja':
+    case 'tmake':
+      return Promise.resolve();
+    case 'cmake':
+      return configureCMake(env);
+    case 'make':
+    case 'autotools':
+    case 'configure':
+      return configureMake(env);
+    default:
+      throw new Error(`bad build system ${systemName}`);
+  }
+}
+
 function shCommand(env: Environment, command: any) {
   const c: CmdObj = check(command, String) ?
     <CmdObj>{ cmd: command } :
@@ -143,6 +164,9 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
           case 'for':
             log.verbose(`    ${i.arg}`);
             return createBuildFileFor(env, i.arg);
+          case 'with':
+            log.verbose(`    ${i.arg}`);
+            return configureWithSystem(env, i.arg);
           default:
             return shCommand(env, i.arg);
           case 'shell':
@@ -151,7 +175,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
             });
           case 'replace':
             return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
-              const pattern = env.globArray(replEntry.sources);
+              const pattern = env.globArray(replEntry.matching);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
                   return Bluebird.each(files, (file) => {
@@ -173,11 +197,11 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               });
           case 'copy':
             return iterateOLHM(i.arg,
-              (e: { from: string, sources: string[], to: string }) => {
+              (e: { from: string, matching: string[], to: string }) => {
                 log.quiet(`copy ${e}`);
                 const fromDir = env.pathSetting(e.from);
                 return copy(
-                  e.sources,
+                  e.matching,
                   { from: fromDir, to: env.pathSetting(e.to) });
               });
         }
