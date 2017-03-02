@@ -42,7 +42,7 @@ describe('environment', () => {
     () => { assert.equal(env.parse('$(echo hello world)'), 'hello world'); });
   it('can interpolate a shell command with configuration + environment vars',
     () => {
-      assert.equal(env.parse('$(echo {HELLO}) {WORLD}'), 'hello world');
+      assert.equal(env.parse('$(echo ${HELLO}) ${WORLD}'), 'hello world');
     });
 
   const expect =
@@ -62,6 +62,6 @@ describe('environment', () => {
       assert.equal(env.parse(env.configure.create), expect.configure.create);
     });
   it('can parse a user defined macro', () => {
-    assert.equal(env.parse('{BSON_BYTE_ORDER}'), expect.BSON_BYTE_ORDER);
+    assert.equal(env.parse('${BSON_BYTE_ORDER}'), expect.BSON_BYTE_ORDER);
   });
 });

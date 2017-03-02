@@ -1,7 +1,7 @@
 import { check, extend } from 'js-object-tools';
 
+import { ensureCommand } from './sh';
 import { log } from './log';
-import { mkdir, which, exit } from './sh';
 
 export interface GitConfig {
   repository?: string;
@@ -10,13 +10,6 @@ export interface GitConfig {
   tag?: string;
   archive?: string;
   url?: string;
-}
-
-export function findGit() {
-  if (!which('git')) {
-    log.error('Sorry, this script requires git');
-    return exit(1);
-  }
 }
 
 export function resolve(git: Git) {
@@ -78,6 +71,7 @@ export class Git implements GitConfig {
     return `https://github.com/${this.organization}/${this.repository}`;
   }
   fetch() {
+    ensureCommand('git');
     if (!this.repository) {
       throw new Error(
         'dependency has git configuration, but no repository was specified');

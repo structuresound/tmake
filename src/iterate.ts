@@ -17,7 +17,7 @@ const _ignore = [
   'compilerFlags',
   'defines',
   'frameworks',
-  'sources',
+  'matching',
   'headers',
   'libs',
   'includeDirs',

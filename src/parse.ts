@@ -16,7 +16,7 @@ interface MacroObject {
 
 interface ReplEntry {
   inputs: any
-  sources: any
+  matching: any
   directive: {
     prepost?: string, pre?: string, post?: string
   }
@@ -46,31 +46,34 @@ function pathArray(val: string | string[], root: string): string[] {
 }
 
 const shellCache: { [index: string]: string } = {};
+
 const shellReplace = (m: string) => {
   if (shellCache[m] !== undefined) {
-    //  log.debug('cached..', m, '->', cache[m]);
+    // log.log('cached..', m, '->', shellCache[m]);
     return shellCache[m];
-  } const commands = m.match(/\$\([^)\r\n]*\)/g);
+  }
+  const commands = m.match(/\$\([^)\r\n]*\)/g);
   if (commands) {
+    // console.log('shell replace', commands, 'in', m);
     let interpolated = m;
     for (const c of commands) {
       const cmd = c.slice(2, -1);
-      //  log.debug('command..', cmd);
+      // log.log('command..', cmd);
       interpolated = interpolated.replace(c, exec(cmd, { silent: true }));
     }
-    //  log.debug('cache..', interpolated, '-> cache');
+    // log.log('cache..', interpolated, '-> cache');
     shellCache[m] = interpolated;
     return shellCache[m];
   }
   return m;
 }
-  ;
 
 function objectReplace(m: MacroObject, dict: Object) {
   if (!m.macro) {
     throw new Error(`object must have macro key and optional map ${JSON.stringify(m)}`);
   }
   const res = parse(m.macro, dict);
+  // console.log('object repl =>', res)
   if (m.map) {
     if (!m.map[res]) {
       throw new Error(`object mapper must have case for ${res}`);
@@ -80,48 +83,32 @@ function objectReplace(m: MacroObject, dict: Object) {
   return res;
 }
 
-function replace(m: any, conf?: Object) {
-  let out: string;
+function replace<T>(m: T, conf?: Object) {
   if (check(m, String)) {
-    //  log.debug('sh..', out || m);
-    out = shellReplace(m);
+    return shellReplace(<string><any>m);
   } else if (check(m, Object)) {
-    out = objectReplace(m, conf);
+    return objectReplace(<MacroObject><any>m, conf);
   }
-  return out || m;
+  return m;
 }
 
-function allStrings(o: { [index: string]: any }, fn: Function) {
-  const mut = o;
-  for (const k of Object.keys(mut)) {
-    if (check(mut[k], String)) {
-      mut[k] = fn(mut[k]);
-    } else if (check(mut[k], Object) || check(mut[k], Array)) {
-      allStrings(mut[k], fn);
-    }
-  }
-  return mut;
-}
-
-function parseString(val: string, conf: Object, mustPass?: boolean) {
+function parseString<T>(val: T | undefined, conf: Object, mustPass?: boolean) {
   if (val) {
-    return replace(interpolate(val, conf, mustPass), conf);
-  } else {
-    return val;
+    return replace(interpolate(<string><any>val, conf, mustPass), conf);
   }
+  return val;
 }
 
-function _parse(input: string | MacroObject, dict: any,
-  localContext?: Object): any {
+function _parse<T>(input: T, dict: any, localContext?: Object): T {
   if (check(input, String)) {
-    let parsed = input;
+    let parsed: string = <any>input;
     if (localContext) {
-      parsed = parseString(<string>parsed, localContext);
+      parsed = parseString(parsed, localContext);
     }
-    return parseString(<string>parsed, dict, true);
+    return <T><any>parseString(parsed, dict, true);
   } else if (check(input, Object)) {
-    if ((<MacroObject>input).macro) {
-      return objectReplace((<MacroObject>input), dict || {});
+    if ((<any>input).macro) {
+      return <T><any>objectReplace((<MacroObject><any>input), dict || {});
     } else {
       for (const key of Object.keys(input)) {
         (<any>input)[key] = _parse((<any>input)[key], dict, input);
@@ -131,10 +118,15 @@ function _parse(input: string | MacroObject, dict: any,
   } else {
     return input;
   }
-};
+}
 
-function parse(input: string | MacroObject, dict: any): any {
-  return _parse(input, dict);
+function parse<T, U>(input: T, ...args: U[]): T {
+  if (args.length > 1) {
+    for (let i = args.length; i > 1; i--) {
+      args[i - 2] = _parse(args[i - 2], args[i - 1]);
+    }
+  }
+  return _parse(input, args[0]);
 }
 
 function insertBeforeExtension(val: string, prefix: string) {
@@ -191,7 +183,7 @@ function sourceString({readPath, cachePath}) {
 
 function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
   const {readPath, cachePath, writePath} = readWritePathsForFile(f, r);
-  let inputString = sourceString({readPath, cachePath});
+  let inputString = sourceString({ readPath, cachePath });
   if (!r.inputs) {
     throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
   }

@@ -14,7 +14,7 @@ const data = {
   }
 };
 
-const testData = ['number {some.thing.nested}', 'maybe {name}, {name} will help?'];
+const testData = ['number ${some.thing.nested}', 'maybe ${name}, ${name} will help?'];
 
 const expectData = ['number 7', 'maybe shallow man, shallow man will help?'];
 
@@ -25,6 +25,6 @@ describe('interpolate', () => {
     }
   });
   it('object', () => {
-    assert.deepEqual(interpolate('{object}', data), data.object);
+    assert.deepEqual(interpolate('${object}', data), data.object);
   });
 });

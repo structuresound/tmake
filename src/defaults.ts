@@ -1,3 +1,7 @@
+const headerExtentions = [
+  'h', 'hh', 'hpp', 'hxx', 'ipp'
+]
+
 export const defaults = {
   flags: {
     compiler: {
@@ -35,15 +39,7 @@ export const defaults = {
     }
   },
   headers: {
-    glob: ['**/*.h',
-      '**/*.hh',
-      '**/*.hpp',
-      '**/*.ipp',
-      '!**/*.test.*',
-      '!test/**',
-      '!tests/**',
-      '!build/**'
-    ]
+    glob: [`**/*.{${headerExtentions.join(',')}}`]
   },
   sources: {
     glob: ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**', '!**/*.test.*']

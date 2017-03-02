@@ -14,16 +14,16 @@ configure:
   for: ninja
 build:
   with: ninja
-  sources:
+  matching:
   - re2/*.cc
   - util/*.cc
   linux:
-    sources:
+    matching:
     - re2/*.cc
     - util/*.cc
     - "!util/threadwin.cc"
   mac:
-    sources:
+    matching:
     - re2/*.cc
     - util/*.cc
     - "!util/threadwin.cc"

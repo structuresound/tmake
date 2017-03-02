@@ -1,0 +1,12 @@
+name: v8
+git:
+  organization: v8/v8
+  repository: v8/v8
+  tag: 5.8.283
+build:
+  sources:
+    x64:
+    - "*.cc"
+    - "x64/*.cc"
+path:
+  source: src

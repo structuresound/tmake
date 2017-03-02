@@ -42,7 +42,7 @@ configure:
         #endif
   replace:
     versions:
-      sources:
+      matching:
       - src/bsoncxx/config/version.hpp.in
       - src/mongocxx/config/version.hpp.in
       inputs:
@@ -57,13 +57,13 @@ configure:
       directive:
         prepost: "@"
     src/mongocxx/config:
-      sources:
+      matching:
       - src/mongocxx/config/config.hpp.in
       - src/mongocxx/config/private/config.hh.in
       inputs:
         "@MONGOCXX_INLINE_NAMESPACE@": v3_0_3
     src/bsoncxx/config:
-      sources:
+      matching:
       - src/bsoncxx/config/config.hpp.in
       - src/bsoncxx/config/private/config.hh.in
       inputs:
@@ -77,7 +77,7 @@ configure:
           1"
         "@BSONCXX_INLINE_NAMESPACE@": v3_0_3
     namespaceIncludes:
-      sources:
+      matching:
       - src/**/*.h
       - src/**/*.hh
       - src/**/*.hpp
@@ -91,7 +91,7 @@ configure:
         - '#include <libbson-1.0/bson.h>'
 build:
   with: ninja
-  sources:
+  matching:
   - src/bsoncxx/**/*.cpp
   - "!src/bsoncxx/test/**"
   - src/mongocxx/**/*.cpp
