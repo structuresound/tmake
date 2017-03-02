@@ -2,17 +2,11 @@ import * as _ from 'lodash';
 import { valueForKeyPath, check } from 'js-object-tools';
 
 import { log } from './log';
+import { replaceAll } from './string';
 
 function defaultLookup(key: string, data: { [index: string]: any }) {
-  if (key in data) {
-    return data[key];
-  }
-  // look up the chain
-  const keyParts = key.split('.');
-  if (keyParts.length > 1) {
-    const repl = valueForKeyPath(key, data);
-    return repl;
-  }
+  const res = valueForKeyPath(key, data);
+  return valueForKeyPath(key, data);
 }
 
 export interface InterpolateOptions {
@@ -21,38 +15,43 @@ export interface InterpolateOptions {
   mustPass?: boolean
 }
 
-function _interpolate(template: string, func: Function | Object,
-  opt: InterpolateOptions): string {
-  const commands = template.match(/\$\{[^}\r\n]*\}/g);
-  if (commands) {
-    if (commands[0].length ===
-      template.length) {  // allow for object replacement of single command
-      const res = (<Function>func)(commands[0].slice(2, -1));
-      if (check(res, String)) {
-        return _interpolate(res, func, opt);
-      }
-      return res || template;
+function _interpolate<T>(template: T, func: Function | Object,
+  opt: InterpolateOptions): T {
+  let str: string = <any>template;
+  const matches = str.match(/\$\{[^}\r\n]*\}/g);
+  if (!matches) {
+    return template;
+  }
+  if (matches[0].length === str.length) {  // allow for object replacement of single command
+    const res = (<Function>func)(matches[0].slice(2, -1));
+    if (check(res, String)) {
+      return _interpolate(res, func, opt);
     }
-    let interpolated = _.clone(template);
-    let modified = false;
-    for (const c of commands) {
-      const lookup = (<Function>func)(c.slice(2, -1));
-      if (lookup) {
-        modified = true;
-        interpolated = interpolated.replace(c, lookup);
-      } else if (opt.mustPass) {
-        throw new Error(`no value for required keypath ${c} in interpolation stack ${log.parse(opt.ref)}`);
-      }
-    }
-    if (modified) {
-      return _interpolate(interpolated, func, opt);
+    return res || str;
+  }
+  let modified = false;
+  // console.log('<=', str);
+  for (const c of matches) {
+    // console.log('? ', c);
+    const lookup = (<Function>func)(c.slice(2, -1));
+    if (lookup) {
+      // console.log('= ', lookup);
+      modified = true;
+      str = replaceAll(str, c, lookup);
+    } else if (opt.mustPass) {
+      throw new Error(`no value for required keypath ${c} in interpolation stack ${log.parse(opt.ref)}`);
     }
   }
-  return template;
+  if (modified) {
+    // console.log('..', str);
+    return _interpolate(<T><any>str, func, opt);
+  }
+  // console.log('=>', str);
+  return <T><any>str;
 }
 
-export function interpolate(template: string, funcOrData: Function | Object,
-  mustPass?: boolean) {
+export function interpolate<T>(template: T, funcOrData: Function | Object,
+  mustPass?: boolean): T {
   if (!template) {
     throw new Error(`can't interpolate ${template}`);
   }

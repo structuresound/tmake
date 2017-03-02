@@ -5,7 +5,7 @@ import { arrayify, check } from 'js-object-tools';
 import * as fs from 'fs';
 
 import * as file from './file';
-import { execAsync, ShellOptions } from './sh';
+import { execAsync, ShellOptions, ensureCommand } from './sh';
 import { log } from './log';
 import { deps } from './graph';
 import { args } from './args';
@@ -166,6 +166,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
             return createBuildFileFor(env, i.arg);
           case 'with':
             log.verbose(`    ${i.arg}`);
+            ensureCommand(i.arg);
             return configureWithSystem(env, i.arg);
           default:
             return shCommand(env, i.arg);

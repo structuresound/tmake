@@ -52,14 +52,12 @@ export function configure(env: Environment) {
 }
 
 export function build(env: Environment) {
-  return configure(env).then(() => {
-    ensureBuildFile(env, 'make');
-    const prefix = env.build.prefix ? env.build.prefix + ' ' : '';
-    const options = combine({ jobs: env.j() }, env.build.arguments);
-    const args = jsonToFlags(options, { prefix: '--' }).join(' ');
-    const command = `${prefix}make ${args}`
-    return make(env, command);
-  });
+  ensureBuildFile(env, 'make');
+  const prefix = env.build.prefix ? env.build.prefix + ' ' : '';
+  const options = combine({ '-j': env.j() }, env.build.arguments);
+  const args = jsonToFlags(options, { prefix: '', join: '' }).join(' ');
+  const command = `${prefix}make ${args}`
+  return make(env, command);
 }
 
 export function generate(node) {

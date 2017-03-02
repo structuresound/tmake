@@ -12,9 +12,16 @@ interface ShellOptions {
   short?: string
 }
 
-function exec(command: string, options: ShellOptions = {}): string {
+export function exec(command: string, options: ShellOptions = {}): string {
   const out = _exec(command, options) as any;
   return out.stdout ? out.stdout.replace('\r', '').replace('\n', '') : undefined;
+}
+
+export function ensureCommand(command: string) {
+  if (!which(command)) {
+    log.error('Sorry, this script requires git');
+    return exit(1);
+  }
 }
 
 const showStoppers = [
@@ -39,7 +46,7 @@ function truncate(s) {
   return s;
 }
 
-function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
+export function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
   return new Bluebird<string>((resolve: Function, reject: Function) => {
     if (cwd) cd(cwd);
     const _silent = silent || !args.verbose
@@ -68,4 +75,4 @@ function execAsync(command: string, {cwd, silent, short}: ShellOptions = {}) {
   })
 };
 
-export { ShellOptions, exec, execAsync, cd, exit, mkdir, mv, which }
+export { ShellOptions, cd, exit, mkdir, mv, which }

@@ -29,7 +29,7 @@ function _jsonToFlags(object: any, globals: MapToFlagsOptions) {
     _.each(object, (val: any, key: string) => {
         let {prefix} = globals;
         let {join} = globals;
-        let rhs = val;
+        let rhs = val || '';
         if (startsWith(key, prefix)) {
             prefix = ''
         }

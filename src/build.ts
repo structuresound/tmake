@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { check } from 'js-object-tools';
 import { mkdir } from './sh';
 
-import { execAsync } from './sh';
+import { execAsync, ensureCommand } from './sh';
 import { build as cmake } from './cmake';
 import { build as ninja } from './ninja';
 import { build as make } from './make';
@@ -65,8 +65,10 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
     case 'ninja':
       return ninja(env);
     case 'cmake':
+      ensureCommand(system);
       return cmake(env);
     case 'make':
+      ensureCommand(system);
       return make(env);
     default:
       throw new Error(`bad build system ${system}`);

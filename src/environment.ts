@@ -352,9 +352,8 @@ class Environment implements Toolchain {
         this.d = getEnvironmentDirs(this, project.d);
 
         /* copy config + build settings */
-        this._configure = this.select(combine(project.configure || t.configure));
+        this._configure = combine(project.configure || t.configure);
         this.configure = this.select(this._configure);
-
         this._build = combine(project.build || t.build)
         parseBuild(this, this._build);
 
@@ -444,14 +443,11 @@ class Environment implements Toolchain {
         }
         const mutableOptions = clone(options);
 
-        mutableOptions.keywords =
-            _.difference(keywords, mutableOptions.ignore.keywords);
-        mutableOptions.selectors =
-            _.difference(this.selectors, mutableOptions.ignore.selectors);
+        mutableOptions.keywords = _.difference(keywords, mutableOptions.ignore.keywords);
+        mutableOptions.selectors = _.difference(this.selectors, mutableOptions.ignore.selectors);
 
-        const flattened =
-            cascade(base, mutableOptions.keywords, mutableOptions.selectors);
-        const parsed = this.parse(flattened, mutableOptions.dict);
+        const preParse = cascade(base, mutableOptions.keywords, mutableOptions.selectors);
+        const parsed = this.parse(preParse, mutableOptions.dict || this);
         return parsed;
     }
     fullPath(p: string) {
