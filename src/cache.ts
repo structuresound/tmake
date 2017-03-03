@@ -53,3 +53,19 @@ export class CacheProperty<T> {
         }
     }
 }
+
+export interface CacheObject {
+    [index: string]: any;
+    _id?: string,
+    hash?: string,
+    project?: string,
+    cache?: any
+}
+
+export class Cache<T> {
+    fetch?: CacheProperty<T>;
+    generate?: CacheProperty<T>;
+    configure?: CacheProperty<T>;
+    build?: CacheProperty<T>;
+    install?: CacheProperty<T>;
+}

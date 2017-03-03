@@ -5,30 +5,34 @@ import { arrayify, check } from 'js-object-tools';
 import * as fs from 'fs';
 
 import * as file from './file';
-import { execAsync, ShellOptions, ensureCommand } from './sh';
+import { execAsync, ensureCommand, ExecOptions } from './sh';
 import { log } from './log';
 import { deps } from './graph';
 import { args } from './args';
 import { replaceInFile, ReplEntry } from './parse';
 import { updateEnvironment } from './db';
-import { generate as cmake, configure as configureCMake } from './cmake';
 import { generate as ninja } from './ninja';
 import { configure as configureMake } from './make';
 import { stringHash } from './hash';
 import { CmdObj, iterateOLHM } from './iterate';
-
-import { Environment } from './environment';
-import { Project } from './project';
+import { Plugin } from './plugin';
+import { EnvironmentPlugin, Environment } from './environment';
+import { BuildPhase, Project } from './project';
 import { defaults } from './defaults';
+
+export interface ConfigurePlugin {
+  generate?: boolean;
+  arguments?: any;
+  flags?: any;
+}
 
 export interface Configure {
   create?: any;
   replace?: any;
   shell?: any;
-  cmake?: any;
-  for?: any;
-  arguments?: any;
-  with?: any;
+  cmake?: ConfigurePlugin;
+  make?: ConfigurePlugin;
+  ninja?: ConfigurePlugin;
 }
 
 function copy(patterns: string[], options: file.VinylOptions) {
@@ -95,52 +99,6 @@ interface StringObject {
   [key: string]: string;
 }
 
-function createBuildFileFor(env: Environment, systemName: string) {
-  return generateConfig(env, systemName);
-}
-
-function generateConfig(env: Environment, systemName: string) {
-  return globFiles(env)
-    .then(() => { return generateBuildFile(env, systemName); })
-    .then(() => {
-      const buildFileName = env.getProjectFile(systemName);
-      env.cache.buildFilePath.set(buildFileName);
-      env.cache.generatedBuildFilePath.set(buildFileName);
-      return updateEnvironment(env);
-    });
-}
-
-function generateBuildFile(env: Environment, systemName: string) {
-  env.ensureProjectFolder();
-  const buildFile = env.getProjectFilePath(systemName);
-  switch (systemName) {
-    case 'ninja':
-      return Promise.resolve(ninja(env, buildFile));
-    case 'cmake':
-      const CMakeLists = cmake(env);
-      return file.writeFileAsync(buildFile, CMakeLists).then((conf) => { return Promise.resolve(conf); });
-    default:
-      throw new Error(`bad build system ${systemName}`);
-  }
-}
-
-function configureWithSystem(env: Environment, systemName: string) {
-  env.ensureProjectFolder();
-  const buildFile = env.getProjectFilePath(systemName);
-  switch (systemName) {
-    case 'ninja':
-    case 'tmake':
-      return Promise.resolve();
-    case 'cmake':
-      return configureCMake(env);
-    case 'make':
-    case 'autotools':
-    case 'configure':
-      return configureMake(env);
-    default:
-      throw new Error(`bad build system ${systemName}`);
-  }
-}
 
 function shCommand(env: Environment, command: any) {
   const c: CmdObj = check(command, String) ?
@@ -150,7 +108,7 @@ function shCommand(env: Environment, command: any) {
   log.verbose(`    ${c.cmd}`);
   return execAsync(
     c.cmd,
-    <ShellOptions>{ cwd: cwd, silent: !args.quiet });
+    <ExecOptions>{ cwd: cwd, silent: !args.quiet });
 }
 
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
@@ -160,14 +118,11 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
       commands,
       (i: CmdObj): PromiseLike<any> => {
         log.verbose(`  ${i.cmd}:`);
+        const handler = Plugin.lookup(i.cmd);
+        if (handler) {
+          return env.runPhaseWithPlugin({ phase: 'configure', pluginName: i.cmd });
+        }
         switch (i.cmd) {
-          case 'for':
-            log.verbose(`    ${i.arg}`);
-            return createBuildFileFor(env, i.arg);
-          case 'with':
-            log.verbose(`    ${i.arg}`);
-            ensureCommand(i.arg);
-            return configureWithSystem(env, i.arg);
           default:
             return shCommand(env, i.arg);
           case 'shell':
@@ -207,7 +162,6 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               });
         }
       }).then(() => {
-        env.cache.buildFile.update();
         env.cache.configure.update();
         return updateEnvironment(env);
       });

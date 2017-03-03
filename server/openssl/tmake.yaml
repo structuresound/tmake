@@ -9,10 +9,19 @@ environment:
   x64:
     OPENSSL_ARCH: x86_64
 configure:
+  make:
+    arguments: ${TRIPLE}
+    flags:
+      openssldir: ${d.build}/openssl-${OPENSSL_VERSION}
+      
   bignum: sed -ie "s/BIGNUM \*I,/BIGNUM \*i,/g" crypto/rsa/rsa.h
   mac:
-    configure: ./Configure ${TRIPLE} --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
-    sed: sed -ie "s!^CFLAG=!CFLAG=-isysroot ${OSX_SDK} -arch ${OPENSSL_ARCH} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}!" "Makefile"
+    with: make
+    arguments: ${TRIPLE}
+    flags:
+      openssldir: ${d.build}/openssl-${OPENSSL_VERSION}
+    # configure: ./Configure ${TRIPLE} --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
+    # sed: sed -ie "s!^CFLAG=!CFLAG=-isysroot ${OSX_SDK} -arch ${OPENSSL_ARCH} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}!" "Makefile"
   linux:
     configure: ./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
     make: make depend
@@ -25,10 +34,10 @@ configure:
         - Makefile
         inputs:
           "-isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)": "-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -miphoneos-version-min=${SDK_VERSION}"
-build:
-  with: make
-  ios:
-    prefix: CC="${DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch ${OPENSSL_ARCH}"
+# build:
+#   with: make
+#   ios:
+#     prefix: CC="${DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch ${OPENSSL_ARCH}"
 path:
   project: source
   install:

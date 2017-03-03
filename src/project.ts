@@ -62,6 +62,7 @@ export interface PersistedProjectCache {
   libs?: string[];
 }
 
+export type BuildPhase = 'fetch' | 'generate' | 'configure' | 'build' | 'install';
 
 export interface ProjectFile extends Toolchain {
   [index: string]: any;

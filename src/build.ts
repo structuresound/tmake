@@ -5,7 +5,6 @@ import { check } from 'js-object-tools';
 import { mkdir } from './sh';
 
 import { execAsync, ensureCommand } from './sh';
-import { build as cmake } from './cmake';
 import { build as ninja } from './ninja';
 import { build as make } from './make';
 import { errors } from './errors';
@@ -45,34 +44,24 @@ function ensureBuildFolder(env: Environment, isTest?: boolean) {
   }
 }
 
-export function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
-  const buildFilePath = env.getProjectFilePath(system);
-  if (!check(buildFilePath, 'String')) {
-    throw new Error('no build file specified');
-  }
-  if (!fs.existsSync(buildFilePath)) {
-    errors.build.noBuildFile(env, system);
-  }
-}
-
 function buildWith(env: Environment, system: string, isTest: boolean) {
   if (system == 'tmake') {
     args.configDir = env.project.d.clone;
     return execAsync(`TMAKE_ARGS="${encodeArgs()}" tmake`, { cwd: env.project.d.source, short: 'tmake' });
   }
   ensureBuildFolder(env, isTest);
-  switch (system) {
-    case 'ninja':
-      return ninja(env);
-    case 'cmake':
-      ensureCommand(system);
-      return cmake(env);
-    case 'make':
-      ensureCommand(system);
-      return make(env);
-    default:
-      throw new Error(`bad build system ${system}`);
-  }
+  // switch (system) {
+  //   case 'ninja':
+  //     return ninja(env);
+  //   case 'cmake':
+  //     ensureCommand(system);
+  //     return cmake(env);
+  //   case 'make':
+  //     ensureCommand(system);
+  //     return make(env);
+  //   default:
+  //     throw new Error(`bad build system ${system}`);
+  // }
 }
 
 function buildCommand(c: any, env: Environment) {

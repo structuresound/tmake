@@ -2,7 +2,9 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { cascade, check, clone, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
+import { cascade, check, clone, contains, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
+
+import { updateEnvironment } from './db';
 
 import { startsWith } from './string';
 import { log } from './log';
@@ -14,11 +16,12 @@ import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { CmdObj, iterable, getCommands } from './iterate';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
 
-import { CacheProperty } from './cache';
+import { Cache as BaseCache, CacheObject, CacheProperty } from './cache';
 import { Build } from './build';
 import { Configure } from './configure';
 import { Install, InstallOptions } from './install';
-import { Project, ProjectDirs } from './project';
+import { Plugin } from './plugin';
+import { BuildPhase, Project, ProjectDirs } from './project';
 import { defaults } from './defaults';
 import { Tools } from './tools';
 
@@ -85,33 +88,41 @@ export interface Environment$Set {
     'cache.assets'?: string[];
 }
 
-export interface EnvironmentCacheFile {
-    [index: string]: any;
-    _id?: string,
-    hash?: string,
-    project?: string,
-    cache?: {
-        buildFilePath?: string;
-        generatedBuildFilePath?: string;
-        buildFile?: string;
-        build?: string;
-        cmake?: string;
-        configure?: string;
-        assets?: string[];
+
+export class Cache extends BaseCache<string> {
+    env: Environment;
+    assets?: CacheProperty<string>;
+    plugin: BaseCache<string>
+    constructor(env) {
+        super();
+        this.env = env;
+        this.configure = new CacheProperty<string>(() => {
+            return jsonStableHash(env.configure);
+        });
+        this.build = new CacheProperty<string>(() => {
+            return jsonStableHash(env.build);
+        });
+        this.assets = new CacheProperty<string>(() => {
+            return "";
+        });
+        this
     }
-}
-
-export interface EnvironmentCache {
-    [index: string]: CacheProperty<any>;
-
-    buildFilePath: CacheProperty<string>;
-    generatedBuildFilePath: CacheProperty<string>;
-    buildFile: CacheProperty<string>;
-    build: CacheProperty<string>;
-    configure: CacheProperty<string>;
-    assets: CacheProperty<string[]>;
-    cmake: CacheProperty<string>;
-    make: CacheProperty<string>;
+    update() {
+        updateEnvironment(this.env);
+    }
+    toJSON() {
+        const ret = {};
+        for (const k of Object.keys(this)) {
+            if (check(this[k], CacheProperty)) {
+                const v = this[k].value();
+                if (v) {
+                    log.dev(`cache <-- ${k}: ${v}`);
+                    ret[k] = v;
+                }
+            }
+        }
+        return ret;
+    }
 }
 
 const platformNames = {
@@ -294,7 +305,7 @@ function parseBuild(env: Environment, config: Build) {
     env.build = b;
 }
 
-class Environment implements Toolchain {
+export class Environment implements Toolchain {
     configure: Configure;
     build: Build;
     path: EnvironmentDirs;
@@ -309,7 +320,8 @@ class Environment implements Toolchain {
     tools: Tools;
     environment: any;
     outputType: string;
-    cache: EnvironmentCache;
+    plugins: { [index: string]: Plugin<Environment> }
+    cache: Cache;
 
     project: Project;
 
@@ -365,39 +377,8 @@ class Environment implements Toolchain {
         }
 
         const self = this;
-        this.cache = {
-            configure: new CacheProperty<string>(() => {
-                return jsonStableHash(self.configure);
-            }),
-            build: new CacheProperty<string>(() => {
-                return jsonStableHash(self.build);
-            }),
-            buildFile: new CacheProperty<string>(() => {
-                if (self.build.with) {
-                    return fileHashSync(self.getProjectFilePath(self.build.with));
-                }
-                return "";
-            }),
-            buildFilePath: new CacheProperty<string>(() => {
-                return self.getProjectFilePath(self.build.with);
-            }),
-            cmake: new CacheProperty<string>(() => {
-                return fileHashSync(path.join(self.d.build, 'build.ninja'));
-            }),
-            make: new CacheProperty<string>(() => {
-                return fileHashSync(path.join(self.d.project, 'Makefile'));
-            }),
-            generatedBuildFilePath: new CacheProperty<string>(() => {
-                if (self.configure.for) {
-                    return self.getProjectFilePath(self.configure.for);
-                }
-                return "";
-            }),
-            assets: new CacheProperty<string[]>(() => {
-                return [""];
-            })
-        }
-        this.cache.configure.require = this.cache.buildFile;
+        this.cache = new Cache(this);
+        this.plugins = {};
     }
 
     frameworks() { return jsonToFrameworks(this.build.frameworks); }
@@ -416,7 +397,7 @@ class Environment implements Toolchain {
         const projectSettings = _.pick(this.project, ['name', 'version']);
         return jsonStableHash(combine(env, phases, projectSettings));
     }
-    merge(other: EnvironmentCacheFile) {
+    merge(other: CacheObject) {
         mergeEnvironment(this, other);
     }
     parse(input: any, conf?: any) {
@@ -426,16 +407,8 @@ class Environment implements Toolchain {
         }
         return parse(input, this);
     }
-    toCache(): EnvironmentCacheFile {
-        const ret: EnvironmentCacheFile = { hash: this.hash(), project: this.project.name, cache: {} };
-        for (const k of Object.keys(this.cache)) {
-            const v = this.cache[k].value();
-            if (v) {
-                log.dev(`cache <-- ${k}: ${v}`);
-                ret.cache[k] = v;
-            }
-        }
-        return ret;
+    toCache(): CacheObject {
+        return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
     }
     select(base: any, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
         if (!base) {
@@ -489,9 +462,32 @@ class Environment implements Toolchain {
         }
         return tools;
     }
+    runPhaseWithPlugin({ phase, pluginName }: { phase: string, pluginName: string }): PromiseLike<any> {
+        if (!this.plugins[pluginName]) {
+            const PluginConstructor = Plugin.lookup(pluginName);
+            const plugin = new PluginConstructor(this);
+            this.plugins[pluginName] = <Plugin<any>>plugin;
+        }
+        return this.plugins[pluginName][phase]();
+    }
     getConfigurationIterable(): CmdObj[] { return getCommands(this.configure); }
 }
 
-export {
-    Environment, CacheProperty, keywords, argvSelectors
+export class EnvironmentPlugin<O> extends Plugin<Environment> {
+    environment: Environment;
+    options: O;
+    toolpaths: any;
+    projectFileName: string;
+    buildFileName: string;
+
+    constructor(env: Environment) {
+        super(env);
+        this.environment = env;
+        Object.keys(env).forEach((key) => {
+            const keys: BuildPhase[] = ['fetch', 'generate', 'configure', 'build', 'install'];
+            if (contains(keys, key)) {
+                this.options[key] = env[key][this.name]
+            }
+        });
+    }
 }

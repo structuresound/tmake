@@ -28,7 +28,7 @@ function make(env: Environment, command: string) {
 
 function doConfiguration(env: Environment) {
   const prefix = env.build.prefix ? env.build.prefix + ' ' : '';
-  const options = combine({ prefix: env.d.build }, env.configure.arguments);
+  const options = combine({ prefix: env.d.build }, env.configure.flags);
   const args = jsonToFlags(options, { prefix: '--' }).join(' ');
   const command = `${prefix}./configure ${args}`
   return make(env, command);
