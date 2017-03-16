@@ -93,7 +93,7 @@ if (process.env.NODE_ENV === 'test' || process.env.LOADED_MOCHA_OPTS) {
 
 export function encode() {
   const cp = clone(args);
-  delete cp._
+  delete cp._;
   return new Buffer(stringify(cp)).toString('base64');
 }
 

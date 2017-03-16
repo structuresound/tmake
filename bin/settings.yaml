@@ -1,4 +1,0 @@
-defaultCompiler:
-  mac: 'clang'
-  linux: 'gcc'
-  win: 'msvc'

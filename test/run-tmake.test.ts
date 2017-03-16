@@ -55,9 +55,8 @@ describe('main: ', function () {
           .build()
           .then(() => {
             const fp = `${googleNode.environments[0].d.build}/libgtest.a`;
-            const exists = fs.existsSync(fp)
-            assert.isString(googleNode.environments[0].cache.cmake.get());
-            return expect(exists, fp).to.equal(true);
+            assert.equal(fs.existsSync(fp), true)
+            assert.isString(googleNode.environments[0].cache['cmake_build'].get());
           });
       });
   });

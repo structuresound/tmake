@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as file from './file';
+import { CacheObject, CacheProperty } from './cache';
 import { combine, check, Graph, OLHM, extend } from 'js-object-tools';
 import { log } from './log';
 import { errors } from './errors';
@@ -11,7 +12,7 @@ import { cache as db, environmentCache } from './db';
 import { jsonStableHash } from './hash';
 
 import { Project, ProjectFile, resolveName, fromString as projectFromString } from './project';
-import { Environment, EnvironmentCacheFile, CacheProperty } from './environment';
+import { Environment } from './environment';
 
 function loadCache(project: Project): Promise<Project> {
   return db.findOne({ name: project.name })

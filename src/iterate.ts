@@ -4,25 +4,13 @@ import { contains, check, safeOLHM, OLHM } from 'js-object-tools';
 
 import { errors } from './errors';
 
+import { Plugin } from './plugin';
+
 export interface CmdObj {
   cmd: string;
   arg?: any;
   cwd?: string;
 }
-
-const _ignore = [
-  'linkerFlags',
-  'cFlags',
-  'cxxFlags',
-  'compilerFlags',
-  'defines',
-  'frameworks',
-  'matching',
-  'headers',
-  'libs',
-  'includeDirs',
-  'outputFile'
-];
 
 export function iterable(val: any) {
   if (check(val, Array)) {
@@ -36,14 +24,22 @@ export function iterable(val: any) {
 export function getCommands(it: any, ignore?: string[]) {
   const validCommands = [];
   if (check(it, String)) {
-    validCommands.push({ arg: it, cmd: 'shell' });
+    if (Plugin.lookup(it)) {
+      validCommands.push({ cmd: it });
+    } else {
+      throw new Error(`plugin ${it} not loaded`);
+    }
   } else if (check(it, Array)) {
     for (const statement of it) {
-      validCommands.push({ arg: statement, cmd: 'shell' });
+      if (Plugin.lookup(statement)) {
+        validCommands.push({ cmd: statement });
+      } else {
+        throw new Error(`plugin ${statement} not loaded`);
+      }
     }
   } else if (check(it, Object)) {
     for (const k of Object.keys(it)) {
-      if (!contains(ignore || _ignore, k)) {
+      if (Plugin.lookup(k)) {
         validCommands.push({ arg: it[k], cmd: k });
       }
     }
@@ -77,11 +73,7 @@ export function iterate(obj: any, fn: (cmd: CmdObj) => Promise<any> | Bluebird<a
   }
   return Bluebird.each(it, (i: CmdObj) => {
     return fn(i).catch((error: Error) => {
-      if (i.cmd === 'with') {
-        return Promise.reject(errors.build.command.failed(i.arg, error));
-      } else {
-        return Promise.reject(errors.build.command.failed(i.cmd, error));
-      }
+      return Promise.reject(errors.build.command.failed(i.cmd, error));
     });
   });
 }

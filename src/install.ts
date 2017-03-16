@@ -35,7 +35,7 @@ interface CopyOptions {
   patterns: string[], from: string, to: string, opt: VinylOptions
 }
 
-function copy({patterns, from, to, opt}: CopyOptions) {
+function copy({ patterns, from, to, opt }: CopyOptions) {
   const filePaths: string[] = [];
   const stream = src(patterns, {
     cwd: from,
@@ -54,7 +54,7 @@ function copy({patterns, from, to, opt}: CopyOptions) {
   });
 };
 
-function link({patterns, from, to, opt}: CopyOptions) {
+function link({ patterns, from, to, opt }: CopyOptions) {
   const filePaths: string[] = [];
   return wait(src(patterns, {
     cwd: from,
@@ -114,7 +114,7 @@ function assets(env: Environment): PromiseLike<any> {
         }
       });
     }).then(assetPaths => {
-      env.cache.assets.set(_.flatten(assetPaths));
+      env.cache.assets.set(_.flatten(assetPaths).join(', '));
       return updateEnvironment(env);
     });
   };

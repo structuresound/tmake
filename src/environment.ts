@@ -5,24 +5,20 @@ import * as fs from 'fs';
 import { cascade, check, clone, contains, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
 
 import { updateEnvironment } from './db';
-
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from './file';
 import { args } from './args';
-import { mkdir } from './sh';
-import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { CmdObj, iterable, getCommands } from './iterate';
-import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
-
+import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Cache as BaseCache, CacheObject, CacheProperty } from './cache';
-import { Build } from './build';
-import { Configure } from './configure';
 import { Install, InstallOptions } from './install';
 import { Plugin } from './plugin';
 import { BuildPhase, Project, ProjectDirs } from './project';
 import { defaults } from './defaults';
+import { ExecOptions, execAsync, mkdir } from './sh';
+import { parse, absolutePath, pathArray } from './parse';
 import { Tools } from './tools';
 
 export interface Docker {
@@ -41,8 +37,8 @@ export interface Toolchain {
     options?: OLHM<any>;
     path?: EnvironmentDirs;
     environment?: any;
-    configure?: Configure;
-    build?: Build;
+    configure?: any;
+    build?: any;
 }
 
 export interface Platform {
@@ -61,31 +57,9 @@ export interface EnvironmentDirs extends ProjectDirs {
     install: Install;
 }
 
-export interface EnvironmentModifier {
-    [index: string]: any;
-
-    $set?: Environment$Set;
-    $unset?: Environment$Unset;
-}
-
 interface DockerOptions {
     image: string;
     args: any;
-}
-
-export interface Environment$Unset extends Environment$Set {
-    cache?: boolean;
-}
-
-export interface Environment$Set {
-    'cache.buildFilePath'?: string;
-    'cache.generatedBuildFilePath'?: string;
-    'cache.buildFile'?: string;
-    'cache.cmake'?: string;
-
-    'cache.build'?: string;
-    'cache.configure'?: string;
-    'cache.assets'?: string[];
 }
 
 
@@ -147,12 +121,10 @@ const HOST_CPU = os.cpus();
 
 const ninjaVersion = 'v1.7.1';
 
-const settings: any = parseFileSync(path.join(args.binDir, 'settings.yaml'));
-
 const HOST_ENV = {
     architecture: HOST_ARCHITECTURE,
     endianness: HOST_ENDIANNESS,
-    compiler: settings.defaultCompiler[HOST_PLATFORM],
+    compiler: defaults.compiler[`host-${HOST_PLATFORM}`],
     platform: HOST_PLATFORM,
     cpu: { num: HOST_CPU.length, speed: HOST_CPU[0].speed }
 };
@@ -204,7 +176,6 @@ const keywords =
     [].concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
         .concat(_keywords.target)
         .concat(_keywords.architecture)
-        .concat(_keywords.build)
         .concat(_keywords.compiler)
         .concat(_keywords.sdk)
         .concat(_keywords.ide)
@@ -213,13 +184,13 @@ const keywords =
 const argvSelectors = Object.keys(_.pick(args, keywords));
 argvSelectors.push(args.compiler);
 
-function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): EnvironmentDirs {
-    const pathOptions = env.p;
+function getEnvironmentDirs(pathOptions: EnvironmentDirs, projectDirs: ProjectDirs): EnvironmentDirs {
     const d = <EnvironmentDirs>clone(projectDirs);
 
+    d.build = path.join(d.root, pathOptions.build);
     d.project = path.join(d.root, pathOptions.project || '');
     if (d.build == null) {
-        d.build = path.join(d.root, pathOptions.build);
+        d.build = path.join(projectDirs.build, pathOptions.build);
     }
     d.install = <Install>{
         binaries: _.map(arrayify(pathOptions.install.binaries), (ft: InstallOptions) => {
@@ -250,17 +221,16 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
 }
 
 
-function getEnvironmentPaths(env: Environment, projectPaths: ProjectDirs) {
-    const defaultPaths = combine({
+function getEnvironmentPaths(conf: EnvironmentDirs, architecture: string, outputType: string) {
+    const paths = combine({
         root: '',
         test: 'build_tests'
-    }, projectPaths);
-    const paths = <EnvironmentDirs>extend(defaultPaths, env.path);
-    if (!check(paths.build, String)) {
-        paths.build = path.join(paths.root, 'build', env.target.architecture);
-    }
+    }, conf);
+
+    paths.build = path.join(paths.build, architecture);
+
     if (!check(paths.project, String)) {
-        if (env.project.outputType === 'executable') {
+        if (outputType === 'executable') {
             paths.project = paths.build;
         } else {
             paths.project = paths.clone;
@@ -288,26 +258,9 @@ function getProjectFile(env: Environment, systemName: string): string {
     return (<any>buildFileNames)[systemName];
 }
 
-function parseBuild(env: Environment, config: Build) {
-    const b = env.select(config);
-
-    const cFlags = b.cFlags || b.cxxFlags || {};
-    const cxxFlags = b.cxxFlags || b.cFlags || {};
-    const linkerFlags = b.linkerFlags || {};
-    const compilerFlags = b.compilerFlags || {};
-
-    b.compilerFlags = _.extend(env.select(defaults.flags.compiler), compilerFlags);
-    b.linkerFlags = _.extend(env.select(defaults.flags.linker), linkerFlags);
-    b.cxxFlags = _.extend(env.select(defaults.flags.cxx), cxxFlags);
-    b.cFlags = _.omit(_.extend(env.select(defaults.flags.cxx), cFlags), ['std', 'stdlib']);
-    b.frameworks = env.select(b.frameworks || env.select(defaults.flags.frameworks) || {});
-
-    env.build = b;
-}
-
 export class Environment implements Toolchain {
-    configure: Configure;
-    build: Build;
+    configure: any;
+    build: any;
     path: EnvironmentDirs;
     selectors: string[];
     options: OLHM<any>;
@@ -325,8 +278,8 @@ export class Environment implements Toolchain {
 
     project: Project;
 
-    _configure: Configure;
-    _build: Build;
+    _configure: any;
+    _build: any;
 
     constructor(t: Toolchain, project: Project) {
         /* set up selectors + environment */
@@ -359,15 +312,20 @@ export class Environment implements Toolchain {
         this.tools = this.selectTools();
 
         /* setup paths + directories */
-        this.path = this.select(t.path || project.path || {});
-        this.p = getEnvironmentPaths(this, project.p);
-        this.d = getEnvironmentDirs(this, project.d);
+        const path = this.select(combine(project.p, t.path));
+        const p = getEnvironmentPaths(path, this.target.architecture, project.outputType);
+        const d = getEnvironmentDirs(p, project.d);
+
+        this.path = this.parse(path);
+        this.p = this.parse(p);
+        this.d = this.parse(d);
 
         /* copy config + build settings */
         this._configure = combine(project.configure || t.configure);
         this.configure = this.select(this._configure);
+
         this._build = combine(project.build || t.build)
-        parseBuild(this, this._build);
+        this.build = this.select(this._build);
 
         /* extend + select all remaining settings */
         const inOutFields = _.pick(project, ['outputType']);
@@ -376,16 +334,10 @@ export class Environment implements Toolchain {
             this.outputType = 'static';
         }
 
-        const self = this;
         this.cache = new Cache(this);
         this.plugins = {};
     }
 
-    frameworks() { return jsonToFrameworks(this.build.frameworks); }
-    cFlags() { return jsonToCFlags(this.build.cFlags); }
-    cxxFlags() { return jsonToCFlags(this.build.cxxFlags); }
-    linkerFlags() { return jsonToFlags(this.build.linkerFlags); }
-    compilerFlags() { return jsonToFlags(this.build.compilerFlags, { join: ' ' }); }
     includeDirs() { return iterable(this.build.includeDirs); }
     globArray(val: any) {
         return _.map(arrayify(val), (v) => { return parse(v, this); });
@@ -410,7 +362,7 @@ export class Environment implements Toolchain {
     toCache(): CacheObject {
         return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
     }
-    select(base: any, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
+    select<T>(base: T, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
         if (!base) {
             throw new Error('selecting on empty object');
         }
@@ -421,7 +373,7 @@ export class Environment implements Toolchain {
 
         const preParse = cascade(base, mutableOptions.keywords, mutableOptions.selectors);
         const parsed = this.parse(preParse, mutableOptions.dict || this);
-        return parsed;
+        return <T>parsed;
     }
     fullPath(p: string) {
         return absolutePath(p, this.d.root);
@@ -470,12 +422,23 @@ export class Environment implements Toolchain {
         }
         return this.plugins[pluginName][phase]();
     }
+    sh(command: any) {
+        const c: CmdObj = check(command, String) ?
+            <CmdObj>{ cmd: command } :
+            command;
+        const cwd = this.pathSetting(c.cwd || this.project.d.source);
+        log.verbose(`    ${c.cmd}`);
+        return execAsync(
+            c.cmd,
+            <ExecOptions>{ cwd: cwd, silent: !args.quiet });
+    }
     getConfigurationIterable(): CmdObj[] { return getCommands(this.configure); }
+    getBuildIterable(): CmdObj[] { return getCommands(this.build); }
 }
 
-export class EnvironmentPlugin<O> extends Plugin<Environment> {
+export class EnvironmentPlugin extends Plugin<Environment> {
     environment: Environment;
-    options: O;
+    options: any;
     toolpaths: any;
     projectFileName: string;
     buildFileName: string;

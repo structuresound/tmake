@@ -15,16 +15,14 @@ export interface PluginOptions {
 
 export class Plugin<T> {
     name: string;
-    upstream: T
-    constructor(conf: T) {
-        this.upstream = conf;
-    }
     static pluginMap: { [index: string]: typeof Plugin } = {};
-    static register = (plugin: Plugin<any>) => {
+    static register = (plugin: typeof Plugin) => {
         Plugin.pluginMap[plugin.name] = Plugin;
     }
     static lookup = (name: string) => {
         return Plugin.pluginMap[name];
+    }
+    public constructor(upstream: T) {
     }
     public fetch(): PromiseLike<any> {
         return Promise.resolve();

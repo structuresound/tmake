@@ -1,17 +1,16 @@
 import { exec as _exec, cd, mv, mkdir, which, exit, ExecCallback, ExecOutputReturnValue } from 'shelljs';
-import * as Bluebird from 'bluebird';
-import * as path from 'path';
+import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { Spinner } from 'cli-spinner';
-import { check } from 'js-object-tools';
-
+import { check, map } from 'js-object-tools';
 import { CacheProperty } from './cache';
 import { fileHash, fileHashSync } from './hash';
 import { log } from './log';
 import { args } from './args';
 import { errors, TMakeError } from './errors';
 import { PluginOptions } from './plugin';
-import { EnvironmentPlugin } from './environment';
+import { Environment, EnvironmentPlugin } from './environment';
+import { CmdObj, iterateOLHM } from './iterate';
 
 interface ExecOptions {
   silent?: boolean
@@ -54,7 +53,7 @@ function truncate(s) {
 }
 
 export function execAsync(command: string, { cwd, silent, short }: ExecOptions = {}) {
-  return new Bluebird<string>((resolve: Function, reject: Function) => {
+  return new Promise<string>((resolve: Function, reject: Function) => {
     if (cwd) cd(cwd);
     const _silent = silent || !args.verbose
     var spinner = new Spinner(`%s ${short || truncate(command)}`);
@@ -82,10 +81,34 @@ export function execAsync(command: string, { cwd, silent, short }: ExecOptions =
   })
 };
 
-export class ShellPlugin<T> extends EnvironmentPlugin<T> {
+export function runCommand(env: Environment, command: any) {
+  const c: CmdObj = check(command, String) ?
+    <CmdObj>{ cmd: command } :
+    command;
+  const cwd = env.pathSetting(c.cwd || env.project.d.source);
+  log.verbose(`    ${c.cmd}`);
+  return execAsync(
+    c.cmd,
+    <ExecOptions>{ cwd: cwd, silent: !args.quiet });
+}
+
+export interface ShellPluginOptions extends PluginOptions {
+  defines?: any;
+  arguments?: any;
+  prefix?: any;
+  toolchain?: {
+    [index: string]: {
+      version?: string;
+    }
+  }
+}
+
+export class ShellPlugin extends EnvironmentPlugin {
+  options: ShellPluginOptions;
+
   public configure() {
     this.ensureProjectFile();
-    const buildFile = this.buildFilePath(this.environment.d);
+    const buildFile = this.buildFilePath();
     if (!this.environment.cache[this.name + '_configure']) {
       this.environment.cache[this.name + '_configure'] = new CacheProperty<string>(() => {
         return fileHashSync(buildFile);
@@ -106,17 +129,31 @@ export class ShellPlugin<T> extends EnvironmentPlugin<T> {
     this.ensureBuildFile();
     return this.fetch().then((toolpaths: any) => {
       const command = this.buildCommand(this.toolpaths);
-      const wd = path.dirname(this.buildFilePath(this.environment.d));
-      log.verbose(command);
-      return execAsync(command, {
-        cwd: wd,
-        silent: !args.verbose,
-        short: 'cmake'
-      });
+      if (command) {
+        const wd = dirname(this.buildFilePath());
+        log.verbose(command);
+        return execAsync(command, {
+          cwd: wd,
+          silent: !args.verbose,
+          short: this.name
+        });
+      }
+      throw new Error(`no build command for shell plugin ${this.name}`);
     });
   }
+  public install() {
+    const installCommand = this.installCommand();
+    if (installCommand) {
+      const wd = dirname(this.buildFilePath());
+      return execAsync(installCommand, {
+        cwd: wd,
+        silent: !args.verbose,
+        short: this.name
+      });
+    }
+  }
   public ensureProjectFile(isTest?: boolean) {
-    const filePath = this.projectFilePath(this.environment.d);
+    const filePath = this.projectFilePath();
     if (!check(filePath, 'String')) {
       throw new Error('no build file specified');
     }
@@ -125,7 +162,7 @@ export class ShellPlugin<T> extends EnvironmentPlugin<T> {
     }
   }
   public ensureBuildFile(isTest?: boolean) {
-    const buildFilePath = this.buildFilePath(this.environment.d);
+    const buildFilePath = this.buildFilePath();
     if (!check(buildFilePath, 'String')) {
       throw new Error('no build file specified');
     }
@@ -134,17 +171,20 @@ export class ShellPlugin<T> extends EnvironmentPlugin<T> {
     }
   }
   // OVERRIDE IN PLUGIN SUBCLASS
-  projectFilePath(directories) {
-    return path.join(directories.project, this.projectFileName);
+  projectFilePath() {
+    return join(this.environment.d.project, this.projectFileName);
   }
-  buildFilePath(directories) {
-    return path.join(directories.build, this.buildFileName);
+  buildFilePath() {
+    return join(this.environment.d.build, this.buildFileName);
   }
   configureCommand(toolpaths?: string): string {
-    return this.name;
+    return undefined;
   }
   buildCommand(toolpaths?: string) {
-    return this.name;
+    return undefined;
+  }
+  installCommand(toolpaths?: string) {
+    return undefined;
   }
 }
 

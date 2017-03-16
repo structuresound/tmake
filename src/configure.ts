@@ -1,8 +1,8 @@
-import * as _ from 'lodash';
-import * as Bluebird from 'bluebird';
-import * as path from 'path';
+
+import { each } from 'bluebird';
+import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'js-object-tools';
-import * as fs from 'fs';
+
 
 import * as file from './file';
 import { execAsync, ensureCommand, ExecOptions } from './sh';
@@ -11,29 +11,13 @@ import { deps } from './graph';
 import { args } from './args';
 import { replaceInFile, ReplEntry } from './parse';
 import { updateEnvironment } from './db';
-import { generate as ninja } from './ninja';
-import { configure as configureMake } from './make';
 import { stringHash } from './hash';
 import { CmdObj, iterateOLHM } from './iterate';
 import { Plugin } from './plugin';
 import { EnvironmentPlugin, Environment } from './environment';
 import { BuildPhase, Project } from './project';
 import { defaults } from './defaults';
-
-export interface ConfigurePlugin {
-  generate?: boolean;
-  arguments?: any;
-  flags?: any;
-}
-
-export interface Configure {
-  create?: any;
-  replace?: any;
-  shell?: any;
-  cmake?: ConfigurePlugin;
-  make?: ConfigurePlugin;
-  ninja?: ConfigurePlugin;
-}
+import { CMakeOptions } from './cmake';
 
 function copy(patterns: string[], options: file.VinylOptions) {
   const filePaths: string[] = [];
@@ -41,15 +25,15 @@ function copy(patterns: string[], options: file.VinylOptions) {
     .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
       .pipe(file.map((data: file.VinylFile, callback: Function) => {
         const mutable = data;
-        log.verbose(`+ ${path.relative(mutable.cwd, mutable.path)}`);
+        log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
         if (options.flatten) {
-          mutable.base = path.dirname(mutable.path);
+          mutable.base = dirname(mutable.path);
         }
-        const newPath = path.join(
+        const newPath = join(
           options.to,
-          path.relative(mutable.base, mutable.path));
+          relative(mutable.base, mutable.path));
         filePaths.push(
-          path.relative(options.relative, newPath));
+          relative(options.relative, newPath));
         return callback(null, file);
       }))
       .pipe(file.dest(options.to)))
@@ -68,53 +52,10 @@ function globSources(env: Environment) {
   return file.glob(patterns, env.d.source, env.project.d.source);
 }
 
-function globFiles(env: Environment) {
-  log.verbose('  gather files for build configuration');
-  return globHeaders(env)
-    .then((headers) => {
-      env.build.headers = headers;
-      return globSources(env);
-    })
-    .then((matching) => {
-      env.s = matching;
-      return deps(env.project);
-    })
-    .then((depGraph) => {
-      if (depGraph.length) {
-        const stack = depGraph.map((dep: Project) => {
-          return _.map(dep.cache.libs.value(), (lib) => {
-            console.log('+', path.join(dep.d.home, lib));
-            return path.join(dep.d.home, lib);
-          })
-        })
-        env.build.libs = _.flatten(stack);
-      }
-      env.build.includeDirs = _.union
-        ([`${env.project.d.home}/include`], env.project.d.includeDirs);
-      return Promise.resolve(env);
-    });
-}
-
-interface StringObject {
-  [key: string]: string;
-}
-
-
-function shCommand(env: Environment, command: any) {
-  const c: CmdObj = check(command, String) ?
-    <CmdObj>{ cmd: command } :
-    command;
-  const cwd = env.pathSetting(c.cwd || env.project.d.source);
-  log.verbose(`    ${c.cmd}`);
-  return execAsync(
-    c.cmd,
-    <ExecOptions>{ cwd: cwd, silent: !args.quiet });
-}
-
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
   if (env.project.force() || env.cache.configure.dirty()) {
     const commands = env.getConfigurationIterable();
-    return Bluebird.each(
+    return each(
       commands,
       (i: CmdObj): PromiseLike<any> => {
         log.verbose(`  ${i.cmd}:`);
@@ -123,18 +64,16 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
           return env.runPhaseWithPlugin({ phase: 'configure', pluginName: i.cmd });
         }
         switch (i.cmd) {
-          default:
-            return shCommand(env, i.arg);
           case 'shell':
             return iterateOLHM(i.arg, (command: any) => {
-              return shCommand(env, command);
+              return env.sh(command);
             });
           case 'replace':
             return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
               const pattern = env.globArray(replEntry.matching);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
-                  return Bluebird.each(files, (file) => {
+                  return each(files, (file) => {
                     return replaceInFile(file, replEntry, env);
                   })
                 })
@@ -142,7 +81,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
           case 'create':
             return iterateOLHM(
               i.arg, (entry: any) => {
-                const filePath = path.join(env.project.d.source, entry.path);
+                const filePath = join(env.project.d.source, entry.path);
                 const existing = file.readIfExists(filePath);
                 if (existing !== entry.string) {
                   log.verbose(`create file ${filePath}`);

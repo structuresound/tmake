@@ -7,8 +7,9 @@ import { args } from './args';
 import { log } from './log';
 import { mkdir } from './sh';
 
-import { Project, ProjectModifier } from './project'
-import { Environment, EnvironmentCacheFile, EnvironmentModifier } from './environment'
+import { Project, ProjectModifier } from './project';
+import { CacheObject } from './cache';
+import { Environment } from './environment';
 
 let cacheDbPath: string;
 
@@ -33,7 +34,7 @@ export function projectNamed(name: string): PromiseLike<Project> {
   return cache.findOne({ name: name });
 }
 
-export function environmentCache(hash: string): PromiseLike<EnvironmentCacheFile> {
+export function environmentCache(hash: string): PromiseLike<CacheObject> {
   return cache.findOne({ hash: hash });
 }
 

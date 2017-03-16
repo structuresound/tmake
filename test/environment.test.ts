@@ -6,16 +6,17 @@ import { contains, containsAny, check } from 'js-object-tools';
 import { parseFileAsync } from '../src/file';
 import { args } from '../src/args';
 import { Project, ProjectFile } from '../src/project';
-import { Environment, keywords } from '../src/environment';
+import { Environment } from '../src/environment';
 
 describe('environment', () => {
 
+  let project: Project;
   let env: Environment;
 
   before(() => {
     return parseFileAsync(path.join(args.npmDir, 'test/config/metaProject.yaml'))
       .then((projectFile: ProjectFile) => {
-        const project = new Project(projectFile);
+        project = new Project(projectFile);
         env = project.environments[0];
       });
   });
@@ -30,7 +31,7 @@ describe('environment', () => {
   });
 
   it('has keywords including compilers',
-    () => { assert.ok(contains(keywords, 'clang')); });
+    () => { assert.ok(contains(env.keywords, 'clang')); });
   it('selectors contain a host', () => {
     assert.ok(
       containsAny(env.selectors, ['host-mac', 'host-linux', 'host-win']), `${env.selectors.join(', ')}`);
@@ -50,17 +51,18 @@ describe('environment', () => {
       BSON_BYTE_ORDER: 4321,
       configure: {
         replace: 'don\'t run this',
-        for: 'test-platform-ninja',
+        ninja: null,
         create: './Configure test-platform-1.0 --openssldir=/tmp/openssl-1.0.1'
       }
     }
 
-  it('will parse the configuration based on self and outputType selectors',
-    () => {
-      assert.equal(env.configure.replace, expect.configure.replace);
-      assert.equal(env.parse(env.configure.for), expect.configure.for);
-      assert.equal(env.parse(env.configure.create), expect.configure.create);
-    });
+  it('will parse the configuration based on self and outputType selectors', () => {
+    console.log(env.configure);
+    assert.equal(env.configure.replace, expect.configure.replace);
+    assert.equal(env.parse(env.configure.ninja), expect.configure.ninja);
+    assert.equal(env.parse(env.configure.create), expect.configure.create);
+  });
+
   it('can parse a user defined macro', () => {
     assert.equal(env.parse('${BSON_BYTE_ORDER}'), expect.BSON_BYTE_ORDER);
   });

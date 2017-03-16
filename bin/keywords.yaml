@@ -1,3 +1,6 @@
+environment:
+  - debug
+  - production
 host:
   - mac
   - win
@@ -13,9 +16,6 @@ target:
   - android
   - raspberryPi
   - test-platform
-build:
-  - cmake
-  - ninja
 sdk:
   - cocoa
   - sdl
@@ -34,6 +34,7 @@ architecture:
   - s390
   - s390x
   - x87
+  - test-arch
 compiler:
   - clang
   - gcc

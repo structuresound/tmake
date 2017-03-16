@@ -7,7 +7,7 @@ import { log } from './log';
 import { info } from './info';
 import { Project } from './project';
 import { Environment } from './environment';
-import { Plugin } from './plugin';
+import { ShellPlugin } from './sh';
 
 export class TMakeError extends Error {
   reason: Error
@@ -47,7 +47,7 @@ export const errors = {
     }
   },
   configure: {
-    noProjectFile: function (plugin: Plugin) {
+    noProjectFile: function (plugin: ShellPlugin) {
       const fileError = new Error(`no build file @ ${plugin.projectFilePath()}`);
       if (!plugin.generate) {
         throw new TMakeError(`did you forget to specify [ generate ] options for ${plugin.name}?`, fileError);
@@ -62,7 +62,7 @@ export const errors = {
         return new TMakeError(`command ${command} failed on `, error);
       }
     },
-    noBuildFile: function (plugin: Plugin) {
+    noBuildFile: function (plugin: ShellPlugin) {
       const fileError = new Error(`no build file @ ${plugin.buildFilePath()}`);
       if (!plugin.configure) {
         throw new TMakeError(`did you forget to specify [ configure ] options for ${plugin.name}?`, fileError);

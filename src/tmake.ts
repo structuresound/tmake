@@ -5,16 +5,16 @@ import * as colors from 'chalk';
 import * as fs from 'fs';
 import { contains, plain as toJSON, safeOLHM } from 'js-object-tools';
 
-import { args } from './args';
-import { build } from './build';
+import { args, encode as encodeArgs } from './args';
 import { login, get, post } from './cloud';
-import { configure } from './configure';
 import {
   projectNamed, updateProject, updateEnvironment,
   user as userDb, cache
 } from './db';
 import { Environment } from './environment';
 import { fetch, linkSource, destroy as destroySource } from './fetch';
+import { build } from './build';
+import { configure } from './configure';
 import * as file from './file';
 import { createNode, graph } from './graph';
 import { installProject, installEnvironment, installHeaders } from './install';
@@ -23,6 +23,7 @@ import { prompt } from './prompt';
 import { log } from './log';
 import { info } from './info';
 import { errors } from './errors';
+import { ShellPlugin } from './sh';
 
 import test from './test';
 
@@ -69,7 +70,7 @@ function singleCommand(project: Project, phase: string, selectedDeps: Project[])
   return Promise.resolve();
 }
 
-function execute(conf: ProjectFile, phase: string, subProject?: string) {
+export function execute(conf: ProjectFile, phase: string, subProject?: string) {
   let root: Project;
   return graph(conf)
     .then((deps: Project[]) => {
@@ -107,7 +108,7 @@ function execute(conf: ProjectFile, phase: string, subProject?: string) {
     .then(() => { return Promise.resolve(root); });
 }
 
-class ProjectRunner {
+export class ProjectRunner {
   [index: string]: any;
   project: Project;
   constructor(node: Project) {
@@ -122,7 +123,7 @@ class ProjectRunner {
   configure(isTest?: boolean) {
     const doConfigure = () => {
       log.verbose(`  configure`);
-      return this.do(configure, isTest)
+      return this.do(configure)
         .then(() => {
           log.verbose('install headers');
           return installHeaders(this.project);
@@ -136,7 +137,7 @@ class ProjectRunner {
     return this.configure(isTest)
       .then(() => {
         log.verbose(`  build`);
-        return this.do(build, isTest);
+        return this.do(build);
       });
   }
   all() {
@@ -146,8 +147,8 @@ class ProjectRunner {
     return this.build()
       .then(() => {
         log.verbose(`  install`);
-        return installProject(this.project).then(() => {
-          return this.do(installEnvironment);
+        return this.do(installEnvironment).then(() => {
+          return installProject(this.project);
         });
       });
   }
@@ -174,31 +175,13 @@ class ProjectRunner {
       if (fs.existsSync(libFile)) {
         fs.unlinkSync(libFile);
       }
+      if (fs.existsSync(this.project.d.build)) {
+        file.nuke(this.project.d.build);
+      };
     });
     return Bluebird.each(this.project.environments, (env) => {
-      if (fs.existsSync(env.d.build)) {
-        log.verbose(`rm -R ${env.d.build}`);
-        file.nuke(env.d.build);
-      }
-      if (env.cache.generatedBuildFilePath.value()) {
-        const filePath =
-          path.join(env.d.project, env.cache.generatedBuildFilePath.value());
-        try {
-          if (fs.existsSync(filePath)) {
-            log.verbose(`clean generatedBuildFile ${filePath}`);
-            if (fs.lstatSync(filePath).isDirectory()) {
-              file.nuke(filePath);
-            } else {
-              fs.unlinkSync(filePath);
-            }
-          }
-        } catch (err) {
-          log.error(err.message || err);
-        }
-        const unsetter = { $set: { 'cache': {} } };
-        const hash = env.hash();
-        return cache.remove({ hash: hash });
-      }
+      const hash = env.hash();
+      return cache.remove({ hash: hash });
     }).then(() => {
       log.verbose('clean environment caches');
       return cache.remove({ project: this.project.name })
@@ -217,7 +200,7 @@ function processDep(node: Project, phase: string) {
   return new ProjectRunner(node)[phase]();
 }
 
-function unlink(config: ProjectFile) {
+export function unlink(config: ProjectFile) {
   const query = { name: config.name, tag: config.tag || 'master' };
   return userDb.findOne(query).then((doc: ProjectFile) => {
     if (doc) {
@@ -227,7 +210,7 @@ function unlink(config: ProjectFile) {
   });
 }
 
-function push(config: ProjectFile) {
+export function push(config: ProjectFile) {
   prompt
     .ask(colors.green(
       `push will do a clean, full build, test and if successful will upload to the ${colors.yellow('public repository')}\n${colors.yellow('do that now?')} ${colors.gray('(yy = disable this warning)')}`))
@@ -252,7 +235,7 @@ function push(config: ProjectFile) {
     });
 }
 
-function list(repo: string, selector: Object) {
+export function list(repo: string, selector: Object) {
   switch (repo) {
     default:
     case 'cache':
@@ -262,7 +245,7 @@ function list(repo: string, selector: Object) {
   }
 }
 
-function findAndClean(depName: string): PromiseLike<ProjectFile> {
+export function findAndClean(depName: string): PromiseLike<ProjectFile> {
   return projectNamed(depName)
     .then((config: ProjectFile) => {
       if (config) {
@@ -282,11 +265,19 @@ function findAndClean(depName: string): PromiseLike<ProjectFile> {
     });
 }
 
-export {
-  ProjectRunner,
-  execute,
-  list,
-  push,
-  unlink,
-  findAndClean,
-};
+export class TMake extends ShellPlugin {
+  constructor(env: Environment) {
+    super(env);
+    this.name = 'tmake';
+    this.projectFileName = 'tmake.yaml';
+  }
+  configureCommand() {
+    return `TMAKE_ARGS="${encodeArgs()}" tmake configure`
+  }
+  buildCommand() {
+    return `TMAKE_ARGS="${encodeArgs()}" tmake build`
+  }
+  installCommand() {
+    return `TMAKE_ARGS="${encodeArgs()}" tmake install`
+  }
+}

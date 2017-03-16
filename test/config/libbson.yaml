@@ -58,25 +58,26 @@ configure:
         yaji:
         - '#include "bson-compat.h"'
         - '#include <libbson-1.0/bson-compat.h>'
+generate: 'ninja'
 build:
-  with: ninja
-  matching:
-  - src/bson/**.c
-  - src/yajl/**.c
-  cFlags:
-    DBSON_COMPILATION: true
-    O3: true
-    std: c++11
-    g: true
-    Wall: true
-    Wextra: true
-    Wno-unused-parameter: true
-    Wno-missing-field-initializers: true
-    linux:
-      pthread: true
-    mac:
-      stdlib: libc++
-  outputFile: libbson-1.0.a
+  ninja:
+    cFlags:
+      DBSON_COMPILATION: true
+      O3: true
+      std: c++11
+      g: true
+      Wall: true
+      Wextra: true
+      Wno-unused-parameter: true
+      Wno-missing-field-initializers: true
+      linux:
+        pthread: true
+      mac:
+        stdlib: libc++
+    matching:
+    - src/bson/**.c
+    - src/yajl/**.c
+    outputFile: libbson-1.0.a
 path:
   install:
     headers:

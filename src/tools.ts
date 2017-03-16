@@ -21,8 +21,8 @@ export interface Tool {
 }
 
 export interface Tools {
-  ninja: Tool;
-  clang: Tool;
+  ninja?: Tool;
+  clang?: Tool;
 }
 
 // customToolchain =

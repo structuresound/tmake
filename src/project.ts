@@ -7,10 +7,7 @@ import { log } from './log';
 import { args } from './args';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, stringHash } from './hash';
-import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compilerFlags';
-
-import { Build } from './build';
-import { Configure } from './configure';
+import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Install, InstallOptions } from './install';
 import { Git, GitConfig } from './git';
 import { CacheProperty } from './cache';
@@ -47,6 +44,7 @@ export interface ProjectDirs {
   home: string;
   clone: string;
   source: string;
+  build: string;
   install: Install;
   includeDirs: string[];
   localCache: string;
@@ -85,8 +83,8 @@ export interface ProjectFile extends Toolchain {
   toolchains?: OLHM<Toolchain>;
 
   // implements Toolchain
-  build?: Build;
-  configure?: Configure;
+  build?: any;
+  configure?: any;
   host?: Platform;
   options?: OLHM<any>;
   target?: Platform;
@@ -96,10 +94,12 @@ export interface ProjectFile extends Toolchain {
   environment?: any;
 }
 
-export const metaDataKeys = ['name', 'version', 'user', 'path', 'git', 'archive', 'override'];
-export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType', 'build', 'configure'];
-export const dependencyKeys = ['require'];
-export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(toolchainKeys);
+export const metaDataKeys = ['name', 'user', 'path'];
+export const sourceKeys = ['git', 'archive', 'version'];
+export const toolchainKeys = ['host', 'target', 'environment', 'tools', 'outputType'];
+export const pluginKeys = ['generate', 'build', 'configure'];
+export const dependencyKeys = ['require', 'override'];
+export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(sourceKeys).concat(toolchainKeys).concat(pluginKeys);
 
 export const ephemeralKeys = ['dir', 'd', 'p']
 
@@ -133,7 +133,7 @@ function getProjectDirs(project: Project, parent: Project): ProjectDirs {
     d.clone = path.join(d.root, pathOptions.clone);
   }
   d.source = path.join(d.clone, pathOptions.source);
-
+  d.build = path.join(d.root, pathOptions.build);
   d.install = <Install>{
     headers: _.map(arrayify(pathOptions.install.headers), (ft: InstallOptions) => {
       return {
@@ -151,6 +151,7 @@ function getProjectPaths(project: Project) {
   const defaultPaths = {
     source: '',
     headers: '',
+    build: 'build',
     clone: 'source',
   };
   const pathOptions = <ProjectDirs>extend(defaultPaths, project.path);
@@ -269,8 +270,8 @@ export class Project implements ProjectFile {
   toolchains?: OLHM<Toolchain>;
 
   // implements Toolchain
-  build: Build;
-  configure: Configure;
+  build: any;
+  configure: any;
   host: Platform;
   target: Platform;
   tools: Tools;
@@ -298,8 +299,8 @@ export class Project implements ProjectFile {
     } else {
       projectFile = <ProjectFile>clone(_projectFile);
     }
-    const metaDataFields = _.pick(projectFile, metaDataKeys);
-    extend(this, metaDataFields);
+    const registryFields = _.pick(projectFile, registryKeys);
+    extend(this, registryFields);
     if (this.git) {
       this.git = new Git(this.git);
     }

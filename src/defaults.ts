@@ -3,6 +3,11 @@ const headerExtentions = [
 ]
 
 export const defaults = {
+  compiler: {
+    'host-mac': 'clang',
+    'host-linux': 'gcc',
+    'host-win': 'msvc'
+  },
   flags: {
     compiler: {
       clang: {
