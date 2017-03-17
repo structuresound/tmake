@@ -13,7 +13,6 @@ import { Git, GitConfig } from './git';
 import { CacheProperty } from './cache';
 import { Toolchain, Platform, Environment, EnvironmentDirs } from './environment';
 import { Tools } from './tools';
-
 import { errors } from './errors';
 
 export interface Project$Set {
@@ -59,8 +58,6 @@ export interface PersistedProjectCache {
   bin?: string;
   libs?: string[];
 }
-
-export type BuildPhase = 'fetch' | 'generate' | 'configure' | 'build' | 'install';
 
 export interface ProjectFile extends Toolchain {
   [index: string]: any;

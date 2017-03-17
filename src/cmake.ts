@@ -10,19 +10,7 @@ import { execAsync } from './sh';
 import { args } from './args';
 import { Environment } from './environment';
 import { Plugin } from './plugin';
-import { Compiler, CompilerOptions } from './compiler';
-
-export interface CMakeOptions extends CompilerOptions {
-  cmake: {
-    minimumVersion: string;
-    version: string;
-  },
-  toolchain?: {
-    ninja?: {
-      version?: string;
-    }
-  }
-}
+import { Compiler } from './compiler';
 
 export function quotedList(array: string[]) {
   return map(array, (el) => {
@@ -31,15 +19,13 @@ export function quotedList(array: string[]) {
 }
 
 export class CMake extends Compiler {
-  options: CMakeOptions;
+  options: TMake.Plugin.Shell.Compiler.CMake.Options;
 
-  constructor(environment: Environment) {
-    super(environment);
+  constructor(environment: Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options) {
+    super(environment, options);
     this.name = 'cmake';
     this.projectFileName = 'CMakeLists.txt';
     this.buildFileName = 'build.ninja';
-
-    this.init();
   }
 
   configureCommand(toolpaths: any) {
@@ -85,20 +71,19 @@ project(${this.environment.project.name} VERSION ${pv})`;
         case 'executable':
         default:
           return `
-include_directories(${quotedList(this.environment.includeDirs())})`;
+include_directories(${quotedList(this.options.includeDirs)})`;
         case 'environment':
           return `
 # Essential include files to build a environment addon,
 # you should add this line in every CMake.js based project.
 include_directories(\${CMAKE_JS_INC})
-include_directories(${quotedList(this.environment.includeDirs())})`;
+include_directories(${quotedList(this.options.includeDirs)})`;
       }
     }
 
     const matching = () => {
       const relativeToSource = path.relative(this.environment.d.project, this.environment.d.source) || '.';
       const src = _.map(this.environment.s, (fp) => {
-        console.log(path.join(relativeToSource, fp));
         return path.join(relativeToSource, fp);
       })
       return `\n
@@ -121,7 +106,7 @@ set(CMAKE_C_FLAGS "\${CMAKE_C_FLAGS} ${this.cFlags().join(' ')}")`;
       }
     }
     const link = () => {
-      let linkLibs = quotedList(this.environment.build.libs.reverse());
+      let linkLibs = quotedList(this.options.libs.reverse());
       const frameworks = quotedList(this.frameworks());
       if (linkLibs.length || frameworks.length) {
         return `
@@ -142,4 +127,4 @@ target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${this.linkerFl
   }
 }
 
-Plugin.register(CMake);
+export default CMake;

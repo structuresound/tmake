@@ -3,6 +3,10 @@ const headerExtentions = [
 ]
 
 export const defaults = {
+  plugins: [
+    'cmake',
+    'ninja'
+  ],
   compiler: {
     'host-mac': 'clang',
     'host-linux': 'gcc',
@@ -13,11 +17,11 @@ export const defaults = {
       clang: {
         ios: {
           arch: 'arm64',
-          isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}',
-          'miphoneos-version-min': '={SDK_VERSION}',
+          isysroot: '${CROSS_TOP}/SDKs/${CROSS_SDK}',
+          'miphoneos-version-min': '=${SDK_VERSION}',
           simulator: {
             'mios-simulator-version-min': '=6.1',
-            isysroot: '{CROSS_TOP}/SDKs/{CROSS_SDK}'
+            isysroot: '${CROSS_TOP}/SDKs/${CROSS_SDK}'
           }
         }
       }

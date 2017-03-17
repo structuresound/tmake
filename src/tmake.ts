@@ -15,6 +15,7 @@ import { Environment } from './environment';
 import { fetch, linkSource, destroy as destroySource } from './fetch';
 import { build } from './build';
 import { configure } from './configure';
+import { generate } from './generate';
 import * as file from './file';
 import { createNode, graph } from './graph';
 import { installProject, installEnvironment, installHeaders } from './install';
@@ -119,7 +120,14 @@ export class ProjectRunner {
       return fn(env, opt);
     })
   }
-  fetch() { return fetch(this.project); }
+  fetch(isTest?: boolean) { return fetch(this.project, isTest); }
+  generate(isTest?: boolean) {
+    return this.fetch()
+      .then(() => {
+        log.verbose(`  generate`);
+        return this.do(generate);
+      });
+  }
   configure(isTest?: boolean) {
     const doConfigure = () => {
       log.verbose(`  configure`);
@@ -129,7 +137,7 @@ export class ProjectRunner {
           return installHeaders(this.project);
         });
     }
-    return this.fetch().then(() => {
+    return this.generate(isTest).then(() => {
       return doConfigure();
     });
   }

@@ -3,23 +3,24 @@ import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
 import { cascade, check, clone, contains, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
-
 import { updateEnvironment } from './db';
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from './file';
 import { args } from './args';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
-import { CmdObj, iterable, getCommands } from './iterate';
+import { CmdObj, iterable } from './iterate';
+import { Phase } from './phase';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Cache as BaseCache, CacheObject, CacheProperty } from './cache';
 import { Install, InstallOptions } from './install';
-import { Plugin } from './plugin';
-import { BuildPhase, Project, ProjectDirs } from './project';
+import { Runtime } from './runtime';
+import { Project, ProjectDirs } from './project';
 import { defaults } from './defaults';
 import { ExecOptions, execAsync, mkdir } from './sh';
 import { parse, absolutePath, pathArray } from './parse';
 import { Tools } from './tools';
+import { Plugin } from './plugin';
 
 export interface Docker {
     user: string,
@@ -70,6 +71,9 @@ export class Cache extends BaseCache<string> {
     constructor(env) {
         super();
         this.env = env;
+        this.generate = new CacheProperty<string>(() => {
+            return jsonStableHash(env.generate);
+        });
         this.configure = new CacheProperty<string>(() => {
             return jsonStableHash(env.configure);
         });
@@ -116,6 +120,7 @@ const additionalArchKeywords = {
 
 const HOST_ENDIANNESS = os.endianness();
 const HOST_PLATFORM = platformNames[os.platform()];
+const HOST_COMPILER = defaults.compiler[`host-${HOST_PLATFORM}`];
 const HOST_ARCHITECTURE = os.arch();
 const HOST_CPU = os.cpus();
 
@@ -123,13 +128,14 @@ const ninjaVersion = 'v1.7.1';
 
 const HOST_ENV = {
     architecture: HOST_ARCHITECTURE,
+    compiler: HOST_COMPILER,
     endianness: HOST_ENDIANNESS,
-    compiler: defaults.compiler[`host-${HOST_PLATFORM}`],
     platform: HOST_PLATFORM,
     cpu: { num: HOST_CPU.length, speed: HOST_CPU[0].speed }
 };
 
 const DEFAULT_TARGET = {
+    compiler: HOST_COMPILER,
     architecture: HOST_ARCHITECTURE,
     endianness: HOST_ENDIANNESS,
     platform: HOST_PLATFORM
@@ -172,7 +178,7 @@ const DEFAULT_ENV =
     parseFileSync(path.join(args.binDir, 'environment.yaml'));
 const _keywords: any =
     parseFileSync(path.join(args.binDir, 'keywords.yaml'));
-const keywords =
+const defaultKeywords =
     [].concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
         .concat(_keywords.target)
         .concat(_keywords.architecture)
@@ -181,7 +187,7 @@ const keywords =
         .concat(_keywords.ide)
         .concat(_keywords.deploy);
 
-const argvSelectors = Object.keys(_.pick(args, keywords));
+const argvSelectors = Object.keys(_.pick(args, defaultKeywords));
 argvSelectors.push(args.compiler);
 
 function getEnvironmentDirs(pathOptions: EnvironmentDirs, projectDirs: ProjectDirs): EnvironmentDirs {
@@ -259,8 +265,9 @@ function getProjectFile(env: Environment, systemName: string): string {
 }
 
 export class Environment implements Toolchain {
-    configure: any;
-    build: any;
+    generate: Phase;
+    configure: Phase;
+    build: Phase;
     path: EnvironmentDirs;
     selectors: string[];
     options: OLHM<any>;
@@ -271,28 +278,26 @@ export class Environment implements Toolchain {
     host: Platform;
     target: Platform;
     tools: Tools;
-    environment: any;
+    _environment: any;
+    environment: Environment;
     outputType: string;
-    plugins: { [index: string]: Plugin<Environment> }
+    plugins: { [index: string]: Plugin }
     cache: Cache;
-
     project: Project;
-
-    _configure: any;
-    _build: any;
 
     constructor(t: Toolchain, project: Project) {
         /* set up selectors + environment */
         this.project = project;
-        this.host = <Platform>combine(HOST_ENV, t.host || project.host);
-        this.target = <Platform>combine(DEFAULT_TARGET, t.target || project.target);
 
-        const hostSelectors = parseSelectors(this.host, 'host-');
-        const targetSelectors = parseSelectors(this.target, undefined);
-        this.selectors = hostSelectors.concat(targetSelectors);
-        this.keywords = keywords;
-        const additionalOptions = cascade(this.options || {}, keywords, this.selectors);
+        const host = <Platform>combine(HOST_ENV, t.host || project.host);
+        const target = <Platform>combine(DEFAULT_TARGET, t.target || project.target);
+        const hostSelectors = parseSelectors(host, 'host-');
+        const targetSelectors = parseSelectors(target, undefined);
+        let keywords = clone(defaultKeywords);
+        let selectors = hostSelectors.concat(targetSelectors);
+        const additionalOptions = cascade(t.options || {}, keywords, selectors);
         const additionalKeywords = Object.keys(additionalOptions);
+
         let additionalSelectors = [];
         for (const k of additionalKeywords) {
             if (additionalOptions[k]) {
@@ -300,32 +305,44 @@ export class Environment implements Toolchain {
             }
         }
         if (additionalKeywords.length) {
-            this.keywords = this.keywords.concat(additionalKeywords);
+            keywords = keywords.concat(additionalKeywords);
             if (additionalSelectors.length) {
-                this.selectors = this.selectors.concat(additionalSelectors);
+                selectors = this.selectors.concat(additionalSelectors);
             }
         }
 
-        const environment = cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
-            this.selectors);
-        extend(this, environment);
-        this.tools = this.selectTools();
+        this.environment = <any>{
+            host: host,
+            target: target,
+            keywords: keywords,
+            selectors: selectors,
+            options: additionalOptions
+        }
 
+        this._environment = t.environment || project.environment;
+        extend(this.environment, cascade(combine(DEFAULT_ENV, this._environment), this.environment.keywords,
+            this.environment.selectors));
+
+        this.addToEnvironment('tools', this.selectTools());
         /* setup paths + directories */
         const path = this.select(combine(project.p, t.path));
-        const p = getEnvironmentPaths(path, this.target.architecture, project.outputType);
+        const p = getEnvironmentPaths(path, this.environment.target.architecture, project.outputType);
         const d = getEnvironmentDirs(p, project.d);
 
-        this.path = this.parse(path);
-        this.p = this.parse(p);
-        this.d = this.parse(d);
+
+        this.addToEnvironment('path', this.parse(path));
+        this.addToEnvironment('p', this.parse(p));
+        this.addToEnvironment('d', this.parse(d));
+
 
         /* copy config + build settings */
-        this._configure = combine(project.configure || t.configure);
-        this.configure = this.select(this._configure);
+        this.addToEnvironment('generate', this.parse(t.generate || project.generate || {}));
+        this.addToEnvironment('configure', t.configure || project.configure || {});
+        this.addToEnvironment('build', t.build || project.build || {});
 
-        this._build = combine(project.build || t.build)
-        this.build = this.select(this._build);
+        this.generate = this.select(this.generate);
+        this.configure = this.select(this.configure);
+        this.build = this.select(this.build);
 
         /* extend + select all remaining settings */
         const inOutFields = _.pick(project, ['outputType']);
@@ -333,31 +350,32 @@ export class Environment implements Toolchain {
         if (!this.outputType) {
             this.outputType = 'static';
         }
-
         this.cache = new Cache(this);
         this.plugins = {};
-    }
 
-    includeDirs() { return iterable(this.build.includeDirs); }
+    }
+    addToEnvironment(key: string, val: any) {
+        this[key] = val;
+        this.environment[key] = clone(val);
+    }
     globArray(val: any) {
         return _.map(arrayify(val), (v) => { return parse(v, this); });
     }
     j() { return this.host.cpu.num; }
     hash() {
-        const env = _.pick(this, ['host', 'target']);
-        const phases = { build: this._build, configure: this._configure };
+        const buildSettings = _.pick(this.environment, ['host', 'target', 'generate', 'build', 'configure']);
         const projectSettings = _.pick(this.project, ['name', 'version']);
-        return jsonStableHash(combine(env, phases, projectSettings));
+        return jsonStableHash(combine({ environment: this._environment }, buildSettings, projectSettings));
     }
     merge(other: CacheObject) {
         mergeEnvironment(this, other);
     }
     parse(input: any, conf?: any) {
         if (conf) {
-            const dict = combine(this, cascade(conf, keywords, this.selectors));
+            const dict = combine(this.environment, cascade(conf, this.environment.keywords, this.environment.selectors));
             return parse(input, dict);
         }
-        return parse(input, this);
+        return parse(input, this.environment);
     }
     toCache(): CacheObject {
         return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
@@ -368,11 +386,11 @@ export class Environment implements Toolchain {
         }
         const mutableOptions = clone(options);
 
-        mutableOptions.keywords = _.difference(keywords, mutableOptions.ignore.keywords);
-        mutableOptions.selectors = _.difference(this.selectors, mutableOptions.ignore.selectors);
+        mutableOptions.keywords = _.difference(this.environment.keywords, mutableOptions.ignore.keywords);
+        mutableOptions.selectors = _.difference(this.environment.selectors, mutableOptions.ignore.selectors);
 
         const preParse = cascade(base, mutableOptions.keywords, mutableOptions.selectors);
-        const parsed = this.parse(preParse, mutableOptions.dict || this);
+        const parsed = this.parse(preParse, mutableOptions.dict || this.environment);
         return <T>parsed;
     }
     fullPath(p: string) {
@@ -416,9 +434,10 @@ export class Environment implements Toolchain {
     }
     runPhaseWithPlugin({ phase, pluginName }: { phase: string, pluginName: string }): PromiseLike<any> {
         if (!this.plugins[pluginName]) {
-            const PluginConstructor = Plugin.lookup(pluginName);
-            const plugin = new PluginConstructor(this);
-            this.plugins[pluginName] = <Plugin<any>>plugin;
+            const PluginConstructor = Runtime.getPlugin(pluginName);
+            console.log('instantiate plugin:', pluginName, PluginConstructor);
+            const plugin = new PluginConstructor(this, combine(this[phase], this[phase][pluginName]));
+            this.plugins[pluginName] = plugin;
         }
         return this.plugins[pluginName][phase]();
     }
@@ -432,24 +451,26 @@ export class Environment implements Toolchain {
             c.cmd,
             <ExecOptions>{ cwd: cwd, silent: !args.quiet });
     }
-    getConfigurationIterable(): CmdObj[] { return getCommands(this.configure); }
-    getBuildIterable(): CmdObj[] { return getCommands(this.build); }
 }
 
-export class EnvironmentPlugin extends Plugin<Environment> {
+export class EnvironmentPlugin extends Plugin {
     environment: Environment;
     options: any;
     toolpaths: any;
     projectFileName: string;
     buildFileName: string;
 
-    constructor(env: Environment) {
-        super(env);
+    constructor(env: Environment, options?: TMake.Plugin.Options) {
+        super(env, options);
         this.environment = env;
-        Object.keys(env).forEach((key) => {
-            const keys: BuildPhase[] = ['fetch', 'generate', 'configure', 'build', 'install'];
-            if (contains(keys, key)) {
-                this.options[key] = env[key][this.name]
+        const phases: TMake.Plugin.Phase[] = ['fetch', 'generate', 'configure', 'build', 'install'];
+        Object.keys(env).forEach((phase) => {
+            if (contains(phases, phase)) {
+                // temp hack until proper 'stack' is built into tree parser
+                Object.keys(env[phase]).forEach((settingKey) => {
+                    // if (settingKey == this.name) extend
+                    if (!Runtime.getPlugin(settingKey)) this.options[settingKey] = env[phase][settingKey]
+                });
             }
         });
     }

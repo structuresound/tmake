@@ -7,8 +7,9 @@ import { readFileSync } from 'fs';
 import { log } from './log';
 import { fetch } from './tools';
 import { execAsync } from './sh';
-import { Compiler, CompilerOptions } from './compiler';
+import { Compiler } from './compiler';
 import { Environment } from './environment';
+import { Plugin } from './plugin';
 
 const ninjaVersion = '1.6.0';
 
@@ -38,29 +39,14 @@ function getRule(ext: string) {
   }
 }
 
-export interface NinjaOptions extends CompilerOptions {
-  cmake: {
-    minimumVersion: string;
-    version: string;
-  },
-  toolchain?: {
-    ninja?: {
-      version?: string;
-    }
-  }
-}
-
-
 export class Ninja extends Compiler {
-  options: NinjaOptions;
+  options: TMake.Plugin.Shell.Compiler.Ninja.Options;
 
   constructor(environment: Environment) {
     super(environment);
     this.name = 'ninja';
     this.projectFileName = '';
     this.buildFileName = 'build.ninja';
-
-    this.init();
   }
 
   configureCommand(toolpaths: any) { return '' }
@@ -76,7 +62,7 @@ export class Ninja extends Compiler {
     const relativeToSource = path.relative(this.environment.d.project, this.environment.d.source) || '.';
     console.log(`project to build dir = ${relativeToBuild}`);
     const ninjaConfig = ninja_build_gen(ninjaVersion, relativeToBuild);
-    const includeString = _.map(this.environment.includeDirs(), (dir) => {
+    const includeString = _.map(this.options.includeDirs, (dir) => {
       return `-I${dir}`;
     }).join(' ');
 
@@ -166,3 +152,5 @@ export class Ninja extends Compiler {
     return Promise.resolve(readFileSync(fp + '_node', 'utf8'));
   }
 }
+
+export default Ninja;

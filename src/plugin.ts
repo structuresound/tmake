@@ -1,28 +1,15 @@
-export interface StepOptions {
-    environment?: any;
-    cmd?: any;
-    arguments?: any;
-    flags?: any;
-}
-
-export interface PluginOptions {
-    fetch?: any;
-    generate?: StepOptions;
-    configure?: StepOptions;
-    build?: StepOptions;
-    install?: StepOptions;
-}
-
-export class Plugin<T> {
+export class Plugin {
     name: string;
-    static pluginMap: { [index: string]: typeof Plugin } = {};
-    static register = (plugin: typeof Plugin) => {
-        Plugin.pluginMap[plugin.name] = Plugin;
+    upstream: Object;
+    options: Object;
+    public constructor(upstream: any, options?: Object) {
+        if (!upstream) {
+            throw new Error('no parent context passed to plugin constructor');
+        }
+        this.upstream = upstream;
+        this.options = options || {};
     }
-    static lookup = (name: string) => {
-        return Plugin.pluginMap[name];
-    }
-    public constructor(upstream: T) {
+    public load(phase: string) {
     }
     public fetch(): PromiseLike<any> {
         return Promise.resolve();

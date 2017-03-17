@@ -8,7 +8,11 @@ import { args } from '../src/args';
 import { Project, ProjectFile } from '../src/project';
 import { Environment } from '../src/environment';
 
+import { Runtime } from '../src/runtime';
+
 describe('environment', () => {
+  console.log('registering built in plugins . . .');
+  Runtime.loadPlugins();
 
   let project: Project;
   let env: Environment;
@@ -31,13 +35,13 @@ describe('environment', () => {
   });
 
   it('has keywords including compilers',
-    () => { assert.ok(contains(env.keywords, 'clang')); });
+    () => { assert.ok(contains(env.environment.keywords, 'clang')); });
   it('selectors contain a host', () => {
     assert.ok(
-      containsAny(env.selectors, ['host-mac', 'host-linux', 'host-win']), `${env.selectors.join(', ')}`);
+      containsAny(env.environment.selectors, ['host-mac', 'host-linux', 'host-win']), `${env.environment.selectors.join(', ')}`);
   });
   it('project selectors match configuration target', () => {
-    assert.ok(contains(env.selectors, 'test-platform'), `${env.selectors.join(', ')}`);
+    assert.ok(contains(env.environment.selectors, 'test-platform'), `${env.environment.selectors.join(', ')}`);
   });
   it('can interpolate a shell command to a string',
     () => { assert.equal(env.parse('$(echo hello world)'), 'hello world'); });
@@ -50,17 +54,15 @@ describe('environment', () => {
     {
       BSON_BYTE_ORDER: 4321,
       configure: {
-        replace: 'don\'t run this',
+        shell: './Configure test-platform-1.0 --openssldir=/tmp/openssl-1.0.1',
         ninja: null,
-        create: './Configure test-platform-1.0 --openssldir=/tmp/openssl-1.0.1'
       }
     }
 
   it('will parse the configuration based on self and outputType selectors', () => {
     console.log(env.configure);
-    assert.equal(env.configure.replace, expect.configure.replace);
+    assert.equal(env.parse(env.configure.shell), expect.configure.shell);
     assert.equal(env.parse(env.configure.ninja), expect.configure.ninja);
-    assert.equal(env.parse(env.configure.create), expect.configure.create);
   });
 
   it('can parse a user defined macro', () => {

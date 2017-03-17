@@ -16,6 +16,5 @@ environment:
 configure:
   test-platform:
     test-arch:
-      create: ./Configure ${TEST_SDK_VERSION} --openssldir=/tmp/openssl-${OPENSSL_VERSION}
+      shell: ./Configure ${TEST_SDK_VERSION} --openssldir=/tmp/openssl-${OPENSSL_VERSION}
       ninja:
-  replace: don't run this

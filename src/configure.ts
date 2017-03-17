@@ -1,5 +1,4 @@
-
-import { each } from 'bluebird';
+import { each as eachAsync } from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'js-object-tools';
 
@@ -13,53 +12,20 @@ import { replaceInFile, ReplEntry } from './parse';
 import { updateEnvironment } from './db';
 import { stringHash } from './hash';
 import { CmdObj, iterateOLHM } from './iterate';
-import { Plugin } from './plugin';
+import { Runtime } from './runtime';
 import { EnvironmentPlugin, Environment } from './environment';
-import { BuildPhase, Project } from './project';
+import { Project } from './project';
+import { Phase } from './phase';
 import { defaults } from './defaults';
-import { CMakeOptions } from './cmake';
-
-function copy(patterns: string[], options: file.VinylOptions) {
-  const filePaths: string[] = [];
-  return file
-    .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
-      .pipe(file.map((data: file.VinylFile, callback: Function) => {
-        const mutable = data;
-        log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
-        if (options.flatten) {
-          mutable.base = dirname(mutable.path);
-        }
-        const newPath = join(
-          options.to,
-          relative(mutable.base, mutable.path));
-        filePaths.push(
-          relative(options.relative, newPath));
-        return callback(null, file);
-      }))
-      .pipe(file.dest(options.to)))
-    .then(() => { return Promise.resolve(filePaths); });
-}
-
-function globHeaders(env: Environment) {
-  const patterns = env.globArray(
-    env.build.headers ? env.build.headers : defaults.headers.glob);
-  return file.glob(patterns, env.d.source, env.d.source);
-}
-
-function globSources(env: Environment) {
-  const patterns = env.globArray(
-    env.build.matching || defaults.sources.glob);
-  return file.glob(patterns, env.d.source, env.project.d.source);
-}
 
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
+  const phase = new Phase(env.configure);
   if (env.project.force() || env.cache.configure.dirty()) {
-    const commands = env.getConfigurationIterable();
-    return each(
-      commands,
+    return eachAsync(
+      phase.commands,
       (i: CmdObj): PromiseLike<any> => {
         log.verbose(`  ${i.cmd}:`);
-        const handler = Plugin.lookup(i.cmd);
+        const handler = Runtime.getPlugin(i.cmd);
         if (handler) {
           return env.runPhaseWithPlugin({ phase: 'configure', pluginName: i.cmd });
         }
@@ -73,7 +39,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               const pattern = env.globArray(replEntry.matching);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
-                  return each(files, (file) => {
+                  return eachAsync(files, (file) => {
                     return replaceInFile(file, replEntry, env);
                   })
                 })
@@ -95,9 +61,27 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               (e: { from: string, matching: string[], to: string }) => {
                 log.quiet(`copy ${e}`);
                 const fromDir = env.pathSetting(e.from);
-                return copy(
-                  e.matching,
-                  { from: fromDir, to: env.pathSetting(e.to) });
+
+                const patterns = e.matching;
+                const options: file.VinylOptions = { from: fromDir, to: env.pathSetting(e.to) }
+                const filePaths: string[] = [];
+                return file
+                  .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
+                    .pipe(file.map((data: file.VinylFile, callback: Function) => {
+                      const mutable = data;
+                      log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
+                      if (options.flatten) {
+                        mutable.base = dirname(mutable.path);
+                      }
+                      const newPath = join(
+                        options.to,
+                        relative(mutable.base, mutable.path));
+                      filePaths.push(
+                        relative(options.relative, newPath));
+                      return callback(null, file);
+                    }))
+                    .pipe(file.dest(options.to)))
+                  .then(() => { return Promise.resolve(filePaths); });
               });
         }
       }).then(() => {

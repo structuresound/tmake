@@ -1,13 +1,12 @@
 import * as _ from 'lodash';
-import * as Bluebird from 'bluebird';
 import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { onPossiblyUnhandledRejection } from 'bluebird';
 import { check, contains } from 'js-object-tools';
 
 import { log } from './log';
 import { info } from './info';
-
 import { args } from './args';
 import {
   src, dest, nuke,
@@ -20,10 +19,12 @@ import { example } from './example';
 import { graph, createNode } from './graph';
 
 import { ProjectFile, resolveName } from './project';
+import { Runtime } from './runtime';
+
 import { TMakeError } from './errors';
 const name = 'tmake';
 
-Bluebird.onPossiblyUnhandledRejection(function (error) { throw error; });
+onPossiblyUnhandledRejection(function (error) { throw error; });
 
 function sortKeysBy(obj: any, comparator?: Function) {
   const keys = _.sortBy(_.keys(obj), (key) => {
@@ -222,6 +223,9 @@ function tmake(rootConfig: ProjectFile,
       })
     default:
       if (contains(Object.keys(packageCommands()), command)) {
+        console.log('registering built in plugins . . .');
+        Runtime.loadPlugins();
+
         return execute(rootConfig, command, projectName);
       }
       throw new Error(`unknown command ${positionalArgs[0]}`);
@@ -306,7 +310,7 @@ function run() {
             } else {
               if (args.verbose) {
                 if (check(e, Error)) {
-                  console.log('logging node error:');
+                  log.log('logging node error:');
                   log.error(e.stack);
                 }
               }
@@ -314,10 +318,10 @@ function run() {
                 log.error(e);
               }
             }
-            console.log('exit with code:', (e as any).code || 1);
+            log.log('exit with code:', (e as any).code || 1);
             process.exit((e as any).code || 1);
           } catch (e) {
-            console.log('... inception')
+            log.log('... inception')
           }
         })
   }

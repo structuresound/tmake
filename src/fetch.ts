@@ -167,7 +167,7 @@ function maybeFetch(project: Project) {
   return Promise.resolve(false);
 }
 
-function fetch(project: Project) {
+function fetch(project: Project, isTest?: boolean) {
   return maybeFetch(project).then(() => { return upsertCache(project) });
 }
 

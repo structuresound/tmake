@@ -1,16 +1,15 @@
 import { omit } from 'lodash';
 import { existsSync } from 'fs';
-import { arrayify, check, clone, each, extend } from 'js-object-tools';
+import { arrayify, check, clone, combine, each, extend } from 'js-object-tools';
 import { log } from './log';
 import { startsWith } from './string';
 import { fetch } from './tools';
 import { execAsync } from './sh';
 import { args } from './args';
 import { Environment } from './environment';
-import { ShellPlugin, ShellPluginOptions } from './sh';
+import { ShellPlugin } from './sh';
 import { jsonStableHash } from './hash';
 import { Project } from './project';
-
 import { defaults } from './defaults';
 
 export function jsonToFrameworks(object: any) {
@@ -105,59 +104,32 @@ export function jsonToCFlags(object: any) {
   return jsonToFlags(opt);
 }
 
-export interface CompilerOptions extends ShellPluginOptions {
-  cFlags?: any;
-  cxxFlags?: any;
-  compilerFlags?: any;
-  linkerFlags?: any;
-
-  frameworks?: any;
-  matching?: any;
-  headers?: any;
-  libs?: any;
-  includeDirs?: any;
-  outputFile?: string;
-}
-
-interface SIO { [index: string]: string }
-
-export interface Flags {
-  compiler: SIO;
-  linker: SIO;
-  cxx: SIO;
-  c: any;
-  frameworks: SIO;
+function resolveFlags(environment: Environment, options: TMake.Plugin.Shell.Compiler.Options) {
+  const cFlags = options.cFlags || options.cxxFlags || {};
+  const cxxFlags = options.cxxFlags || options.cFlags || {};
+  const linkerFlags = options.linkerFlags || {};
+  const compilerFlags = options.compilerFlags || {};
+  const frameworks = options.frameworks || {};
+  return {
+    compiler: extend(environment.select(defaults.flags.compiler), compilerFlags),
+    linker: extend(environment.select(defaults.flags.linker), linkerFlags),
+    cxx: extend(environment.select(defaults.flags.cxx), cxxFlags),
+    c: omit(extend(environment.select(defaults.flags.cxx), cFlags), ['std', 'stdlib']),
+    frameworks: extend(environment.select(defaults.flags.frameworks), frameworks)
+  }
 }
 
 export class Compiler extends ShellPlugin {
-  options: CompilerOptions;
-  flags: Flags;
+  options: TMake.Plugin.Shell.Compiler.Options;
+  flags: TMake.Flags;
   libs: string[];
-  
-  constructor(environment: Environment) {
-    super(environment);
+
+  constructor(environment: Environment, options?: TMake.Plugin.Shell.Compiler.Options) {
+    super(environment, options);
     this.name = 'compiler';
     this.projectFileName = 'CMakeLists.txt';
     this.buildFileName = 'build.ninja';
-  }
-
-  init() {
-    const b = this.environment.select(this.environment[this.name]);
-    const cFlags = b.cFlags || b.cxxFlags || {};
-    const cxxFlags = b.cxxFlags || b.cFlags || {};
-    const linkerFlags = b.linkerFlags || {};
-    const compilerFlags = b.compilerFlags || {};
-
-    this.flags = {
-      compiler: extend(this.environment.select(defaults.flags.compiler), compilerFlags),
-      linker: extend(this.environment.select(defaults.flags.linker), linkerFlags),
-      cxx: extend(this.environment.select(defaults.flags.cxx), cxxFlags),
-      c: omit(extend(this.environment.select(defaults.flags.cxx), cFlags), ['std', 'stdlib']),
-      frameworks: this.environment.select(b.frameworks || this.environment.select(defaults.flags.frameworks) || {})
-    }
-
-    this.libs = [];
-
+    this.flags = resolveFlags(this.environment, this.options);
   }
 
   frameworks() { return jsonToFrameworks(this.flags.frameworks); }

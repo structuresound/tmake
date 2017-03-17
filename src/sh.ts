@@ -8,7 +8,6 @@ import { fileHash, fileHashSync } from './hash';
 import { log } from './log';
 import { args } from './args';
 import { errors, TMakeError } from './errors';
-import { PluginOptions } from './plugin';
 import { Environment, EnvironmentPlugin } from './environment';
 import { CmdObj, iterateOLHM } from './iterate';
 
@@ -92,19 +91,13 @@ export function runCommand(env: Environment, command: any) {
     <ExecOptions>{ cwd: cwd, silent: !args.quiet });
 }
 
-export interface ShellPluginOptions extends PluginOptions {
-  defines?: any;
-  arguments?: any;
-  prefix?: any;
-  toolchain?: {
-    [index: string]: {
-      version?: string;
-    }
-  }
-}
 
 export class ShellPlugin extends EnvironmentPlugin {
-  options: ShellPluginOptions;
+  options: TMake.Plugin.Shell.Options;
+
+  constructor(env: Environment, options?: TMake.Plugin.Shell.Options) {
+    super(env, options);
+  }
 
   public configure() {
     this.ensureProjectFile();

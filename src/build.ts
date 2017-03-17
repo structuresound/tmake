@@ -10,20 +10,20 @@ import { replaceInFile, ReplEntry } from './parse';
 import { updateEnvironment } from './db';
 import { stringHash } from './hash';
 import { CmdObj, iterateOLHM } from './iterate';
-import { Plugin } from './plugin';
+import { Runtime } from './runtime';
 import { EnvironmentPlugin, Environment } from './environment';
-import { BuildPhase, Project } from './project';
+import { Project } from './project';
+import { Phase } from './phase';
 import { defaults } from './defaults';
-import { CMakeOptions } from './cmake';
 
 export function build(env: Environment, isTest?: boolean): PromiseLike<any> {
     if (env.project.force() || env.cache.build.dirty()) {
-        const commands = env.getBuildIterable();
+        const phase = new Phase(env.build);
         return each(
-            commands,
+            phase.commands,
             (i: CmdObj): PromiseLike<any> => {
                 log.verbose(`  ${i.cmd}:`);
-                const handler = Plugin.lookup(i.cmd);
+                const handler = Runtime.getPlugin(i.cmd);
                 if (handler) {
                     return env.runPhaseWithPlugin({ phase: 'build', pluginName: i.cmd });
                 }

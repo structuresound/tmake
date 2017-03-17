@@ -10,7 +10,7 @@ const examples = [
 ]
 
 export function example() {
-  console.log(`
+  log.log(`
 ***
 * ${colors.magenta('Tmake Examples')}
 ***
@@ -19,7 +19,7 @@ export function example() {
     const g = new Git(example.git);
     log.log(colors.green('git clone'), colors.gray(`https://github.com/${g.organization}/`) + colors.magenta(g.repository));
   }
-  console.log(`
+  log.log(`
 ${colors.green('cd')} ${colors.magenta('[example directory]')} && ${colors.green('tmake')}
   `);
 }
