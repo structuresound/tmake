@@ -26,7 +26,7 @@ function unarchive(filePath: string, toDir: string) {
     complete: '=',
     incomplete: ' ',
     width: 20,
-    total: stat.size
+    total: stat.size * 3
   });
 
   const str = pstream({ length: stat.size, time: 100 });

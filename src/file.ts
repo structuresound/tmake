@@ -30,7 +30,8 @@ export interface VinylOptions {
 function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
     throw new Error("don't nuke everything");
-  } else if (fs.existsSync(folderPath)) {
+  }
+  try {
     const files = fs.readdirSync(folderPath);
     for (const file of files) {
       const curPath = path.join(folderPath, file);
@@ -41,11 +42,13 @@ function nuke(folderPath: string) {
       }
     }
     return fs.rmdirSync(folderPath);
+  } catch (e) {
+
   }
 };
 
 function prune(folderPath: string): boolean {
-  if (fs.existsSync(folderPath)) {
+  try {
     const files = fs.readdirSync(folderPath);
     if (files.length) {
       let modified = false;
@@ -64,6 +67,8 @@ function prune(folderPath: string): boolean {
     }
     fs.rmdirSync(folderPath);
     return true;
+  } catch (e) {
+    return false;
   }
 };
 
@@ -124,14 +129,13 @@ function glob(patternS: any, relative: string, cwd: string) {
   return _glob(patterns, relative, cwd);
 };
 
-function existsAsync(filePath: string) {
-  return new Promise<boolean>((resolve: Function, reject: Function) => {
-    if (!filePath) {
-      reject(new Error('no specified clone directory'));
-    }
-    fs.exists(filePath, (exists: boolean) => { resolve(exists); });
-  });
-};
+export function readIfExists(filePath: string) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (e) {
+    return '';
+  }
+}
 
 function readFileAsync(filePath: string, format: string = 'utf8') {
   return new Promise<string>((resolve: Function, reject: Function) => fs.readFile(
@@ -218,12 +222,6 @@ function parseData(data: string, configPath: string): ProjectFile {
   }
 }
 
-function readIfExists(filePath: string) {
-  if (fs.existsSync(filePath)) {
-    return fs.readFileSync(filePath, 'utf8');
-  }
-};
-
 function readConfigSync(configDir: string) {
   const configPath = getConfigPath(configDir);
   if (configPath) {
@@ -255,24 +253,23 @@ function moveArchive(tempDir: string, toDir: string, toPath: string) {
     const file = files[0];
     const fullPath = `${tempDir}/${file}`;
     if (fs.lstatSync(fullPath).isDirectory()) {
-      if (fs.existsSync(toDir)) {
+      try {
         nuke(toDir);
-      }
+      } catch (e) { };
       return sh.mv(fullPath, toDir);
     }
     if (typeof toPath === 'undefined' || toPath === null) {
       resolvedToPAth = `${toDir}/${file}`;
     }
-    if (!fs.existsSync(toDir)) {
-      sh.mkdir('-p', toDir);
-    } else if (fs.existsSync(resolvedToPAth)) {
-      fs.unlinkSync(resolvedToPAth);
-    }
-    return sh.mv(fullPath, resolvedToPAth);
-  }
-  if (!fs.existsSync(toDir)) {
     sh.mkdir('-p', toDir);
+    try {
+      fs.unlinkSync(resolvedToPAth);
+    } catch (e) { }
+    try {
+      sh.mv(fullPath, resolvedToPAth);
+    } catch (e) { }
   }
+  sh.mkdir('-p', toDir);
   return files.forEach((file) => {
     const fullPath = `${tempDir}/${file}`;
     const newPath = path.join(toDir, file);
@@ -285,11 +282,9 @@ export {
   glob,
   unarchive,
   moveArchive,
-  existsAsync,
   findConfigAsync,
   readConfigSync,
   readConfigAsync,
-  readIfExists,
   getConfigPath,
   parseFileSync,
   parseFileAsync,

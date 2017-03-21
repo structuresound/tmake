@@ -404,9 +404,7 @@ export class Environment implements Toolchain {
         return path.join(this.d.project, getProjectFile(this, system));
     }
     ensureProjectFolder() {
-        if (!fs.existsSync(this.d.project)) {
-            mkdir('-p', this.d.project);
-        }
+        mkdir('-p', this.d.project);
     }
     selectTools() {
         const buildSystems = ['cmake', 'ninja'];

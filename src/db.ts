@@ -17,9 +17,9 @@ const testMode =
   ((process.env.NODE_ENV === 'test') || process.env.LOADED_MOCHA_OPTS);
 if (testMode) {
   cacheDbPath = path.join(args.userCache, 'cache.db');
-  if (fs.existsSync(cacheDbPath)) {
+  try {
     fs.unlinkSync(cacheDbPath);
-  }
+  } catch (e) { }
 } else {
   const cacheDir = path.join(args.runDir, args.cachePath);
   cacheDbPath = path.join(cacheDir, 'cache.db');

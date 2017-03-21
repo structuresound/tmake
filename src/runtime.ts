@@ -9,7 +9,6 @@ export class Runtime {
   static pluginMap: { [index: string]: typeof Plugin } = {};
   static loadPlugins = () => {
     defaults.plugins.forEach((name) => {
-      console.log('register default plugins');
       Runtime.registerPlugin(require(`./${name}`).default);
     })
   }

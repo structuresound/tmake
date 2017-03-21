@@ -180,12 +180,14 @@ export class ProjectRunner {
     log.quiet(`cleaning ${this.project.name}`);
     _.each(this.project.cache.libs.value(), (libFile) => {
       log.verbose(`rm ${libFile}`);
-      if (fs.existsSync(libFile)) {
+      try {
         fs.unlinkSync(libFile);
-      }
-      if (fs.existsSync(this.project.d.build)) {
+      } catch (e) { }
+      try {
         file.nuke(this.project.d.build);
-      };
+      } catch (e) {
+
+      }
     });
     return Bluebird.each(this.project.environments, (env) => {
       const hash = env.hash();

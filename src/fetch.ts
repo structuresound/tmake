@@ -16,9 +16,7 @@ import { Project } from './project';
 
 function download(url: string, cacheDir = path.join(args.userCache,
   'cache')) {
-  if (!fs.existsSync(cacheDir)) {
-    mkdir('-p', cacheDir);
-  }
+  mkdir('-p', cacheDir);
   let cacheFile = path.join(cacheDir, stringHash(url));
   if (fs.existsSync(cacheFile)) {
     return Promise.resolve(cacheFile);
@@ -111,37 +109,32 @@ function getSource(project: Project) {
 function linkSource(project: Project) {
   const url = project.url();
   info.fetch.link(project);
-  return file.existsAsync(project.d.clone)
-    .then((exists) => {
-      if (exists) {
-        return Promise.resolve();
-      }
-      return new Promise<void>((resolve, reject) => {
-        fs.symlink(url, project.d.root, 'dir', (err) => {
-          if (err) {
-            reject(err);
-          }
-          resolve();
-        });
+  return new Promise<void>((resolve, reject) => {
+    try {
+      fs.symlink(url, project.d.root, 'dir', (err) => {
+        if (err) {
+          reject(err);
+        }
+        resolve();
       });
-    });
+    } catch (e) {
+      resolve();
+    }
+  });
 }
 
 function destroy(project: Project) {
-  return file.existsAsync(project.d.clone)
-    .then((exists) => {
-      if (exists) {
-        info.fetch.nuke(project);
-        file.nuke(project.d.clone);
-      }
-      project.cache.fetch.reset();
-      const modifier = {
-        $unset: {
-          'cache.fetch': ''
-        }
-      };
-      return updateProject(project, modifier);
-    });
+  try {
+    info.fetch.nuke(project);
+    file.nuke(project.d.clone);
+  } catch (e) { }
+  project.cache.fetch.reset();
+  const modifier = {
+    $unset: {
+      'cache.fetch': ''
+    }
+  };
+  return updateProject(project, modifier);
 }
 
 function maybeFetch(project: Project) {
@@ -149,19 +142,18 @@ function maybeFetch(project: Project) {
     return linkSource(project).then(() => Promise.resolve(true));
   }
   if (project.archive || project.git) {
-    return file.existsAsync(project.d.clone).then((exists) => {
-      const getIt = () => {
-        if (!exists || project.cache.fetch.dirty() || project.force()) {
-          info.fetch.dirty(project);
-          if (exists) {
-            return destroy(project).then(() => getSource(project));
-          }
-          return getSource(project)
+    const exists = fs.existsSync(project.d.clone);
+    function getIt() {
+      if (!exists || project.cache.fetch.dirty() || project.force()) {
+        info.fetch.dirty(project);
+        if (exists) {
+          return destroy(project).then(() => getSource(project));
         }
+        return getSource(project)
       }
-      const ret = getIt()
-      return ret ? ret.then(() => Promise.resolve(true)) : Promise.resolve(false);
-    });
+    }
+    const ret = getIt()
+    return ret ? ret.then(() => Promise.resolve(true)) : Promise.resolve(false);
   }
   info.fetch.local(project);
   return Promise.resolve(false);

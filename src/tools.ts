@@ -82,9 +82,7 @@ function sanityCheck() {
 function fetchAndUnarchive(tool: any) {
   sanityCheck();
   const rootDir = path.join(args.userCache, 'toolchain', tool.name);
-  if (!fs.existsSync(rootDir)) {
-    sh.mkdir('-p', rootDir);
-  }
+  sh.mkdir('-p', rootDir);
   const tempDir = path.join(args.userCache, 'temp', stringHash(tool.url));
   const toolpath = pathForTool(tool);
   return download(tool.url).then((archivePath) => {
@@ -105,17 +103,16 @@ function fetchToolchain(toolchain: any) {
       const toolpath = pathForTool(tool);
       log.verbose(`checking for tool: ${name} @ ${toolpath}`);
       if (toolpath) {
-        return file.existsAsync(toolpath).then((exists) => {
-          if (exists) {
-            log.verbose(`have ${name}`);
-            return Promise.resolve(toolpath);
-          }
-          log.verbose(`fetch ${name} binary from ${tool.url}`);
-          return fetchAndUnarchive(tool).then(() => {
-            log.verbose(`chmod 755 ${toolpath}`);
-            fs.chmodSync(`${toolpath}`, 755);
-            return Promise.resolve(toolpath);
-          });
+        const exists = fs.existsSync(toolpath)
+        if (exists) {
+          log.verbose(`have ${name}`);
+          return Promise.resolve(toolpath);
+        }
+        log.verbose(`fetch ${name} binary from ${tool.url}`);
+        return fetchAndUnarchive(tool).then(() => {
+          log.verbose(`chmod 755 ${toolpath}`);
+          fs.chmodSync(`${toolpath}`, 755);
+          return Promise.resolve(toolpath);
         });
       }
     })

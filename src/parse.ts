@@ -159,30 +159,33 @@ function readWritePathsForFile(f: string, r: ReplEntry) {
   }
 }
 
-function backupIfNeeded({readPath, cachePath, writePath}) {
+function backupIfNeeded({ readPath, cachePath, writePath }) {
   if (cachePath && writePath === readPath && !fs.existsSync(cachePath)) {
     // log.warn('cache input file to', cachePath);
-    if (!fs.existsSync(readPath)) {
+    try {
+      fs.renameSync(readPath, cachePath);
+      log.verbose(`moving original file to ${cachePath}`);
+    } catch (e) {
       throw new Error(`but no original source file located at ${readPath}`);
     }
-    log.verbose(`moving original file to ${cachePath}`);
-    fs.renameSync(readPath, cachePath);
   }
 }
 
-function sourceString({readPath, cachePath}) {
-  if (!fs.existsSync(readPath)) {
-    throw new Error(`no input file at ${readPath}`);
-  }
-  if (fs.existsSync(cachePath)) {
+function sourceString({ readPath, cachePath }) {
+  try {
     return fs.readFileSync(cachePath, 'utf8');
-  } else {
-    return fs.readFileSync(readPath, 'utf8');
+  } catch (e) {
+    try {
+      return fs.readFileSync(readPath, 'utf8');
+    }
+    catch (e) {
+      throw new Error(`no input file at ${readPath}`);
+    }
   }
 }
 
 function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
-  const {readPath, cachePath, writePath} = readWritePathsForFile(f, r);
+  const { readPath, cachePath, writePath } = readWritePathsForFile(f, r);
   let inputString = sourceString({ readPath, cachePath });
   if (!r.inputs) {
     throw new Error(`repl entry has no inputs object or array, ${JSON.stringify(r, [], 2)}`);
@@ -211,10 +214,13 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     inputString = replaceAll(inputString, parsedKey, parsedVal);
   }
 
-  let existingString = '';
-  if (fs.existsSync(writePath)) {
+  let existingString;
+  try {
     existingString = fs.readFileSync(writePath, 'utf8');
+  } catch (e) {
+    existingString = '';
   }
+
   if (existingString !== inputString) {
     backupIfNeeded({ readPath, cachePath, writePath });
     return file.writeFileAsync(writePath, inputString, { encoding: 'utf8' });
