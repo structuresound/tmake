@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { check } from 'js-object-tools';
 import { mkdir } from './sh';
 
-import { execAsync } from './sh';
+import { execAsync, ensureCommand } from './sh';
 import { build as cmake } from './cmake';
 import { build as ninja } from './ninja';
 import { build as make } from './make';
@@ -23,10 +23,11 @@ export interface Build {
   compilerFlags?: any;
   linkerFlags?: any;
   defines?: any;
+  arguments?: any;
   prefix?: any;
   shell?: any;
   frameworks?: any;
-  sources?: any;
+  matching?: any;
   headers?: any;
   libs?: any;
   includeDirs?: any;
@@ -44,7 +45,7 @@ function ensureBuildFolder(env: Environment, isTest?: boolean) {
   }
 }
 
-function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
+export function ensureBuildFile(env: Environment, system: string, isTest?: boolean) {
   const buildFilePath = env.getProjectFilePath(system);
   if (!check(buildFilePath, 'String')) {
     throw new Error('no build file specified');
@@ -60,13 +61,14 @@ function buildWith(env: Environment, system: string, isTest: boolean) {
     return execAsync(`TMAKE_ARGS="${encodeArgs()}" tmake`, { cwd: env.project.d.source, short: 'tmake' });
   }
   ensureBuildFolder(env, isTest);
-  ensureBuildFile(env, system, isTest);
   switch (system) {
     case 'ninja':
       return ninja(env);
     case 'cmake':
+      ensureCommand(system);
       return cmake(env);
     case 'make':
+      ensureCommand(system);
       return make(env);
     default:
       throw new Error(`bad build system ${system}`);

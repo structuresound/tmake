@@ -19,7 +19,7 @@ import { Environment } from './environment';
 export interface InstallOptions {
   from: string;
   to?: string;
-  sources?: string[];
+  matching?: string[];
   includeFrom?: string;
 }
 
@@ -63,8 +63,12 @@ function link({patterns, from, to, opt}: CopyOptions) {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
+      // console.log('flatten', mut.base);
     }
     const newPath = path.join(to, path.relative(mut.base, mut.path));
+    if (opt.flatten) {
+      // console.log('add link', path.relative(opt.relative, newPath));
+    }
     filePaths.push(path.relative(opt.relative, newPath));
     callback(null, mut);
   })).pipe(symlink(to))).then(() => {
@@ -100,7 +104,7 @@ function bin(env: Environment) {
 function assets(env: Environment): PromiseLike<any> {
   if (env.d.install.assets) {
     return Bluebird.map(env.d.install.assets, (ft: InstallOptions) => {
-      const patterns = ft.sources || defaults.assets.images.glob.concat(defaults.assets.fonts.glob);
+      const patterns = ft.matching || defaults.assets.images.glob.concat(defaults.assets.fonts.glob);
       log.verbose(`[ install assets ] from ${ft.from} to ${ft.to}`);
       return copy({
         patterns, from: ft.from, to: ft.to, opt: {
@@ -122,11 +126,11 @@ function libs(env: Environment): PromiseLike<any> {
     'static', 'dynamic'
   ], env.outputType)) {
     return Bluebird.map(env.d.install.libraries, (ft: InstallOptions) => {
-      let patterns = ft.sources || ['*.a'];
+      let patterns = ft.matching || ['**/*.a'];
       if (env.project.outputType === 'dynamic') {
-        patterns = ft.sources || ['*.dylib', '*.so', '*.dll'];
+        patterns = ft.matching || ['**/*.dylib', '**/*.so', '**/*.dll'];
       }
-      log.verbose(`[ configure ] from ${ft.from} to ${ft.to}`);
+      log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
       return link({
         patterns, from: ft.from, to: ft.to, opt: {
           flatten: true,
@@ -157,7 +161,7 @@ export function installHeaders(project: Project): PromiseLike<any> {
     'static', 'dynamic'
   ], project.outputType)) {
     return Bluebird.each(project.d.install.headers, (ft: InstallOptions) => {
-      const patterns = ft.sources || defaults.headers.glob;
+      const patterns = ft.matching || defaults.headers.glob;
       if (args.verbose) {
         log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', ft.to);
       }

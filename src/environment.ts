@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { cascade, check, clone, arrayify, combine, extend, plain as toJSON } from 'js-object-tools';
+import { cascade, check, clone, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
 
 import { startsWith } from './string';
 import { log } from './log';
@@ -35,6 +35,7 @@ export interface Toolchain {
     target?: Platform;
     tools?: Tools;
     outputType?: string;
+    options?: OLHM<any>;
     path?: EnvironmentDirs;
     environment?: any;
     configure?: Configure;
@@ -110,6 +111,7 @@ export interface EnvironmentCache {
     configure: CacheProperty<string>;
     assets: CacheProperty<string[]>;
     cmake: CacheProperty<string>;
+    make: CacheProperty<string>;
 }
 
 const platformNames = {
@@ -154,7 +156,7 @@ const DEFAULT_TOOLCHAIN = {
     ninja: {
         version: ninjaVersion,
         url:
-        'https://github.com/ninja-build/ninja/releases/download/{version}/ninja-{host.platform}.zip'
+        'https://github.com/ninja-build/ninja/releases/download/${version}/ninja-${host.platform}.zip'
     },
     'host-mac': { clang: { bin: '$(which gcc)' } },
     'host-linux': { gcc: { bin: '$(which gcc)' } }
@@ -211,13 +213,13 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
     d.install = <Install>{
         binaries: _.map(arrayify(pathOptions.install.binaries), (ft: InstallOptions) => {
             return {
-                sources: ft.sources,
+                matching: ft.matching,
                 from: path.join(d.root, ft.from),
             };
         }),
         libraries: _.map(arrayify(pathOptions.install.libraries), (ft: InstallOptions) => {
             return {
-                sources: ft.sources,
+                matching: ft.matching,
                 from: path.join(d.root, ft.from),
                 to: path.join(d.home, (ft.to || 'lib'))
             };
@@ -227,7 +229,7 @@ function getEnvironmentDirs(env: Environment, projectDirs: ProjectDirs): Environ
         d.install.assets = _.map(arrayify(pathOptions.install.assets),
             (ft: InstallOptions) => {
                 return {
-                    sources: ft.sources,
+                    matching: ft.matching,
                     from: path.join(d.root, ft.from),
                     to: path.join(args.runDir, ft.to)
                 };
@@ -297,6 +299,8 @@ class Environment implements Toolchain {
     build: Build;
     path: EnvironmentDirs;
     selectors: string[];
+    options: OLHM<any>;
+    keywords: string[];
     d: EnvironmentDirs;
     p: EnvironmentDirs;
     s: string[];
@@ -321,10 +325,24 @@ class Environment implements Toolchain {
         const hostSelectors = parseSelectors(this.host, 'host-');
         const targetSelectors = parseSelectors(this.target, undefined);
         this.selectors = hostSelectors.concat(targetSelectors);
+        this.keywords = keywords;
+        const additionalOptions = cascade(this.options || {}, keywords, this.selectors);
+        const additionalKeywords = Object.keys(additionalOptions);
+        let additionalSelectors = [];
+        for (const k of additionalKeywords) {
+            if (additionalOptions[k]) {
+                additionalSelectors.push[k];
+            }
+        }
+        if (additionalKeywords.length) {
+            this.keywords = this.keywords.concat(additionalKeywords);
+            if (additionalSelectors.length) {
+                this.selectors = this.selectors.concat(additionalSelectors);
+            }
+        }
 
-        const environment =
-            cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
-                this.selectors);
+        const environment = cascade(combine(DEFAULT_ENV, t.environment || project.environment), keywords,
+            this.selectors);
         extend(this, environment);
         this.tools = this.selectTools();
 
@@ -334,9 +352,8 @@ class Environment implements Toolchain {
         this.d = getEnvironmentDirs(this, project.d);
 
         /* copy config + build settings */
-        this._configure = this.select(combine(project.configure || t.configure));
+        this._configure = combine(project.configure || t.configure);
         this.configure = this.select(this._configure);
-
         this._build = combine(project.build || t.build)
         parseBuild(this, this._build);
 
@@ -366,6 +383,9 @@ class Environment implements Toolchain {
             }),
             cmake: new CacheProperty<string>(() => {
                 return fileHashSync(path.join(self.d.build, 'build.ninja'));
+            }),
+            make: new CacheProperty<string>(() => {
+                return fileHashSync(path.join(self.d.project, 'Makefile'));
             }),
             generatedBuildFilePath: new CacheProperty<string>(() => {
                 if (self.configure.for) {
@@ -423,14 +443,11 @@ class Environment implements Toolchain {
         }
         const mutableOptions = clone(options);
 
-        mutableOptions.keywords =
-            _.difference(keywords, mutableOptions.ignore.keywords);
-        mutableOptions.selectors =
-            _.difference(this.selectors, mutableOptions.ignore.selectors);
+        mutableOptions.keywords = _.difference(keywords, mutableOptions.ignore.keywords);
+        mutableOptions.selectors = _.difference(this.selectors, mutableOptions.ignore.selectors);
 
-        const flattened =
-            cascade(base, mutableOptions.keywords, mutableOptions.selectors);
-        const parsed = this.parse(flattened, mutableOptions.dict);
+        const preParse = cascade(base, mutableOptions.keywords, mutableOptions.selectors);
+        const parsed = this.parse(preParse, mutableOptions.dict || this);
         return parsed;
     }
     fullPath(p: string) {

@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as fs from 'fs';
-import { check } from 'js-object-tools';
+import { check, extend } from 'js-object-tools';
 
 import * as file from './file';
 import { startsWith } from './string';
@@ -24,41 +24,38 @@ function jsonToFrameworks(object: any) {
     return flags;
 }
 
-function _jsonToFlags(object: any, options: any) {
+function _jsonToFlags(object: any, globals: MapToFlagsOptions) {
     const flags: string[] = [];
-    _.each(object, (opt: any, key: string) => {
-        if (opt) {
-            if ((typeof opt === 'string') || check(opt, Number)) {
-                let {join} = options;
-                if (typeof opt === 'string') {
-                    if (startsWith(opt, ' ')) {
-                        join = '';
-                    }
-                    if (startsWith(opt, '=')) {
-                        join = '';
-                    }
-                }
-                if (startsWith(key, options.prefix)) {
-                    flags.push(`${key}${join}${opt}`);
-                } else {
-                    flags.push(`${options.prefix}${key}${join}${opt}`);
-                }
-            } else if (startsWith(key, options.prefix)) {
-                flags.push(`${key}`);
-            } else {
-                flags.push(`${options.prefix}${key}`);
+    _.each(object, (val: any, key: string) => {
+        let {prefix} = globals;
+        let {join} = globals;
+        let rhs = val || '';
+        if (startsWith(key, prefix)) {
+            prefix = ''
+        }
+        if ((typeof rhs === 'string')) {
+            if (startsWith(rhs, ' ')) {
+                join = '';
+            }
+            if (startsWith(rhs, '=')) {
+                join = '';
             }
         }
+        if (typeof rhs === 'boolean') {
+            rhs = '';
+            join = '';
+        }
+        flags.push(`${prefix}${key}${join}${rhs}`);
     });
     return flags;
 }
 
-function jsonToFlags(object: any, options?: any) {
-    const defaultOptions = { prefix: '-', join: '=' };
-    if (options) {
-        _.extend(defaultOptions, options);
-    }
-    return _jsonToFlags(object, defaultOptions);
+interface MapToFlagsOptions { prefix?: string, join?: string }
+
+function jsonToFlags(object: any, options?: MapToFlagsOptions) {
+    const defaults = { prefix: '-', join: '=' };
+    extend(defaults, options);
+    return _jsonToFlags(object, defaults);
 }
 
 function jsonToCFlags(object: any) {

@@ -23,9 +23,13 @@ describe('configure', function () {
       .then((config: ProjectFile) => {
         return graph(config).then((res) => {
           libbson = res[0];
-          return expect(libbson.name).to.equal('libbson', 'parse file: ');
         });
-      });
+      })
+  })
+
+  it('can parse a complex project correctly', () => {
+    assert.equal(libbson.name, 'libbson');
+    assert.equal(libbson.configure.replace.config.inputs.BSON_NEEDS_SET_OUTPUT_FORMAT, 0);
   });
 
   it('can clean the test folder', () => {
