@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select } from 'js-object-tools';
+import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './args';

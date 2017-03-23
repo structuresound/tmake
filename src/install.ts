@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
-import { contains } from 'js-object-tools';
+import { contains } from 'typed-json-transform';
 import * as fs from 'fs';
 
 import { defaults } from './defaults';

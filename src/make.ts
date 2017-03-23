@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { arrayify, check, combine } from 'js-object-tools';
+import { arrayify, check, combine } from 'typed-json-transform';
 import { execAsync } from './sh';
 import { Compiler, jsonToFlags } from './compiler';
 import { PluginOptions } from './plugin';

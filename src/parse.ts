@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { check, arrayify, clone } from 'js-object-tools';
+import { check, arrayify, clone } from 'typed-json-transform';
 
 import { replaceAll, startsWith } from './string';
 import { log } from './log';

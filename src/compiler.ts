@@ -1,6 +1,6 @@
 import { omit } from 'lodash';
 import { existsSync } from 'fs';
-import { arrayify, check, clone, combine, each, extend } from 'js-object-tools';
+import { arrayify, check, clone, combine, each, extend } from 'typed-json-transform';
 import { log } from './log';
 import { startsWith } from './string';
 import { fetch } from './tools';

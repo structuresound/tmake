@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as file from './file';
 import { CacheObject, CacheProperty } from './cache';
-import { combine, check, Graph, OLHM, extend } from 'js-object-tools';
+import { combine, check, Graph, OLHM, extend } from 'typed-json-transform';
 import { log } from './log';
 import { errors } from './errors';
 import { args } from './args';

@@ -1,7 +1,7 @@
 import * as Datastore from 'nedb-promise';
 import * as path from 'path';
 import * as fs from 'fs';
-import { apply } from 'js-object-tools';
+import { apply } from 'typed-json-transform';
 
 import { args } from './args';
 import { log } from './log';

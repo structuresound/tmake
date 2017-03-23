@@ -8,6 +8,7 @@ require:
     git:
       repository: google/googletest
       archive: release-1.7.0
+    configure: cmake
     build: cmake
     path:
       project: source

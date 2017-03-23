@@ -3,7 +3,7 @@
 import * as _ from 'lodash';
 import { dump, DumpOptions } from 'js-yaml';
 import * as colors from 'chalk';
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 import { args as environment } from './args';
 
 function getMessage(...args: any[]): string {

@@ -1,5 +1,5 @@
 import * as Bluebird from 'bluebird';
-import { contains, check, safeOLHM, OLHM, map } from 'js-object-tools';
+import { contains, check, safeOLHM, OLHM, map } from 'typed-json-transform';
 
 import { errors } from './errors';
 import { Plugin } from './plugin';

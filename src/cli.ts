@@ -3,7 +3,7 @@ import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { onPossiblyUnhandledRejection } from 'bluebird';
-import { check, contains } from 'js-object-tools';
+import { check, contains } from 'typed-json-transform';
 
 import { log } from './log';
 import { info } from './info';

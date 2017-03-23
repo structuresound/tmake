@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 import * as colors from 'chalk';
 import { args } from './args';
 import { log } from './log';

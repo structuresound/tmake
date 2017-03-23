@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import * as path from 'path';
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 import * as file from '../src/file';
 import { args } from '../src/args';
 

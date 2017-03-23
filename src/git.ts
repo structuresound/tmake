@@ -1,4 +1,4 @@
-import { check, extend } from 'js-object-tools';
+import { check, extend } from 'typed-json-transform';
 
 import { ensureCommand } from './sh';
 import { log } from './log';

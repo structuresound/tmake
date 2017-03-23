@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as CSON from 'cson';
 import map = require('map-stream');
 import globAll = require('glob-all');
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 import { src as _src, dest, symlink } from 'vinyl-fs';
 import _unarchive from './archive';
 import { startsWith } from './string';

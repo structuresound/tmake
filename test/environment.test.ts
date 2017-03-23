@@ -1,7 +1,7 @@
 /*  global it describe*/
 import * as path from 'path';
 import { assert } from 'chai';
-import { contains, containsAny, check } from 'js-object-tools';
+import { contains, containsAny, check } from 'typed-json-transform';
 
 import { parseFileAsync } from '../src/file';
 import { args } from '../src/args';
@@ -49,6 +49,11 @@ describe('environment', () => {
     () => {
       assert.equal(env.parse('$(echo ${HELLO}) ${WORLD}'), 'hello world');
     });
+
+  it('selects properly', () => {
+    assert.deepEqual(env.select({ cmake: { key: 'value' } }), { cmake: { key: 'value' } });
+    assert.deepEqual(env.select({ cmake: {} }), { cmake: {} });
+  });
 
   const expect =
     {

@@ -4,7 +4,7 @@ import * as Bluebird from 'bluebird';
 import * as _ from 'lodash';
 import * as fs from 'fs';
 
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 
 import { args } from './args';
 import * as file from './file';

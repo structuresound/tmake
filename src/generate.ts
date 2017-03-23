@@ -1,6 +1,6 @@
 import { each } from 'bluebird';
 import { join, relative, dirname } from 'path';
-import { arrayify, check } from 'js-object-tools';
+import { arrayify, check } from 'typed-json-transform';
 
 
 import * as file from './file';

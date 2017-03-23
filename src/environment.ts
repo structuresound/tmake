@@ -2,7 +2,7 @@ import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
-import { cascade, check, clone, contains, arrayify, combine, extend, plain as toJSON, OLHM } from 'js-object-tools';
+import { cascade, check, clone, contains, arrayify, combine, extend, plain as toJSON, OLHM } from 'typed-json-transform';
 import { updateEnvironment } from './db';
 import { startsWith } from './string';
 import { log } from './log';
@@ -19,7 +19,7 @@ import { Project, ProjectDirs } from './project';
 import { defaults } from './defaults';
 import { ExecOptions, execAsync, mkdir } from './sh';
 import { parse, absolutePath, pathArray } from './parse';
-import { Tools } from './tools';
+import { Tools, pathForTool } from './tools';
 import { Plugin } from './plugin';
 
 export interface Docker {
@@ -63,6 +63,7 @@ interface DockerOptions {
     args: any;
 }
 
+interface selectOptions { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } }
 
 export class Cache extends BaseCache<string> {
     env: Environment;
@@ -264,6 +265,15 @@ function getProjectFile(env: Environment, systemName: string): string {
     return (<any>buildFileNames)[systemName];
 }
 
+function objectify<T>(input: T) {
+    if (check(input, String)) {
+        return <T><any>{
+            [<string><any>input]: {}
+        };
+    }
+    return input || <T><any>{};
+}
+
 export class Environment implements Toolchain {
     generate: Phase;
     configure: Phase;
@@ -334,16 +344,16 @@ export class Environment implements Toolchain {
         this.addToEnvironment('p', this.parse(p));
         this.addToEnvironment('d', this.parse(d));
 
-
         /* copy config + build settings */
-        this.addToEnvironment('generate', this.parse(t.generate || project.generate || {}));
-        this.addToEnvironment('configure', t.configure || project.configure || {});
-        this.addToEnvironment('build', t.build || project.build || {});
+        this.addToEnvironment('generate', t.generate || project.generate);
+        this.addToEnvironment('configure', t.configure || project.configure);
+        this.addToEnvironment('build', t.build || project.build);
 
-        this.generate = this.select(this.generate);
-        this.configure = this.select(this.configure);
-        this.build = this.select(this.build);
+        this.generate = this.select(objectify(this.generate));
+        this.configure = this.select(objectify(this.configure));
+        this.build = this.select(objectify(this.build));
 
+        // log.log(this.project.name, this.configure, this.build);
         /* extend + select all remaining settings */
         const inOutFields = _.pick(project, ['outputType']);
         extend(this, this.select(inOutFields));
@@ -352,7 +362,6 @@ export class Environment implements Toolchain {
         }
         this.cache = new Cache(this);
         this.plugins = {};
-
     }
     addToEnvironment(key: string, val: any) {
         this[key] = val;
@@ -372,7 +381,8 @@ export class Environment implements Toolchain {
     }
     parse(input: any, conf?: any) {
         if (conf) {
-            const dict = combine(this.environment, cascade(conf, this.environment.keywords, this.environment.selectors));
+            const selectedConf = cascade(conf, this.environment.keywords, this.environment.selectors);
+            const dict = combine(this.environment, selectedConf);
             return parse(input, dict);
         }
         return parse(input, this.environment);
@@ -380,7 +390,7 @@ export class Environment implements Toolchain {
     toCache(): CacheObject {
         return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
     }
-    select<T>(base: T, options: { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } } = { ignore: {} }) {
+    select<T>(base: T, options: selectOptions = { ignore: {} }) {
         if (!base) {
             throw new Error('selecting on empty object');
         }
@@ -407,25 +417,25 @@ export class Environment implements Toolchain {
         mkdir('-p', this.d.project);
     }
     selectTools() {
-        const buildSystems = ['cmake', 'ninja'];
         const compilers = ['clang', 'gcc', 'msvc'];
 
         const tools = this.select(
             DEFAULT_TOOLCHAIN,
-            { dict: this, ignore: { keywords: buildSystems.concat(compilers) } });
+            { dict: this, ignore: { keywords: compilers } });
         if (this.tools) {
             const customToolchain = this.select(
                 this.tools,
-                { dict: this, ignore: { keywords: buildSystems.concat(compilers) } });
+                { dict: this, ignore: { keywords: compilers } });
             extend(tools, this.tools);
         }
         for (const name of Object.keys(tools)) {
             const tool = tools[name];
-            if (tool.bin == null) {
-                tool.bin = name;
-            }
             if (tool.name == null) {
                 tool.name = name;
+            }
+            if (tool.bin == null) {
+                tool.bin = name;
+                tool.bin = pathForTool(tool);
             }
         }
         return tools;
@@ -433,8 +443,11 @@ export class Environment implements Toolchain {
     runPhaseWithPlugin({ phase, pluginName }: { phase: string, pluginName: string }): PromiseLike<any> {
         if (!this.plugins[pluginName]) {
             const PluginConstructor = Runtime.getPlugin(pluginName);
-            console.log('instantiate plugin:', pluginName, PluginConstructor);
-            const plugin = new PluginConstructor(this, combine(this[phase], this[phase][pluginName]));
+            console.log('plugin options for phase', phase, combine(this[phase], this[phase][pluginName]));
+            const options = combine(this[phase], this[phase][pluginName]);
+            delete options[pluginName];
+            const context = { [phase]: options };
+            const plugin = new PluginConstructor(this, context);
             this.plugins[pluginName] = plugin;
         }
         return this.plugins[pluginName][phase]();

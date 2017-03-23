@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import { existsSync } from 'fs';
-import { arrayify, check, map } from 'js-object-tools';
+import { arrayify, check, map } from 'typed-json-transform';
 import { log } from './log';
 import { startsWith } from './string';
 import { fetch } from './tools';
@@ -28,12 +28,12 @@ export class CMake extends Compiler {
     this.buildFileName = 'build.ninja';
   }
 
-  configureCommand(toolpaths: any) {
+  configureCommand() {
     const defines = this.options.configure.flags || {};
     const cMakeDefines = _.extend({
       LIBRARY_OUTPUT_PATH: this.environment.d.install.libraries[0].from
     }, defines);
-    let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${toolpaths.ninja} ${this.environment.d.project}`;
+    let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${this.environment.tools.ninja.bin} ${this.environment.d.project}`;
     for (const k of Object.keys(cMakeDefines)) {
       let value = cMakeDefines[k];
       if (check(value, String)) {

@@ -2,7 +2,7 @@ import { exec as _exec, cd, mv, mkdir, which, exit, ExecCallback, ExecOutputRetu
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { Spinner } from 'cli-spinner';
-import { check, map } from 'js-object-tools';
+import { check, map } from 'typed-json-transform';
 import { CacheProperty } from './cache';
 import { fileHash, fileHashSync } from './hash';
 import { log } from './log';
@@ -101,21 +101,27 @@ export class ShellPlugin extends EnvironmentPlugin {
 
   public configure() {
     this.ensureProjectFile();
-    const buildFile = this.buildFilePath();
+    const buildFilePath = this.buildFilePath();
+    const buildFileDir = dirname(buildFilePath);
+    console.log('check cache for matching file', buildFilePath);
     if (!this.environment.cache[this.name + '_configure']) {
       this.environment.cache[this.name + '_configure'] = new CacheProperty<string>(() => {
-        return fileHashSync(buildFile);
+        return fileHashSync(buildFilePath);
       });
     }
     const buildFileCache = this.environment.cache[this.name + '_configure'];
-    return fileHash(buildFile).then((buildFileHash) => {
-      if (existsSync(buildFile) && buildFileCache.value() === buildFileHash) {
+    try {
+      if (buildFileCache.value() === fileHashSync(buildFilePath)) {
         return Promise.resolve();
       }
-      return execAsync(this.configureCommand()).then(() => {
-        buildFileCache.update();
-        this.environment.cache.update();
-      });
+    } catch (e) {
+
+    }
+    console.log('dirty, exec', this.configureCommand());
+    mkdir('-p', this.environment.d.build);
+    return execAsync(this.configureCommand(), { cwd: buildFileDir, silent: !args.quiet }).then(() => {
+      buildFileCache.update();
+      this.environment.cache.update();
     });
   }
   public build() {

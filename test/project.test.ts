@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { assert } from 'chai';
-import { contains, check } from 'js-object-tools';
+import { contains, check } from 'typed-json-transform';
 
 import { parseFileAsync } from '../src/file';
 import { args } from '../src/args';

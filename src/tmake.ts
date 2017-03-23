@@ -3,7 +3,7 @@ import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
-import { contains, plain as toJSON, safeOLHM } from 'js-object-tools';
+import { contains, plain as toJSON, safeOLHM } from 'typed-json-transform';
 
 import { args, encode as encodeArgs } from './args';
 import { login, get, post } from './cloud';

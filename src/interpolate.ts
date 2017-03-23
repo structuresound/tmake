@@ -1,5 +1,5 @@
 import * as _ from 'lodash';
-import { valueForKeyPath, check } from 'js-object-tools';
+import { valueForKeyPath, check } from 'typed-json-transform';
 
 import { log } from './log';
 import { replaceAll } from './string';

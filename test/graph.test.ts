@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { assert } from 'chai';
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 
 import { args } from '../src/args';
 import { graph } from '../src/graph';

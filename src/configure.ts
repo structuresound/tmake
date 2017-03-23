@@ -1,6 +1,6 @@
 import { each as eachAsync } from 'bluebird';
 import { join, relative, dirname } from 'path';
-import { arrayify, check } from 'js-object-tools';
+import { arrayify, check } from 'typed-json-transform';
 
 
 import * as file from './file';
@@ -19,7 +19,9 @@ import { Phase } from './phase';
 import { defaults } from './defaults';
 
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
+  console.log('configure:', env.configure);
   const phase = new Phase(env.configure);
+  console.log('phase: ', phase);
   if (env.project.force() || env.cache.configure.dirty()) {
     return eachAsync(
       phase.commands,

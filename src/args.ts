@@ -2,7 +2,7 @@ import * as minimist from 'minimist';
 import * as path from 'path';
 import * as _ from 'lodash';
 import * as fs from 'fs';
-import { clone, extend } from 'js-object-tools';
+import { clone, extend } from 'typed-json-transform';
 import stringify = require('json-stable-stringify');
 
 export interface Args {

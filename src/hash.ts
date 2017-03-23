@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { existsSync, readFileSync, createReadStream } from 'fs';
 import stringify = require('json-stable-stringify');
-import { check } from 'js-object-tools';
+import { check } from 'typed-json-transform';
 
 export function jsonStableHash(obj: any) {
   if (!check(obj, 'Object')) {
@@ -25,11 +25,8 @@ export function stringHash(string: string) {
 }
 
 export function fileHashSync(filePath: string) {
-  if (existsSync(filePath)) {
-    const contents = readFileSync(filePath, 'utf8');
-    return stringHash(contents);
-  }
-  return Promise.resolve("");
+  const contents = readFileSync(filePath, 'utf8');
+  return stringHash(contents);
 }
 
 export function fileHash(filePath: string) {
