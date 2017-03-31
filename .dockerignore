@@ -1,8 +1,0 @@
-electron
-node_modules
-server
-tests
-tests_cache
-.DS_Store
-.git
-.tscache

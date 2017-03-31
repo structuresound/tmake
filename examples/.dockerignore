@@ -1,8 +1,0 @@
-*/build
-*/bin
-*/trie_modules
-*/*.xcodeproj
-*/Info.plist
-*/build.ninja
-*/CMakeLists.txt
-zlib/source

@@ -6,7 +6,7 @@ configure:
   for: ninja
   replace:
     gzguts:
-      sources:
+      matching:
         - "gzguts.h"
       inputs:
         unistd:
@@ -14,7 +14,7 @@ configure:
         - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
 build:
   with: ninja
-  sources:
+  matching:
     - "*.c"
   compilerFlags:
     ios:

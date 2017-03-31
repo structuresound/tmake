@@ -3,10 +3,20 @@ git:
   organization: v8/v8
   repository: v8/v8
   tag: 5.8.283
+options:
+  v8_enable_i18n_support: false
+configure:
+  for: ninja
 build:
+  with: ninja
   sources:
-    x64:
     - "*.cc"
+  x64:
+    sources:
     - "x64/*.cc"
+    - "**/x64/*.cc"
+  cflags:
+    win:
+      "/wd4267": 1
 path:
   source: src

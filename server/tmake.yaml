@@ -14,6 +14,6 @@ build:
       ldl: true
 require:
   mongocxx:
-    link: mongocxx
+    link: ../examples/mongocxx
   served: 
-    link: served
+    link: ../examples/served
