@@ -1,0 +1,118 @@
+{
+  "name": "tmake-core",
+  "description": "trieMake can fetch, build, and manage c++ dependencies",
+  "version": "0.6.0",
+  "homepage": "https://github.com/structuresound/tmake",
+  "author": {
+    "name": "Leif Shackelford",
+    "email": "structuresound@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structuresound/tmake.git"
+  },
+  "bugs": {
+    "url": "https://github.com/structuresound/tmake/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+    }
+  ],
+  "main": "dist/index.js",
+  "types": "tmake-core.d.ts",
+  "scripts": {
+    "build": "gulp scripts",
+    "test": "NODE_ENV=test mocha --recursive --compilers ts:ts-node/register --bail",
+    "debug": "NODE_ENV=test mocha --recursive --compilers ts:ts-node/register --bail --inspect=PORT --debug-brk",
+    "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
+    "travis": "npm run build && npm run cover"
+  },
+  "devDependencies": {
+    "@types/bluebird": "^3.0.37",
+    "@types/chai": "^3.4.34",
+    "@types/chalk": "^0.4.31",
+    "@types/cson": "0.0.30",
+    "@types/file-type": "0.0.1",
+    "@types/form-data": "0.0.33",
+    "@types/glob": "^5.0.30",
+    "@types/glob-stream": "^3.1.30",
+    "@types/isomorphic-fetch": "0.0.32",
+    "@types/js-yaml": "^3.5.29",
+    "@types/lodash": "^4.14.52",
+    "@types/minimatch": "^2.0.29",
+    "@types/mocha": "^2.2.32",
+    "@types/nedb": "0.0.31",
+    "@types/node": "^6.0.46",
+    "@types/progress": "^1.1.28",
+    "@types/request": "0.0.39",
+    "@types/request-promise": "^4.1.33",
+    "@types/shelljs": "^0.6.0",
+    "@types/vinyl": "^2.0.0",
+    "@types/vinyl-fs": "0.0.28",
+    "@types/which": "^1.0.28",
+    "base62": "^1.1.2",
+    "chai": "^3.5.0",
+    "coveralls": "^2.11.15",
+    "dts-generator": "^2.1.0",
+    "grunt": "^1.0.1",
+    "mocha": "^3.2.0",
+    "nodemon": "^1.11.0",
+    "nyc": "^8.4.0"
+  },
+  "Keywords": [],
+  "dependencies": {
+    "bluebird": "^3.0.5",
+    "chalk": "^1.1.1",
+    "create-hash": "^1.1.2",
+    "cson": "^3.0.2",
+    "dependency-graph": "^0.4.1",
+    "file-type": "^3.9.0",
+    "glob-all": "^3.0.1",
+    "gunzip-maybe": "^1.3.1",
+    "typed-json-transform": "^0.16.0",
+    "js-yaml": "^3.6.1",
+    "json-stable-stringify": "^1.0.1",
+    "lodash": "^4.3.0",
+    "lzma-native": "^1.5.2",
+    "map-stream": "^0.0.6",
+    "nedb-promise": "^2.0.0",
+    "ninja-build-gen": "^0.2.1",
+    "node-status": "^1.0.0",
+    "progress": "^1.1.8",
+    "progress-stream": "^1.2.0",
+    "read-chunk": "^2.0.0",
+    "request": "^2.75.0",
+    "request-progress": "^3.0.0",
+    "request-promise": "^4.1.1",
+    "shelljs": "^0.7.6",
+    "source-map-support": "^0.4.0",
+    "tar-fs": "^1.13.0",
+    "unbzip2-stream": "^1.0.10",
+    "unzip": "^0.1.11",
+    "vinyl-fs": "^2.3.1",
+    "which": "^1.2.11"
+  },
+  "nyc": {
+    "include": [
+      "src/*.ts"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "node_modules"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "json",
+      "html",
+      "lcov"
+    ],
+    "all": true
+  }
+}

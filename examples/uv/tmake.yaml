@@ -1,0 +1,61 @@
+---
+git:
+  repository: libuv/libuv
+  tag: v1.11.0
+configure:
+  for: ninja
+  replace:
+    include_uv:
+      matching:
+      - src/**/*.{c,h}
+      inputs:
+        uv:
+        - '#include "uv.h"'
+        - '#include <uv/uv.h>'
+        tree:
+        - '#include "tree.h"'
+        - '#include <uv/tree.h>'
+        pthread-barrier:
+        - '#include "pthread-barrier.h"'
+        - '#include <uv/pthread-barrier.h>'
+path:
+  includeDirs:
+  - source/src
+  install:
+    headers:
+    - from: source/include
+      to: include/uv
+build:
+  with: ninja
+  linux:
+    - src/unix/*.c
+  mac, ios:
+    matching:
+      - src/unix/*.c
+      - '!src/unix/aix*'
+      - '!src/unix/linux*'
+      - '!src/unix/android*'
+      - '!src/unix/os390*'
+      - '!src/unix/netbsd*'
+      - '!src/unix/openbsd*'
+      - '!src/unix/pthread-fixes.c'
+      - '!src/unix/freebsd*'
+      - '!src/unix/sunos*'
+  linkerFlags:
+    mac, linux:
+      pthread: true
+      m: true
+    linux:
+      dl: true
+      rt: true
+  cFlags:
+    fvisibility: hidden
+    g: true
+    std: gnu89
+    pedantic: true
+    Wall: true
+    Wextra: true
+    Wno-unused-parameter: true
+    mac:
+      D_DARWIN_USE_64_BIT_INODE: 1
+      D_DARWIN_UNLIMITED_SELECT: 1

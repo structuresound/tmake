@@ -1,0 +1,47 @@
+git:
+  repository: openssl/openssl
+  tag: OpenSSL_1_0_2h
+environment:
+  OPENSSL_VERSION: 1.0.2h
+  DEVELOPER: "$(xcode-select -print-path)"
+  mac:
+    TRIPLE: darwin64-x86_64-cc
+  x64:
+    OPENSSL_ARCH: x86_64
+configure:
+  # make:
+  #   arguments: ${TRIPLE}
+  #   flags:
+  #     openssldir: ${d.build}/openssl-${OPENSSL_VERSION}  
+  bignum: sed -ie "s/BIGNUM \*I,/BIGNUM \*i,/g" crypto/rsa/rsa.h
+  mac:
+    # with: make
+    # arguments: ${TRIPLE}
+    # flags:
+    #   openssldir: ${d.build}/openssl-${OPENSSL_VERSION}
+    configure: ./Configure ${TRIPLE} --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
+    sed: sed -ie "s!^CFLAG=!CFLAG=-isysroot ${OSX_SDK} -arch ${OPENSSL_ARCH} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}!" "Makefile"
+  linux:
+    configure: ./config enable-tlsext no-shared no-zlib -fPIC no-gost --openssldir="${d.build}/openssl-${OPENSSL_VERSION}"
+    make: make depend
+  ios:
+    configure: ./Configure iphoneos-cross -no-asm --openssldir="/tmp/openssl-${OPENSSL_VERSION}-${OPENSSL_ARCH}"
+    perl: perl -i -pe 's|static volatile sig_atomic_t intr_signal|static volatile int intr_signal|' crypto/ui/ui_openssl.c
+    replace:
+      files:
+        matching:
+        - Makefile
+        inputs:
+          "-isysroot $(CROSS_TOP)/SDKs/$(CROSS_SDK)": "-isysroot ${CROSS_TOP}/SDKs/${CROSS_SDK} -miphoneos-version-min=${SDK_VERSION}"
+build:
+  with: make
+  ios:
+    prefix: CC="${DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch ${OPENSSL_ARCH}"
+path:
+  project: source
+  install:
+    headers:
+      from: source/include/openssl
+      to: include/openssl
+    libraries:
+      from: source

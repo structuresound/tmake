@@ -1,0 +1,12 @@
+git:
+  repository: google/protobuf
+  tag: v3.2.0
+build:
+  with: cmake
+  defines:
+    protobuf_BUILD_TESTS: OFF
+path:
+  project: source/cmake
+  install:
+    headers:
+    - from: source/src/google

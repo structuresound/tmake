@@ -1,0 +1,139 @@
+git:
+  repository: grpc/grpc
+  tag: v1.2.0
+environment:
+  CC: gcc
+  TMPOUT: /dev/null
+  win:
+    TMPOUT: mktemp /tmp/test-out-XXXXXX
+  CHECK_SHADOW_WORKS_CMD: $(${CC} -std=c99 -Werror -Wshadow -o {TMPOUT} -c test/build/shadow.c)
+  W_SHADOW:
+    macro: $(shell ${CHECK_SHADOW_WORKS_CMD} 2> /dev/null && echo true || echo false)
+    map:
+      true: Wshadow
+      false: Wno-shadow
+options:
+  runtime: node
+  # UV integration in C core is enabled by default. It can be disabled
+  # by setting this argument to anything else.
+  grpc_uv: true
+  # Some Node installations use the system installation of OpenSSL, and on
+  # some systems, the system OpenSSL still does not have ALPN support. This
+  # will let users recompile gRPC to work without ALPN.
+  grpc_alpn: true
+  core: true
+  cpp: true
+path:
+  includeDirs:
+  - source
+configure:
+  for: ninja
+  replace:
+    include_uv:
+      matching:
+      - src/**/*.{c,h}
+      inputs:
+        uv:
+        - '#include <uv.h>'
+        - '#include <uv/uv.h>'
+build:
+  with: ninja
+  matching:
+    - src/core/lib/surface/init.c
+    - src/core/lib/channel/*.c
+    - src/core/lib/compression/*.c
+    - src/core/lib/debug/*.c
+    - src/core/lib/http/*.c
+    - src/core/lib/iomgr/*.c
+    - src/core/lib/json/*.c
+    - src/core/lib/security/**/*.c
+    - src/core/lib/slice/*.c
+    - src/core/lib/surface/*.c
+    - src/core/lib/transport/*.c
+    - src/core/lib/tsi/*.c
+    - src/core/ext/transport/chttp2/**/*.c
+    - '!src/core/ext/transport/chttp2/**/insecure/*.c'
+    - src/core/ext/client_channel/*.c
+    - src/core/ext/lb_policy/grpclb/*.c
+    - third_party/nanopb/*.c
+    - src/core/ext/lb_policy/**/*.c
+    - '!src/core/ext/lb_policy/grpclb/**/*.c'
+    - src/core/ext/resolver/dns/**/.c
+    - src/core/ext/load_reporting/**/*.c
+    - src/core/ext/census/**/*.c
+    - '!src/core/ext/census/census_*'
+    - '!src/core/ext/census/hash_table.c'
+    - '!src/core/ext/census/window_stats.c'
+    - src/core/plugin_registry/grpc_plugin_registry.c
+    # cpp
+    - src/cpp/client/insecure_credentials.cc
+    - src/cpp/client/secure_credentials.cc
+    - src/cpp/common/auth_property_iterator.cc
+    - src/cpp/common/secure_auth_context.cc
+    - src/cpp/common/secure_channel_arguments.cc
+    - src/cpp/common/secure_create_auth_context.cc
+    - src/cpp/server/insecure_server_credentials.cc
+    - src/cpp/server/secure_server_credentials.cc
+    - src/cpp/client/channel_cc.cc
+    - src/cpp/client/client_context.cc
+    - src/cpp/client/create_channel.cc
+    - src/cpp/client/create_channel_internal.cc
+    - src/cpp/client/create_channel_posix.cc
+    - src/cpp/client/credentials_cc.cc
+    - src/cpp/client/generic_stub.cc
+    - src/cpp/common/channel_arguments.cc
+    - src/cpp/common/channel_filter.cc
+    - src/cpp/common/completion_queue_cc.cc
+    - src/cpp/common/core_codegen.cc
+    - src/cpp/common/resource_quota_cc.cc
+    - src/cpp/common/rpc_method.cc
+    - src/cpp/common/version_cc.cc
+    - src/cpp/server/async_generic_service.cc
+    - src/cpp/server/channel_argument_option.cc
+    - src/cpp/server/create_default_thread_pool.cc
+    - src/cpp/server/dynamic_thread_pool.cc
+    - src/cpp/server/health/default_health_check_service.cc
+    - src/cpp/server/health/health.pb.c
+    - src/cpp/server/health/health_check_service.cc
+    - src/cpp/server/health/health_check_service_server_builder_option.cc
+    - src/cpp/server/server_builder.cc
+    - src/cpp/server/server_cc.cc
+    - src/cpp/server/server_context.cc
+    - src/cpp/server/server_credentials.cc
+    - src/cpp/server/server_posix.cc
+    - src/cpp/thread_manager/thread_manager.cc
+    - src/cpp/util/byte_buffer_cc.cc
+    - src/cpp/util/slice_cc.cc
+    - src/cpp/util/status.cc
+    - src/cpp/util/string_ref.cc
+    - src/cpp/util/time_cc.cc
+    - src/cpp/codegen/codegen_init.cc
+  cFlags:
+    std: c99
+    Wsign-conversion: true
+    Wconversion: true
+    Wall: true
+    Werror: true
+    DTSI_OPENSSL_ALPN_SUPPORT: 1
+    DGRPC_ARES: 0
+    DGRPC_UV: true
+  cxxFlags:
+    std: c++11
+    DOSATOMIC_USE_INLINED: "1"
+    g: true
+    Wall: true 
+    Wextra: true
+    Werror: true
+    Wno-long-long: true
+    Wno-unused-parameter: true
+  linkerFlags:
+    g: true
+require:
+  openssl:
+    link: ../openssl
+  uv:
+    link: ../uv
+  zlib:
+    link: ../zlib
+  protobuf:
+    link: ../protobuf

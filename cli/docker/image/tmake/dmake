@@ -1,0 +1,17 @@
+# derived from sdt @ https://github.com/sdt/docker-raspberry-pi-cross-compiler/blob/master/image/rpxc/rpxc
+
+docker run -i -t --rm \
+    -v $PWD:/tmake/build \
+    -v ~/.tmake:/tmake/.tmake \
+    $USER_IDS \
+    1e1f/tmake \
+    tmake "$@"
+
+################################################################################
+#   To use tmake via docker, run the following commands to
+#   get this helper script into an executable
+#       docker run 1e1f/tmake > dmake && chmod +x dmake
+#
+#   You may then wish to move tmake to somewhere in your path.
+#       mv dmake /usr/local/bin/dmake
+################################################################################

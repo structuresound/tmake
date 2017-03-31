@@ -1,0 +1,52 @@
+name: boost
+override:
+  force:
+    git.tag: boost-1.63.0
+    git.organization: boostorg
+require:
+  assert: assert
+  asio: 
+    git: asio
+    require:
+      date_time: 
+        git: date_time
+        require:
+          range: range
+          iterator: iterator
+          detail: detail
+          concept_check: concept_check
+          lexical_cast: lexical_cast
+          numeric_conversion: numeric_conversion
+          mpl: mpl
+          preprocessor: preprocessor
+          bind: bind
+          container: container
+          math: math
+          regex: regex
+          integer: integer
+          array: array
+          tokenizer: tokenizer
+          io: io
+          algorithm: algorithm
+  system: 
+    git: system
+    build:
+      with: ninja
+      outputFile: libboost_system.a
+    configure:
+      for: ninja
+    require:
+      predef: predef
+      core: core
+      config: config
+  utility: utility
+  move: move
+  optional: optional
+  static_asert: static_assert
+  throw_exception: throw_exception
+  type_traits: type_traits
+  smart_ptr: smart_ptr
+  functional: 
+    git: functional
+    require:
+      config: config
