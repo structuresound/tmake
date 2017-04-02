@@ -5,7 +5,7 @@ declare namespace TMake {
   class CMake extends Compiler {
     options: TMake.Plugin.Shell.Compiler.CMake.Options;
 
-    constructor(environment: Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options)
+    constructor(environment: TMake.Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options)
   }
 
   namespace Plugin {

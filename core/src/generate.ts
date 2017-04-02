@@ -2,7 +2,7 @@ import { each } from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
-import * as file from './file';
+import * as file from 'tmake-file';
 import { execAsync, ensureCommand } from './shell';
 import { log } from './log';
 import { deps } from './graph';
@@ -17,11 +17,11 @@ import { Project } from './project';
 import { Phase } from './phase';
 import { defaults } from './defaults';
 
-function copy(patterns: string[], options: TMake.Vinyl.Options) {
+function copy(patterns: string[], options: Vinyl.Options) {
   const filePaths: string[] = [];
   return file
     .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
-      .pipe(file.map((data: TMake.Vinyl.File, callback: Function) => {
+      .pipe(file.map((data: Vinyl.File, callback: Function) => {
         const mutable = data;
         log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
         if (options.flatten) {

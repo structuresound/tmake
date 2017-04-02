@@ -5,12 +5,19 @@ import { Project } from './project';
 import { Environment } from './environment';
 import { Plugin } from './plugin';
 
+import { args } from './args';
+
 export class Runtime {
   static pluginMap: { [index: string]: typeof Plugin } = {};
-  static loadPlugins = () => {
+  static loadPlugins = (local?: string[]) => {
     defaults.plugins.forEach((name) => {
       Runtime.registerPlugin(require(`./${name}`).default);
     })
+    if (local) {
+      local.forEach((name) => {
+        Runtime.registerPlugin(require(`${args.userCache}/plugins/${name}`).default);
+      })
+    }
   }
   static registerPlugin = (plugin: typeof Plugin) => {
     let instance: Plugin;

@@ -3,7 +3,7 @@ import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
 
-import * as file from './file';
+import * as file from 'tmake-file';
 import { execAsync, ensureCommand } from './shell';
 import { log } from './log';
 import { deps } from './graph';
@@ -65,11 +65,11 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
                 const fromDir = env.pathSetting(e.from);
 
                 const patterns = e.matching;
-                const options: TMake.Vinyl.Options = { from: fromDir, to: env.pathSetting(e.to) }
+                const options: Vinyl.Options = { from: fromDir, to: env.pathSetting(e.to) }
                 const filePaths: string[] = [];
                 return file
                   .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
-                    .pipe(file.map((data: TMake.Vinyl.File, callback: Function) => {
+                    .pipe(file.map((data: Vinyl.File, callback: Function) => {
                       const mutable = data;
                       log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
                       if (options.flatten) {

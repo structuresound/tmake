@@ -1,5 +1,4 @@
-import { Git } from './git';
-import { log } from './log';
+import { log } from 'tmake-core';
 import * as colors from 'chalk';
 
 
@@ -16,7 +15,7 @@ export function example() {
 ***
 `);
   for (const example of examples) {
-    const g = new Git(example.git);
+    const g = new TMake.Git(example.git);
     log.log(colors.green('git clone'), colors.gray(`https://github.com/${g.organization}/`) + colors.magenta(g.repository));
   }
   log.log(`

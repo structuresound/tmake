@@ -1,5 +1,3 @@
-/// <reference path="file.d.ts" />
-
 declare namespace TMake {
   namespace Install {
     interface Options {

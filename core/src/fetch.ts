@@ -4,7 +4,7 @@ import * as request from 'request';
 import progress = require('request-progress');
 import * as ProgressBar from 'progress';
 import * as fs from 'fs';
-import * as file from './file';
+import * as file from 'tmake-file';
 
 import { log } from './log';
 import { info } from './info';

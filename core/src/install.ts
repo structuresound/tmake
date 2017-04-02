@@ -5,7 +5,7 @@ import { contains } from 'typed-json-transform';
 import * as fs from 'fs';
 
 import { defaults } from './defaults';
-import { src, map, dest, wait, symlink } from './file';
+import { src, map, dest, wait, symlink } from 'tmake-file';
 import { log } from './log';
 import { args } from './args';
 import { mv, mkdir } from './shell';
@@ -20,7 +20,7 @@ function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
   const stream = src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(map((data: TMake.Vinyl.File, callback: Function) => {
+  }).pipe(map((data: Vinyl.File, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
@@ -39,7 +39,7 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
   return wait(src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(map((data: TMake.Vinyl.File, callback: Function) => {
+  }).pipe(map((data: Vinyl.File, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);

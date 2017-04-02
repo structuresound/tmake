@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import { check } from 'typed-json-transform';
 
 import { args } from './args';
-import * as file from './file';
+import * as file from 'tmake-file';
 import { log } from './log';
 import { stringHash } from './hash';
 import { download } from './fetch';

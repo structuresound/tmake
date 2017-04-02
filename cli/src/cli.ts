@@ -5,23 +5,17 @@ import * as yaml from 'js-yaml';
 import { onPossiblyUnhandledRejection } from 'bluebird';
 import { check, contains } from 'typed-json-transform';
 
-import { log } from 'tmake-core';
-import { info } from './info';
+import { log, db, execute, list, unlink, push, Runtime, info, TMakeError } from 'tmake-core';
 import { args } from './args';
+
+import { example } from './example';
+
 import {
   src, dest, nuke,
   readConfigAsync, findConfigAsync,
   writeFileAsync, parseFileSync
-} from './file';
-import { execute, list, unlink, push } from './tmake';
-import { cache, user } from './db';
-import { example } from './example';
-import { graph, createNode } from './graph';
+} from 'tmake-file';
 
-import { ProjectFile, resolveName } from './project';
-import { Runtime } from './runtime';
-
-import { TMakeError } from './errors';
 const name = 'tmake';
 
 onPossiblyUnhandledRejection(function (error) { throw error; });
@@ -187,26 +181,27 @@ function createPackage() {
   return Promise.resolve(defaultPackage);
 }
 
-function tmake(rootConfig: ProjectFile,
+
+function tmake(rootConfig: TMake.Project.File,
   positionalArgs = args._, projectName?: string) {
-  cache.loadDatabase();
-  user.loadDatabase();
+  db.cache.loadDatabase();
+  db.user.loadDatabase();
 
   if (!projectName) {
-    projectName = positionalArgs[1] || rootConfig.name || resolveName(rootConfig);
+    projectName = positionalArgs[1] || rootConfig.name;
   }
   const command = positionalArgs[0]
   switch (command) {
     case 'rm':
-      return cache.remove({ name: projectName })
+      return db.cache.remove({ name: projectName })
         .then(() => {
-          return cache.remove({ project: projectName })
+          return db.cache.remove({ project: projectName })
         }).then(() => {
           log.quiet(`cleared cache for ${projectName}`)
         });
     case 'unlink':
-      return cache.findOne({ name: projectName })
-        .then((dep: ProjectFile) => unlink(dep || rootConfig));
+      return db.cache.findOne({ name: projectName })
+        .then((dep: TMake.Project.File) => unlink(dep || rootConfig));
     case 'ls':
     case 'list':
       return (() => {
@@ -218,8 +213,8 @@ function tmake(rootConfig: ProjectFile,
         return list('cache', {});
       })().then(nodes => log.log(nodes));
     case 'report':
-      return cache.findOne({ type: 'report' }).then((report) => {
-        info.report(report);
+      return db.cache.findOne({ type: 'report' }).then((report) => {
+        // info.report(report);
       })
     default:
       if (contains(Object.keys(packageCommands()), command)) {
@@ -261,8 +256,9 @@ function run() {
     default:
       return readConfigAsync(args.configDir || args.runDir)
         .then(
-        (projectFile) => {
-          if (projectFile) {
+        (res) => {
+          if (res) {
+            const projectFile = <TMake.Project.File><any>res;
             const cmd = args._[0];
             if (!check(cmd, String)) {
               log.quiet(manual());
@@ -285,8 +281,8 @@ function run() {
                   log.quiet(usage(cmd));
                 }
                 if (defaultCommand) {
-                  const projectName = args._[1] || projectFile.name || resolveName(projectFile);
-                  log.log(`tmake all ${resolveName(projectFile)}`)
+                  const projectName = args._[1] || projectFile.name;
+                  log.log(`tmake all ${projectFile.name}`)
                 }
                 return tmake(projectFile);
             }

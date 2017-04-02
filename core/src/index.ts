@@ -3,27 +3,26 @@ import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
+import * as file from 'tmake-file';
 import { contains, plain as toJSON, safeOLHM } from 'typed-json-transform';
 
-import { args, encode as encodeArgs } from './args';
+
+import { args, init as initArgs, encode as encodeArgs, decode as decodeArgs } from './args';
 import { login, get, post } from './cloud';
-import {
-  projectNamed, updateProject, updateEnvironment,
-  user as userDb, cache
-} from './db';
-import { Environment } from './environment';
+import * as db from './db';
 import { fetch, linkSource, destroy as destroySource } from './fetch';
 import { build } from './build';
 import { configure } from './configure';
 import { generate } from './generate';
-import * as file from './file';
 import { createNode, graph } from './graph';
 import { installProject, installEnvironment, installHeaders } from './install';
 import { prompt } from './prompt';
 import { log } from './log';
 import { info } from './info';
-import { errors } from './errors';
+import { errors, TMakeError } from './errors';
 import { ShellPlugin } from './shell';
+import { Runtime } from './runtime';
+
 
 import test from './test';
 
@@ -115,7 +114,7 @@ export class ProjectRunner {
     this.project = node;
   }
   do(fn: Function, opt?: any) {
-    return Bluebird.each(this.project.environments, (env: Environment) => {
+    return Bluebird.each(this.project.environments, (env: TMake.Environment) => {
       return fn(env, opt);
     })
   }
@@ -169,7 +168,7 @@ export class ProjectRunner {
             if (!project.tree) {
               const doc = project.toRegistry();
               const query = { name: doc.name, tag: doc.tag || 'master' };
-              return userDb.update(query, { $set: doc }, { upsert: true });
+              return db.user.update(query, { $set: doc }, { upsert: true });
             }
           })
         });
@@ -190,13 +189,13 @@ export class ProjectRunner {
     });
     return Bluebird.each(this.project.environments, (env) => {
       const hash = env.hash();
-      return cache.remove({ hash: hash });
+      return db.cache.remove({ hash: hash });
     }).then(() => {
       log.verbose('clean environment caches');
-      return cache.remove({ project: this.project.name })
+      return db.cache.remove({ project: this.project.name })
     }).then(() => {
       log.verbose('clean project cache');
-      return cache.remove({ name: this.project.name })
+      return db.cache.remove({ name: this.project.name })
     })
   }
 }
@@ -211,9 +210,9 @@ function processDep(node: TMake.Project, phase: string) {
 
 export function unlink(config: TMake.Project.File) {
   const query = { name: config.name, tag: config.tag || 'master' };
-  return userDb.findOne(query).then((doc: TMake.Project.File) => {
+  return db.user.findOne(query).then((doc: TMake.Project.File) => {
     if (doc) {
-      return userDb.remove(query);
+      return db.user.remove(query);
     }
     return Promise.resolve();
   });
@@ -229,7 +228,7 @@ export function push(config: TMake.Project.File) {
       }
       return Promise.reject('user aborted push command');
     })
-    .then(() => { return projectNamed(config.name); })
+    .then(() => { return db.projectNamed(config.name); })
     .then((json: any) => {
       if (json.cache.bin || json.cache.libs) {
         return post(json).then((res) => {
@@ -248,14 +247,14 @@ export function list(repo: string, selector: Object) {
   switch (repo) {
     default:
     case 'cache':
-      return cache.find(selector) as Promise<TMake.Project.File[]>;
+      return db.cache.find(selector) as Promise<TMake.Project.File[]>;
     case 'user':
-      return userDb.find(selector) as Promise<TMake.Project.File[]>;
+      return db.user.find(selector) as Promise<TMake.Project.File[]>;
   }
 }
 
 export function findAndClean(depName: string): PromiseLike<TMake.Project.File> {
-  return projectNamed(depName)
+  return db.projectNamed(depName)
     .then((config: TMake.Project.File) => {
       if (config) {
         return createNode(config, undefined)
@@ -263,7 +262,7 @@ export function findAndClean(depName: string): PromiseLike<TMake.Project.File> {
             return new ProjectRunner(project).clean();
           })
           .then(() => {
-            return projectNamed(depName)
+            return db.projectNamed(depName)
               .then((cleaned: TMake.Project.File) => {
                 log.verbose('cleaned project', cleaned);
                 return Promise.resolve(cleaned);
@@ -275,7 +274,7 @@ export function findAndClean(depName: string): PromiseLike<TMake.Project.File> {
 }
 
 export class TMake extends ShellPlugin {
-  constructor(env: Environment) {
+  constructor(env: TMake.Environment) {
     super(env);
     this.name = 'tmake';
     this.projectFileName = 'tmake.yaml';
@@ -291,4 +290,6 @@ export class TMake extends ShellPlugin {
   }
 }
 
-export { log };
+export { log, db, Runtime, info, errors, TMakeError };
+
+export { initArgs, encodeArgs, decodeArgs };

@@ -9,7 +9,10 @@ import globAll = require('glob-all');
 import { check } from 'typed-json-transform';
 import { src as _src, dest, symlink } from 'vinyl-fs';
 import _unarchive from './archive';
-import { startsWith } from './string';
+
+function startsWith(string: string, s: string) {
+  return string.slice(0, s.length) === s;
+}
 
 function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
@@ -177,7 +180,7 @@ function readConfigAsync(configDir: string) {
       if (configPath) {
         return parseFileAsync(configPath);
       }
-      return Promise.resolve(<TMake.Project.File>undefined);
+      return Promise.resolve(<any>undefined);
     });
 };
 
@@ -193,10 +196,10 @@ function parseFileSync(configPath: string) {
   return parseData(data, configPath);
 };
 
-function parseData(data: string, configPath: string): TMake.Project.File {
+function parseData(data: string, configPath: string): any {
   switch (path.extname(configPath)) {
     case '.cson':
-      return CSON.parse(data) as TMake.Project.File;
+      return CSON.parse(data);
     case '.json':
       return JSON.parse(data);
     case '.yaml':

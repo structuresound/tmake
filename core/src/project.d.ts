@@ -1,15 +1,15 @@
 /// <reference path="git.d.ts" />
 /// <reference path="environment.d.ts" />
 
-declare class OLHV<T> {
-  require?: string;
-  value: T
-}
-declare class OLHM<T> {
-  [index: string]: OLHV<T>;
-}
-
 declare namespace TMake {
+  class OLHV<T> {
+    require?: string;
+    value: T
+  }
+  class OLHM<T> {
+    [index: string]: OLHV<T>;
+  }
+
   interface Platform {
     docker?: Tools.Docker,
     architecture?: string,
@@ -99,7 +99,7 @@ declare namespace TMake {
     }
   }
 
-  interface Project extends Project.File {
+  class Project implements Project.File {
     [index: string]: any;
     // implements ProjectFile
     name?: string;
@@ -133,5 +133,7 @@ declare namespace TMake {
     libs: string[];
     d: Project.Dirs;
     p: Project.Dirs;
+
+    constructor(_projectFile: Project.File, parent?: Project)
   }
 }

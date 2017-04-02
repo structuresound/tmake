@@ -2,10 +2,11 @@ import { expect } from 'chai';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { args } from '../src/args';
 import { stringHash } from '../src/hash';
 import { Project } from '../src/project';
 import { fetch as fetchToolchain, pathForTool } from '../src/tools';
+
+import { args } from './args';
 
 describe('tools', function () {
   const project = new Project({ name: 'tools-test' });
@@ -21,10 +22,10 @@ describe('tools', function () {
       .equal('ninja');
     expect(hostChain.ninja.bin)
       .to
-      .equal('ninja');
+      .equal(path.join(args.userCache, 'toolchain/ninja', '9d0c46a1ff1ad7dea95b0814e6919d84', 'ninja'));
     return expect(hostChain.ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${env.host.platform}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${env.environment.host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {

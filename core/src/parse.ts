@@ -7,7 +7,7 @@ import { replaceAll, startsWith } from './string';
 import { log } from './log';
 import { exec } from './shell';
 import { interpolate } from './interpolate';
-import * as file from './file';
+import * as file from 'tmake-file';
 import { args } from './args';
 
 interface MacroObject {

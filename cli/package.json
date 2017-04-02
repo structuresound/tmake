@@ -14,10 +14,12 @@
   "bugs": {
     "url": "https://github.com/structuresound/tmake/issues"
   },
-  "licenses": [{
-    "type": "MIT",
-    "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
-  }],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+    }
+  ],
   "engines": {
     "node": ">= 6.0.0",
     "npm": ">= 3"
@@ -52,13 +54,15 @@
   "dependencies": {
     "chalk": "^1.1.1",
     "cli-spinner": "^0.2.6",
-    "typed-json-transform": "^0.14.9",
     "js-yaml": "^3.6.1",
     "minimist": "^1.2.0",
     "node-status": "^1.0.0",
     "progress": "^1.1.8",
     "progress-stream": "^1.2.0",
     "shelljs": "^0.7.6",
+    "tmake-core": "^0.6.1",
+    "tmake-file": "^0.6.0",
+    "typed-json-transform": "^0.16.0",
     "which": "^1.2.11"
   }
 }

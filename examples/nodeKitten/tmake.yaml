@@ -1,0 +1,7 @@
+git:
+  organization: structuresound
+  repository: nodeKitten
+configure:
+  with: tmake
+build:
+  with: tmake

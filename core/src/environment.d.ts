@@ -28,7 +28,8 @@ declare namespace TMake {
     constructor(t: Toolchain, project: Project);
     hash(): string;
     merge(other: Environment.Cache): void;
-    select<T>(base: T, options?: Environment.Select.Options): T
+    select(base: any, options?: Environment.Select.Options): any;
+    parse(input: any, conf?: any): any;
   }
 
 

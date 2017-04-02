@@ -2,10 +2,11 @@ import * as path from 'path';
 import { assert } from 'chai';
 import { check } from 'typed-json-transform';
 
-import { args } from '../src/args';
 import { graph } from '../src/graph';
 import { resolveName } from '../src/project';
-import * as file from '../src/file';
+import * as file from 'tmake-file';
+
+import { args } from './args';
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
 describe('graph', () => {

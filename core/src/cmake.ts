@@ -21,7 +21,7 @@ export function quotedList(array: string[]) {
 export class CMake extends Compiler {
   options: TMake.Plugin.Shell.Compiler.CMake.Options;
 
-  constructor(environment: Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options) {
+  constructor(environment: TMake.Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options) {
     super(environment, options);
     this.name = 'cmake';
     this.projectFileName = 'CMakeLists.txt';

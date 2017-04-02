@@ -2,6 +2,10 @@
   "name": "tmake",
   "description": "meta/dev package",
   "version": "0.0.1",
+  "scripts": {
+    "build-core": "cd core && yarn && gulp scripts",
+    "build": "npm run build-core"
+  },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",
     "babel-eslint": "^7.1.0",

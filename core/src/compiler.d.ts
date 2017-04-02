@@ -1,7 +1,7 @@
 /// <reference path="shell.d.ts" />
 
 declare namespace TMake {
-  class Compiler extends Shell.Plugin {
+  class Compiler extends TMake.Plugin.Shell {
     options: Plugin.Shell.Compiler.Options;
     flags: Plugin.Shell.Compiler.Flags;
     libs: string[];

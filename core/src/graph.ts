@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import * as file from './file';
+import * as file from 'tmake-file';
 import { combine, check, Graph, OLHM, extend } from 'typed-json-transform';
 import { log } from './log';
 import { errors } from './errors';
@@ -10,7 +10,7 @@ import { absolutePath } from './parse';
 import { cache as db, environmentCache } from './db';
 import { jsonStableHash } from './hash';
 
-import { Project, resolveName, fromString as projectFromString } from './project';
+import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
 
 function loadCache(project: TMake.Project): Promise<TMake.Project> {
   return db.findOne({ name: project.name })
@@ -33,21 +33,21 @@ function loadEnvironment(env: TMake.Environment) {
     });
 }
 
-function createNode(_conf: TMake.Project.File, parent?: Project) {
-  const node = new Project(_conf, parent);
+function createNode(_conf: TMake.Project.File, parent?: TMake.Project) {
+  const node = new ProjectConstructor(_conf, <any>parent);
   return loadCache(<TMake.Project>node);
 }
 
 interface Cache {
-  [index: string]: Project;
+  [index: string]: TMake.Project;
 }
 
 interface FileCache {
   [index: string]: TMake.Project.File;
 }
 
-function scanDependencies(require: OLHM<TMake.Project.File>, node: Project, graph: Graph<Project>,
-  cache: Cache, fileCache: FileCache): PromiseLike<Project> {
+function scanDependencies(require: OLHM<TMake.Project.File>, node: TMake.Project, graph: Graph<TMake.Project>,
+  cache: Cache, fileCache: FileCache): PromiseLike<TMake.Project> {
   const keys = [];
   for (const k of Object.keys(require || {})) {
     keys.push(k);
@@ -74,8 +74,8 @@ function scanDependencies(require: OLHM<TMake.Project.File>, node: Project, grap
     });
 }
 
-function graphNode(_conf: TMake.Project.File, parent: Project, graph: Graph<Project>,
-  cache: Cache, fileCache: FileCache): Promise<Project> {
+function graphNode(_conf: TMake.Project.File, parent: TMake.Project, graph: Graph<TMake.Project>,
+  cache: Cache, fileCache: FileCache): Promise<TMake.Project> {
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.d.root : args.configDir);
@@ -100,7 +100,7 @@ function graphNode(_conf: TMake.Project.File, parent: Project, graph: Graph<Proj
     return Promise.resolve(cache[conf.name]);
   }
   return createNode(conf, parent)
-    .then((node: Project) => {
+    .then((node: TMake.Project) => {
       graph.addNode(node.name);
       if (parent) {
         log.verbose(`  ${parent.name} requires ${node.name}`);
@@ -110,7 +110,7 @@ function graphNode(_conf: TMake.Project.File, parent: Project, graph: Graph<Proj
       }
       cache[node.name] = node;
       return scanDependencies(conf.require, node, graph, cache, fileCache);
-    }).then((node: Project) => {
+    }).then((node: TMake.Project) => {
       if (args.verbose) {
         log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
@@ -119,7 +119,7 @@ function graphNode(_conf: TMake.Project.File, parent: Project, graph: Graph<Proj
 }
 
 function _map(node: TMake.Project.File, graphType: string,
-  graphArg?: string): Promise<Project[]> {
+  graphArg?: string): Promise<TMake.Project[]> {
   const cache: Cache = {};
   const fileCache: FileCache = {};
   const graph = new Graph();
@@ -127,7 +127,7 @@ function _map(node: TMake.Project.File, graphType: string,
   return graphNode(node, undefined, graph, cache, fileCache)
     .then(() => {
       const nodeNames = graph[graphType](graphArg);
-      const nodes: Project[] =
+      const nodes: TMake.Project[] =
         _.map(nodeNames, (name: string) => { return cache[name]; });
       return Promise.resolve(nodes);
     }).catch((error) => {

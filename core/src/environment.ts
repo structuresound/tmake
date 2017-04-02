@@ -6,7 +6,7 @@ import { cascade, check, clone, contains, arrayify, combine, combineN, extend, p
 import { updateEnvironment } from './db';
 import { startsWith } from './string';
 import { log } from './log';
-import { parseFileSync } from './file';
+import { parseFileSync } from 'tmake-file';
 import { args } from './args';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { iterable } from './iterate';
@@ -21,7 +21,7 @@ import { pathForTool } from './tools';
 import { Plugin } from './plugin';
 import { Project } from './project';
 
-export class Cache extends TMake.Cache.Base<string> {
+export class Cache extends BaseCache<string> {
     env: Environment;
     assets?: TMake.Cache.Property<string>;
     plugin: BaseCache<string>
@@ -132,9 +132,9 @@ function parseSelectors(dict: any, prefix: string) {
 }
 
 const DEFAULT_ENV =
-    parseFileSync(path.join(args.binDir, 'environment.yaml'));
+    parseFileSync(path.join(args.settingsDir, 'environment.yaml'));
 const _keywords: any =
-    parseFileSync(path.join(args.binDir, 'keywords.yaml'));
+    parseFileSync(path.join(args.settingsDir, 'keywords.yaml'));
 const defaultKeywords =
     [].concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
         .concat(_keywords.target)
@@ -335,7 +335,7 @@ export class Environment implements TMake.Toolchain {
     merge(other: Cache): void {
         mergeEnvironment(this, other);
     }
-    parse(input: any, conf?: any) {
+    parse(input: any, conf?: any): any {
         if (conf) {
             const selectedConf = cascade(conf, this.environment.keywords, this.environment.selectors);
             const dict = combine(this.environment, selectedConf);
@@ -346,7 +346,7 @@ export class Environment implements TMake.Toolchain {
     toCache(): TMake.Environment.CacheFile {
         return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
     }
-    select<T>(base: T, options: TMake.Environment.Select.Options = { ignore: {} }): T {
+    select(base: any, options: TMake.Environment.Select.Options = { ignore: {} }): any {
         if (!base) {
             throw new Error('selecting on empty object');
         }
@@ -357,7 +357,7 @@ export class Environment implements TMake.Toolchain {
 
         const preParse = cascade(base, mutableOptions.keywords, mutableOptions.selectors);
         const parsed = this.parse(preParse, mutableOptions.dict || this.environment);
-        return <T>parsed;
+        return parsed;
     }
     fullPath(p: string) {
         return absolutePath(p, this.d.root);
