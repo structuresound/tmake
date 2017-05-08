@@ -45,9 +45,9 @@ prompt.onReceived = (text: string) => {
 prompt.yes = args.y || args.yes;
 prompt.ask = (q: string, expect: any, skip: boolean) => {
   if (prompt.yes || skip) {
-    return Promise.resolve(expect || 'y');
+    return Bluebird.resolve(expect || 'y');
   }
-  return new Promise((resolve) => {
+  return new Bluebird((resolve) => {
     prompt.message = `${q}: `;
     prompt.onReceived = (data: any) => {
       const noLines = data.replace(/\r?\n|\r/g, ' ');

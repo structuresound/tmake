@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import { omit } from 'lodash';
 import { existsSync } from 'fs';
 import { arrayify, check, clone, combine, each, extend } from 'typed-json-transform';
@@ -140,6 +141,6 @@ export class Compiler extends ShellPlugin {
     if (this.options.toolchain) {
       return fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
     }
-    return Promise.resolve();
+    return Bluebird.resolve();
   }
 }

@@ -1,18 +1,21 @@
 "use strict";
-const yaml = require("js-yaml");
-const sh = require("shelljs");
-const _ = require("lodash");
-const fs = require("fs");
-const path = require("path");
-const CSON = require("cson");
-const map = require("map-stream");
+Object.defineProperty(exports, "__esModule", { value: true });
+var Bluebird = require("bluebird");
+var yaml = require("js-yaml");
+var sh = require("shelljs");
+var _ = require("lodash");
+var fs = require("fs");
+var path = require("path");
+var CSON = require("cson");
+var map = require("map-stream");
 exports.map = map;
-const globAll = require("glob-all");
-const typed_json_transform_1 = require("typed-json-transform");
-const vinyl_fs_1 = require("vinyl-fs");
+var globAll = require("glob-all");
+var typed_json_transform_1 = require("typed-json-transform");
+var vinyl_fs_1 = require("vinyl-fs");
 exports.dest = vinyl_fs_1.dest;
 exports.symlink = vinyl_fs_1.symlink;
-const archive_1 = require("./archive");
+var archive_1 = require("./archive");
+exports.defaultConfig = 'tmake';
 function startsWith(string, s) {
     return string.slice(0, s.length) === s;
 }
@@ -21,9 +24,10 @@ function nuke(folderPath) {
         throw new Error("don't nuke everything");
     }
     try {
-        const files = fs.readdirSync(folderPath);
-        for (const file of files) {
-            const curPath = path.join(folderPath, file);
+        var files = fs.readdirSync(folderPath);
+        for (var _i = 0, files_1 = files; _i < files_1.length; _i++) {
+            var file = files_1[_i];
+            var curPath = path.join(folderPath, file);
             if (fs.lstatSync(curPath).isDirectory()) {
                 nuke(curPath);
             }
@@ -40,11 +44,12 @@ exports.nuke = nuke;
 ;
 function prune(folderPath) {
     try {
-        const files = fs.readdirSync(folderPath);
+        var files = fs.readdirSync(folderPath);
         if (files.length) {
-            let modified = false;
-            for (const file of files) {
-                const curPath = path.join(folderPath, file);
+            var modified = false;
+            for (var _i = 0, files_2 = files; _i < files_2.length; _i++) {
+                var file = files_2[_i];
+                var curPath = path.join(folderPath, file);
                 if (fs.lstatSync(curPath).isDirectory()) {
                     if (prune(curPath)) {
                         modified = true;
@@ -66,7 +71,7 @@ function prune(folderPath) {
 exports.prune = prune;
 ;
 function wait(stream, readOnly) {
-    return new Promise((resolve, reject) => {
+    return new Bluebird(function (resolve, reject) {
         stream.on('error', reject);
         if (readOnly) {
             return stream.on('finish', resolve);
@@ -77,8 +82,8 @@ function wait(stream, readOnly) {
 exports.wait = wait;
 ;
 function deleteAsync(filePath) {
-    return new Promise((resolve, reject) => {
-        fs.unlink(filePath, (err) => {
+    return new Bluebird(function (resolve, reject) {
+        fs.unlink(filePath, function (err) {
             if (err) {
                 reject(err);
             }
@@ -86,19 +91,20 @@ function deleteAsync(filePath) {
         });
     });
 }
+exports.deleteAsync = deleteAsync;
 function _glob(srcPattern, relative, cwd) {
-    return new Promise((resolve, reject) => {
+    return new Bluebird(function (resolve, reject) {
         return globAll(srcPattern, {
             cwd: cwd || process.cwd(),
             root: relative || process.cwd(),
             nonull: false
-        }, (err, results) => {
+        }, function (err, results) {
             if (err) {
                 reject(err);
             }
             else if (results) {
-                resolve(_.map(results, (file) => {
-                    const filePath = path.join(cwd, file);
+                resolve(_.map(results, function (file) {
+                    var filePath = path.join(cwd, file);
                     if (relative) {
                         return path.relative(relative, filePath);
                     }
@@ -109,8 +115,9 @@ function _glob(srcPattern, relative, cwd) {
         });
     });
 }
+exports._glob = _glob;
 function glob(patternS, relative, cwd) {
-    let patterns = [];
+    var patterns = [];
     if (typed_json_transform_1.check(patternS, String)) {
         patterns.push(patternS);
     }
@@ -130,18 +137,20 @@ function readIfExists(filePath) {
     }
 }
 exports.readIfExists = readIfExists;
-function readFileAsync(filePath, format = 'utf8') {
-    return new Promise((resolve, reject) => fs.readFile(filePath, format, (err, data) => {
+function readFileAsync(filePath, format) {
+    if (format === void 0) { format = 'utf8'; }
+    return new Bluebird(function (resolve, reject) { return fs.readFile(filePath, format, function (err, data) {
         if (err) {
             reject(err);
         }
         return resolve(data);
-    }));
+    }); });
 }
+exports.readFileAsync = readFileAsync;
 ;
 function writeFileAsync(filePath, data, options) {
-    return new Promise((resolve, reject) => {
-        fs.writeFile(filePath, data, options, (err) => {
+    return new Bluebird(function (resolve, reject) {
+        fs.writeFile(filePath, data, options, function (err) {
             if (err) {
                 reject(err);
             }
@@ -153,18 +162,19 @@ exports.writeFileAsync = writeFileAsync;
 ;
 function findOneAsync(srcPattern, relative, cwd) {
     return glob(srcPattern, relative, cwd)
-        .then((array) => {
+        .then(function (array) {
         if (array.length) {
-            return Promise.resolve(array[0]);
+            return Bluebird.resolve(array[0]);
         }
-        return Promise.resolve(undefined);
+        return Bluebird.resolve(undefined);
     });
 }
-const defaultConfig = 'tmake';
+exports.findOneAsync = findOneAsync;
 function getConfigPath(configDir) {
-    const exts = ['yaml', 'json', 'cson'];
-    for (const ext of exts) {
-        const filePath = `${configDir}/${defaultConfig}.${ext}`;
+    var exts = ['yaml', 'json', 'cson'];
+    for (var _i = 0, exts_1 = exts; _i < exts_1.length; _i++) {
+        var ext = exts_1[_i];
+        var filePath = configDir + "/" + exports.defaultConfig + "." + ext;
         if (fs.existsSync(filePath)) {
             return filePath;
         }
@@ -174,30 +184,30 @@ function getConfigPath(configDir) {
 exports.getConfigPath = getConfigPath;
 ;
 function findConfigAsync(configDir) {
-    return Promise.resolve(getConfigPath(configDir));
+    return Bluebird.resolve(getConfigPath(configDir));
 }
 exports.findConfigAsync = findConfigAsync;
 function readConfigAsync(configDir) {
     return findConfigAsync(configDir)
-        .then((configPath) => {
+        .then(function (configPath) {
         if (configPath) {
             return parseFileAsync(configPath);
         }
-        return Promise.resolve(undefined);
+        return Bluebird.resolve(undefined);
     });
 }
 exports.readConfigAsync = readConfigAsync;
 ;
 function parseFileAsync(configPath) {
     return readFileAsync(configPath, 'utf8')
-        .then((data) => {
-        return Promise.resolve(parseData(data, configPath));
+        .then(function (data) {
+        return Bluebird.resolve(parseData(data, configPath));
     });
 }
 exports.parseFileAsync = parseFileAsync;
 ;
 function parseFileSync(configPath) {
-    const data = fs.readFileSync(configPath, 'utf8');
+    var data = fs.readFileSync(configPath, 'utf8');
     return parseData(data, configPath);
 }
 exports.parseFileSync = parseFileSync;
@@ -214,8 +224,9 @@ function parseData(data, configPath) {
             throw new Error('unknown config ext');
     }
 }
+exports.parseData = parseData;
 function readConfigSync(configDir) {
-    const configPath = getConfigPath(configDir);
+    var configPath = getConfigPath(configDir);
     if (configPath) {
         return parseFileSync(configPath);
     }
@@ -224,13 +235,12 @@ function readConfigSync(configDir) {
 exports.readConfigSync = readConfigSync;
 ;
 function unarchive(archive, tempDir, toDir, toPath) {
-    return archive_1.default(archive, tempDir)
-        .then(() => moveArchive(tempDir, toDir, toPath));
+    return archive_1.default(archive, tempDir).then(function () { return moveArchive(tempDir, toDir, toPath); });
 }
 exports.unarchive = unarchive;
 ;
 function src(glob, opt) {
-    const patterns = _.map(glob, (string) => {
+    var patterns = _.map(glob, function (string) {
         if (startsWith(string, '/')) {
             return string.slice(1);
         }
@@ -240,11 +250,11 @@ function src(glob, opt) {
 }
 exports.src = src;
 function moveArchive(tempDir, toDir, toPath) {
-    const files = fs.readdirSync(tempDir);
+    var files = fs.readdirSync(tempDir);
     if (files.length === 1) {
-        let resolvedToPAth = toPath;
-        const file = files[0];
-        const fullPath = `${tempDir}/${file}`;
+        var resolvedToPAth = toPath;
+        var file = files[0];
+        var fullPath = tempDir + "/" + file;
         if (fs.lstatSync(fullPath).isDirectory()) {
             try {
                 nuke(toDir);
@@ -254,7 +264,7 @@ function moveArchive(tempDir, toDir, toPath) {
             return sh.mv(fullPath, toDir);
         }
         if (typeof toPath === 'undefined' || toPath === null) {
-            resolvedToPAth = `${toDir}/${file}`;
+            resolvedToPAth = toDir + "/" + file;
         }
         sh.mkdir('-p', toDir);
         try {
@@ -267,9 +277,9 @@ function moveArchive(tempDir, toDir, toPath) {
         catch (e) { }
     }
     sh.mkdir('-p', toDir);
-    return files.forEach((file) => {
-        const fullPath = `${tempDir}/${file}`;
-        const newPath = path.join(toDir, file);
+    return files.forEach(function (file) {
+        var fullPath = tempDir + "/" + file;
+        var newPath = path.join(toDir, file);
         return sh.mv(fullPath, newPath);
     });
 }

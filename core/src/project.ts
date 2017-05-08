@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import * as path from 'path';
-import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, safeOLHM, arrayify, OLHM, select } from 'typed-json-transform';
+import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, arrayify, OLHM, select } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './args';
@@ -230,7 +230,7 @@ export class Project implements TMake.Project.File {
     if (!this.outputType) {
       this.outputType = 'static';
     }
-    const toolchains = this.toolchains ? safeOLHM(this.toolchains) : [<TMake.Toolchain>{}];
+    const toolchains = this.toolchains ? OLHM.safe(this.toolchains) : [<TMake.Toolchain>{}];
     this.environments = [];
     for (const t of toolchains) {
       this.environments.push(<TMake.Environment>new Environment(t, this));

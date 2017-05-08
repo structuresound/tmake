@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const tmake_core_1 = require("tmake-core");
 const colors = require("chalk");
 const examples = [

@@ -75,8 +75,7 @@ function fetchAndUnarchive(tool: any) {
   const tempDir = path.join(args.userCache, 'temp', stringHash(tool.url));
   const toolpath = pathForTool(tool);
   return download(tool.url).then((archivePath) => {
-    const tooldir =
-      path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
+    const tooldir = path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
     return file.unarchive(archivePath, tempDir, tooldir, toolpath);
   });
 }
@@ -95,18 +94,18 @@ function fetchToolchain(toolchain: any): PromiseLike<TMake.Tools> {
         const exists = fs.existsSync(toolpath)
         if (exists) {
           log.verbose(`have ${name}`);
-          return Promise.resolve(toolpath);
+          return Bluebird.resolve(toolpath);
         }
         log.verbose(`fetch ${name} binary from ${tool.url}`);
         return fetchAndUnarchive(tool).then(() => {
           log.verbose(`chmod 755 ${toolpath}`);
           fs.chmodSync(`${toolpath}`, 755);
-          return Promise.resolve(toolpath);
+          return Bluebird.resolve(toolpath);
         });
       }
     })
     .then(() => {
-      return Promise.resolve(toolPaths(toolchain));
+      return Bluebird.resolve(toolPaths(toolchain));
     });
 }
 

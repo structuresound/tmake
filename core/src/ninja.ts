@@ -48,14 +48,17 @@ export class Ninja extends Compiler {
     this.buildFileName = 'build.ninja';
   }
 
-  configureCommand(toolpaths: any) { return '' }
+  // configureCommand(toolpaths: any) { return '' }
   buildCommand(toolpaths?: string) {
-    return 'ninja';
+    return this.environment.tools.ninja.bin;
   }
   fetch() {
-    return fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
+    return fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
-  generate() {
+  generate(){
+    return this.configure();
+  }
+  configure() {
     log.add('generate new ninja config');
     const relativeToBuild = path.relative(this.environment.d.project, this.environment.d.build) || '.';
     const relativeToSource = path.relative(this.environment.d.project, this.environment.d.source) || '.';
@@ -148,7 +151,7 @@ export class Ninja extends Compiler {
     const fp = this.buildFilePath();
     ninjaConfig.save(fp + '_node');
     log.add(`  + ${fp}`);
-    return Promise.resolve(readFileSync(fp + '_node', 'utf8'));
+    return Bluebird.resolve(readFileSync(fp + '_node', 'utf8'));
   }
 }
 

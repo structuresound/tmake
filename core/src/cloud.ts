@@ -1,5 +1,5 @@
 import * as request from 'request-promise';
-import * as Promise from 'bluebird';
+import * as Bluebird from 'bluebird';
 import * as colors from 'chalk';
 
 import { prompt } from './prompt';
@@ -13,7 +13,7 @@ interface User {
   password: string,
 }
 
-const _login = (user: User) => Promise.resolve(log.info('loggin in'));
+const _login = (user: User) => Bluebird.resolve(log.info('loggin in'));
 
 export function post(json) {
   log.verbose(`${json.name} >> ${server}`);
@@ -30,7 +30,7 @@ export function get(_id) {
   const options = {
     uri: `${server}/api/${apiVer}/packages/${_id}`,
     headers: {
-      'User-Agent': 'Request-Promise'
+      'User-Agent': 'Request-Bluebird'
     },
     json: true
   };

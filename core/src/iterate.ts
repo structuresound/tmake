@@ -1,5 +1,5 @@
 import * as Bluebird from 'bluebird';
-import { contains, check, safeOLHM, OLHM, map } from 'typed-json-transform';
+import { contains, check, OLHM, map } from 'typed-json-transform';
 
 import { errors } from './errors';
 import { Plugin } from './plugin';
@@ -13,8 +13,8 @@ export function iterable(val: any) {
   return [val];
 }
 
-export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>) {
-  const it = safeOLHM(obj);
+export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>): PromiseLike<void> {
+  const it = OLHM.safe(obj);
   if (!check(it, Array)
   ) {
     throw new Error('safeOLHM did not produce array');
@@ -23,15 +23,15 @@ export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>) {
 }
 
 export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>): PromiseLike<T[]> {
-  const it = safeOLHM(obj);
+  const it = OLHM.safe(obj);
   if (!check(it, Array)
   ) {
-    return Promise.reject(new Error('safeOLHM did not produce array'));
+    return Bluebird.reject(new Error('safeOLHM did not produce array'));
   }
   return Bluebird.map(it, fn);
 }
 
-export function iterate(obj: any, fn: (cmd: TMake.CmdObj) => Promise<any> | Bluebird<any>) {
+export function iterate(obj: any, fn: (cmd: TMake.CmdObj) => Bluebird<any>): PromiseLike<void> {
   const it = iterable(obj);
   if (!check(it, Array)
   ) {
@@ -39,7 +39,7 @@ export function iterate(obj: any, fn: (cmd: TMake.CmdObj) => Promise<any> | Blue
   }
   return Bluebird.each(it, (i: TMake.CmdObj) => {
     return fn(i).catch((error: Error) => {
-      return Promise.reject(errors.build.command.failed(i.cmd, error));
+      return Bluebird.reject(errors.build.command.failed(i.cmd, error));
     });
   });
 }

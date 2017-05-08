@@ -12,7 +12,7 @@ import { jsonStableHash } from './hash';
 
 import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
 
-function loadCache(project: TMake.Project): Promise<TMake.Project> {
+function loadCache(project: TMake.Project): Bluebird<TMake.Project> {
   return db.findOne({ name: project.name })
     .then((result: TMake.Project.File) => {
       if (result) {
@@ -22,14 +22,14 @@ function loadCache(project: TMake.Project): Promise<TMake.Project> {
         return loadEnvironment(e);
       });
     }).then(() => {
-      return Promise.resolve(project);
+      return Bluebird.resolve(project);
     })
 }
 
 function loadEnvironment(env: TMake.Environment) {
   return environmentCache(env.hash())
     .then((result) => {
-      return Promise.resolve(env.merge(<any>result));
+      return Bluebird.resolve(env.merge(<any>result));
     });
 }
 
@@ -70,12 +70,12 @@ function scanDependencies(require: OLHM<TMake.Project.File>, node: TMake.Project
           node.require[dep.name] = <any>dep;
         }
       }
-      return Promise.resolve(node);
+      return Bluebird.resolve(node);
     });
 }
 
 function graphNode(_conf: TMake.Project.File, parent: TMake.Project, graph: Graph<TMake.Project>,
-  cache: Cache, fileCache: FileCache): Promise<TMake.Project> {
+  cache: Cache, fileCache: FileCache): Bluebird<TMake.Project> {
   let conf = _conf;
   if (conf.link) {
     const configDir = absolutePath(conf.link, parent ? parent.d.root : args.configDir);
@@ -97,7 +97,7 @@ function graphNode(_conf: TMake.Project.File, parent: TMake.Project, graph: Grap
   }
   if (cache[conf.name]) {
     log.verbose(`project ${conf.name} already loaded`);
-    return Promise.resolve(cache[conf.name]);
+    return Bluebird.resolve(cache[conf.name]);
   }
   return createNode(conf, parent)
     .then((node: TMake.Project) => {
@@ -114,12 +114,12 @@ function graphNode(_conf: TMake.Project.File, parent: TMake.Project, graph: Grap
       if (args.verbose) {
         log.add(`+${node.name} ${node.dir ? '@ ' + node.dir : ''}`);
       }
-      return Promise.resolve(node);
+      return Bluebird.resolve(node);
     });
 }
 
 function _map(node: TMake.Project.File, graphType: string,
-  graphArg?: string): Promise<TMake.Project[]> {
+  graphArg?: string): PromiseLike<TMake.Project[]> {
   const cache: Cache = {};
   const fileCache: FileCache = {};
   const graph = new Graph();
@@ -129,10 +129,10 @@ function _map(node: TMake.Project.File, graphType: string,
       const nodeNames = graph[graphType](graphArg);
       const nodes: TMake.Project[] =
         _.map(nodeNames, (name: string) => { return cache[name]; });
-      return Promise.resolve(nodes);
+      return Bluebird.resolve(nodes);
     }).catch((error) => {
       const nodeNames = graph[graphType](graphArg);
-      return Promise.reject(errors.graph.failed(nodeNames, error));
+      return Bluebird.reject(errors.graph.failed(nodeNames, error));
     });
 }
 

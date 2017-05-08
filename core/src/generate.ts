@@ -1,4 +1,4 @@
-import { each } from 'bluebird';
+import * as Bluebird from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
@@ -35,13 +35,13 @@ function copy(patterns: string[], options: Vinyl.Options) {
         return callback(null, file);
       }))
       .pipe(file.dest(options.to)))
-    .then(() => { return Promise.resolve(filePaths); });
+    .then(() => { return Bluebird.resolve(filePaths); });
 }
 
 export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
   const phase = new Phase(env.generate);
   if (env.project.force() || env.cache.generate.dirty()) {
-    return each(
+    return Bluebird.each(
       phase.commands,
       (i: TMake.CmdObj): PromiseLike<any> => {
         log.verbose(`  ${i.cmd}:`);
@@ -59,7 +59,7 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
               const pattern = env.globArray(replEntry.matching);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
-                  return each(files, (file) => {
+                  return Bluebird.each(files, (file) => {
                     return replaceInFile(file, replEntry, env);
                   })
                 })
@@ -74,7 +74,7 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
                   return file.writeFileAsync(filePath, entry.string,
                     { encoding: 'utf8' });
                 }
-                return Promise.resolve();
+                return Bluebird.resolve();
               });
           case 'copy':
             return iterateOLHM(i.arg,
@@ -92,5 +92,5 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
       });
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);
-  return Promise.resolve(env);
+  return Bluebird.resolve(env);
 }

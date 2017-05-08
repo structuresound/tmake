@@ -1,5 +1,6 @@
 import { check } from 'typed-json-transform';
 import * as colors from 'chalk';
+import * as Bluebird from 'bluebird';
 
 import { args } from './args';
 import { cache } from './db';
@@ -86,7 +87,7 @@ export const errors = {
     },
     report: function ({ command, output, cwd, short }) {
       return cache.update({ type: 'report' }, { $set: { type: 'report', command, output, createdAt: new Date().toDateString() } }, { upsert: true }).then(() => {
-        return Promise.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun tmake report for more info`));
+        return Bluebird.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun tmake report for more info`));
       });
     }
   }

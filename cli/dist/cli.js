@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const _ = require("lodash");
 const colors = require("chalk");
 const path = require("path");

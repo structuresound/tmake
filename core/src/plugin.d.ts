@@ -63,7 +63,6 @@ declare namespace TMake {
           includeDirs?: string[];
           outputFile?: string;
         }
-
       }
     }
   }

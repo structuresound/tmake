@@ -32,6 +32,44 @@ declare namespace TMake {
     build?: any;
   }
 
+  class Project implements Project.File {
+    [index: string]: any;
+    // implements ProjectFile
+    name?: string;
+    override?: OLHM<Project>;
+    require?: OLHM<Project>;
+    cache?: Project.Cache;
+    link?: string;
+    git?: Git;
+    archive?: string;
+    version?: string;
+    tag?: string;
+    tree?: string;
+    user?: string;
+    // ephemeral
+    dir?: string;
+    cacheDir?: string
+    toolchains?: OLHM<Toolchain>;
+
+    // implements Toolchain
+    build: any;
+    configure: any;
+    host: Platform;
+    target: Platform;
+    tools: Tools;
+    outputType: Project.OutputType;
+    path: Environment.Dirs;
+    environment?: any;
+
+    // runtime
+    environments: Environment[];
+    libs: string[];
+    d: Project.Dirs;
+    p: Project.Dirs;
+
+    constructor(_projectFile: Project.File, parent?: Project)
+  }
+
   namespace Project {
     type OutputType = "static" | "dynamic" | "executable";
 
@@ -99,41 +137,5 @@ declare namespace TMake {
     }
   }
 
-  class Project implements Project.File {
-    [index: string]: any;
-    // implements ProjectFile
-    name?: string;
-    override?: OLHM<Project>;
-    require?: OLHM<Project>;
-    cache?: Project.Cache;
-    link?: string;
-    git?: Git;
-    archive?: string;
-    version?: string;
-    tag?: string;
-    tree?: string;
-    user?: string;
-    // ephemeral
-    dir?: string;
-    cacheDir?: string
-    toolchains?: OLHM<Toolchain>;
 
-    // implements Toolchain
-    build: any;
-    configure: any;
-    host: Platform;
-    target: Platform;
-    tools: Tools;
-    outputType: Project.OutputType;
-    path: Environment.Dirs;
-    environment?: any;
-
-    // runtime
-    environments: Environment[];
-    libs: string[];
-    d: Project.Dirs;
-    p: Project.Dirs;
-
-    constructor(_projectFile: Project.File, parent?: Project)
-  }
 }

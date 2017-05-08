@@ -14,21 +14,19 @@
   "bugs": {
     "url": "https://github.com/structuresound/tmake/issues"
   },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
-    }
-  ],
+  "licenses": [{
+    "type": "MIT",
+    "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+  }],
   "engines": {
     "node": ">= 6.0.0",
     "npm": ">= 3"
   },
   "scripts": {
-    "build": "gulp scripts",
-    "test": "NODE_ENV=test mocha --recursive --compilers ts:ts-node/register --bail",
-    "debug": "NODE_ENV=test mocha --recursive --compilers ts:ts-node/register --bail --inspect=PORT --debug-brk",
-    "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
+    "build": "../node_modules/.bin/gulp scripts",
+    "test": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail",
+    "debug": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail --inspect=PORT --debug-brk",
+    "cover": "NODE_ENV=test ../node_modules/.bin/nyc --report-dir coverage npm t",
     "travis": "npm run build && npm run cover"
   },
   "Keywords": [],
@@ -37,32 +35,19 @@
     "tmake": "bin/tmake.js"
   },
   "devDependencies": {
-    "@types/chai": "^3.4.34",
-    "@types/chalk": "^0.4.31",
-    "@types/js-yaml": "^3.5.29",
     "@types/minimist": "^1.2.0",
-    "@types/mocha": "^2.2.32",
-    "@types/node": "^6.0.46",
     "@types/progress": "^1.1.28",
-    "@types/shelljs": "^0.6.0",
-    "@types/which": "^1.0.28",
-    "chai": "^3.5.0",
-    "gulp": "^3.9.1",
-    "gulp-typescript": "^3.1.1",
-    "mocha": "^3.2.0"
+    "@types/which": "^1.0.28"
   },
   "dependencies": {
     "chalk": "^1.1.1",
     "cli-spinner": "^0.2.6",
-    "js-yaml": "^3.6.1",
     "minimist": "^1.2.0",
     "node-status": "^1.0.0",
     "progress": "^1.1.8",
     "progress-stream": "^1.2.0",
-    "shelljs": "^0.7.6",
-    "tmake-core": "^0.6.1",
-    "tmake-file": "^0.6.0",
-    "typed-json-transform": "^0.16.0",
-    "which": "^1.2.11"
+    "which": "^1.2.11",
+    "tmake-core": "0.6.1",
+    "tmake-file": "0.6.3"
   }
 }

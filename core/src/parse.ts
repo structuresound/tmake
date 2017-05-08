@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import * as _ from 'lodash';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -9,6 +10,7 @@ import { exec } from './shell';
 import { interpolate } from './interpolate';
 import * as file from 'tmake-file';
 import { args } from './args';
+import { endsWith } from './string';
 
 interface MacroObject {
   macro: string, map: { [index: string]: string }
@@ -145,7 +147,7 @@ function rewriteExtension(f: string, ext: string) {
 }
 
 function readWritePathsForFile(f: string, r: ReplEntry) {
-  if (f.endsWith('.in')) {
+  if (endsWith(f,'.in')) {
     return {
       readPath: f,
       cachePath: undefined,
@@ -225,7 +227,7 @@ function replaceInFile(f: string, r: ReplEntry, environment?: Object) {
     backupIfNeeded({ readPath, cachePath, writePath });
     return file.writeFileAsync(writePath, inputString, { encoding: 'utf8' });
   }
-  return Promise.resolve();
+  return Bluebird.resolve();
 }
 
 export { MacroObject, ReplEntry, parse, absolutePath, pathArray, fullPath, replaceInFile };

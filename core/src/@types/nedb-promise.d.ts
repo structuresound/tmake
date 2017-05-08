@@ -1,4 +1,4 @@
-declare module "nedb-promise" {
+declare module "nedb-PromiseLike" {
   class DataStore {
     constructor();
     constructor(path: string);
@@ -10,7 +10,7 @@ declare module "nedb-promise" {
      * Load the database from the datafile, and trigger the execution of
      * buffered commands if any
      */
-    loadDatabase(): Promise<void>;
+    loadDatabase(): PromiseLike<void>;
 
     /**
      * Get an array of all the data in the database
@@ -33,14 +33,14 @@ declare module "nedb-promise" {
      * @param {Boolean} options.sparse
      * @param {Function} cb Optional callback, signature: err
      */
-    ensureIndex(options: NeDBPromise.EnsureIndexOptions): Promise<void>;
+    ensureIndex(options: NeDBPromise.EnsureIndexOptions): PromiseLike<void>;
 
     /**
      * Remove an index
      * @param {String} fieldName
      * @param {Function} cb Optional callback, signature: err
      */
-    removeIndex(fieldName: string): Promise<void>;
+    removeIndex(fieldName: string): PromiseLike<void>;
 
     /**
      * Add one or several document(s) to all indexes
@@ -84,13 +84,13 @@ declare module "nedb-promise" {
      * Insert a new document
      * @param {Function} cb Optional callback, signature: err, insertedDoc
      */
-    insert<T>(newDoc: T): Promise<T>;
+    insert<T>(newDoc: T): PromiseLike<T>;
 
     /**
      * Count all documents matching the query
      * @param {any} query MongoDB-style query
      */
-    count(query: any): Promise<number>;
+    count(query: any): PromiseLike<number>;
     count(query: any): NeDBPromise.CursorCount;
 
     /**
@@ -100,7 +100,7 @@ declare module "nedb-promise" {
      * @param {any} query MongoDB-style query
      * @param {any} projection MongoDB-style projection
      */
-    find<T>(query: any, projection: T): Promise<Array<T>>;
+    find<T>(query: any, projection: T): PromiseLike<Array<T>>;
     find<T>(query: any, projection: T): NeDBPromise.Cursor<T>;
 
     /**
@@ -109,7 +109,7 @@ declare module "nedb-promise" {
      * skip and finally exec
      * * @param {any} query MongoDB-style query
      */
-    find<T>(query: any): Promise<Array<T>>;
+    find<T>(query: any): PromiseLike<Array<T>>;
     find<T>(query: any): NeDBPromise.Cursor<T>;
 
     /**
@@ -117,13 +117,13 @@ declare module "nedb-promise" {
      * @param {any} query MongoDB-style query
      * @param {any} projection MongoDB-style projection
      */
-    findOne<T>(query: any, projection: T): Promise<T>;
+    findOne<T>(query: any, projection: T): PromiseLike<T>;
 
     /**
      * Find one document matching the query
      * @param {any} query MongoDB-style query
      */
-    findOne<T>(query: any): Promise<T>;
+    findOne<T>(query: any): PromiseLike<T>;
 
     /**
      * Update all docs matching query
@@ -141,7 +141,7 @@ declare module "nedb-promise" {
      * @api private Use Datastore.update which has the same signature
      */
     update(query: any, updateQuery: any,
-           options?: NeDBPromise.UpdateOptions): Promise<any>;
+           options?: NeDBPromise.UpdateOptions): PromiseLike<any>;
 
     /**
      * Remove all docs matching the query
@@ -154,8 +154,8 @@ declare module "nedb-promise" {
      *
      * @api private Use Datastore.remove which has the same signature
      */
-    remove(query: any, options: NeDBPromise.RemoveOptions): Promise<number>;
-    remove(query: any): Promise<number>;
+    remove(query: any, options: NeDBPromise.RemoveOptions): PromiseLike<number>;
+    remove(query: any): PromiseLike<number>;
   }
 
   namespace DataStore {}

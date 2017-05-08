@@ -3,15 +3,29 @@ import * as path from 'path';
 import * as Bluebird from 'bluebird';
 import * as unzip from 'unzip';
 import * as tar from 'tar-fs';
-import * as lzma from 'lzma-native';
+import * as ProgressBar from 'progress';
 import gunzip = require('gunzip-maybe');
 import bz2 = require('unbzip2-stream');
 import * as readChunk from 'read-chunk';
 import fileType = require('file-type');
 import pstream = require('progress-stream');
-import * as ProgressBar from 'progress';
+// import { unxz } from './lzma-stream';
+import { createDecompressor as unxz } from 'lzma-native';
 
-const unxz = lzma.createDecompressor();
+// const packageJson = {
+//   "tar-fs": "^1.13.0",
+//   "gunzip-maybe": "^1.3.1",
+//   "lzma": "^2.3.2",
+//   "lzma-native": "^2.0.1",
+//   "unbzip2-stream": "^1.0.10",
+//   "unzip": "^0.1.11",
+//   "through": "^2.3.8",
+// }
+
+// import decompress = require('decompress');
+
+
+// export default decompress;
 
 function unarchive(filePath: string, toDir: string) {
   if (!filePath) {
@@ -32,7 +46,7 @@ function unarchive(filePath: string, toDir: string) {
   const str = pstream({ length: stat.size, time: 100 });
   str.on('progress', (p: any) => progressBar.tick(p.transferred));
 
-  return new Promise<any>((resolve, reject) => {
+  return new Bluebird<any>((resolve, reject) => {
     const finish = (result: any) => resolve(result);
     const buffer = readChunk.sync(filePath, 0, 262);
     const archiveType = fileType(buffer);
@@ -68,7 +82,7 @@ function unarchive(filePath: string, toDir: string) {
         .on('error', reject);
     } else if (fileExt === 'xz') {
       return stream
-        .pipe(unxz)
+        .pipe(unxz())
         .pipe(tar.extract(toDir))
         .on('progress', (p: string) => console.log(p))
         .on('finish', finish)

@@ -1,10 +1,20 @@
 /// <reference path="args.d.ts" />
 
 import { extend, clone, stringify } from 'typed-json-transform';
+import { init as initDb } from './db';
 
+let lock = false;
 export const args: TMake.Args = <any>{}
+
 export function init(runtime) {
+  if (!lock) {
+    lock = true;
     extend(args, runtime);
+    initDb();
+    console.log('did init args + db');
+  } else {
+    throw new Error("second call to init(), something must be wrong");
+  }
 }
 
 export function encode() {

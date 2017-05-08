@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import { contains, check, safeOLHM, OLHM, arrayify } from 'typed-json-transform';
+import { contains, check, OLHM, arrayify } from 'typed-json-transform';
 
 import { errors } from './errors';
 import { CMake } from './cmake';

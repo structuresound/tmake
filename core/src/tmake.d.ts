@@ -2,6 +2,4 @@
 
 declare namespace TMake {
     interface SIO { [index: string]: string }
-
-
 }

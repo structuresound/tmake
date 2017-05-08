@@ -1,7 +1,6 @@
-import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
-import { contains } from 'typed-json-transform';
+import { contains, flatten, each } from 'typed-json-transform';
 import * as fs from 'fs';
 
 import { defaults } from './defaults';
@@ -15,7 +14,7 @@ import { startsWith } from './string';
 
 import { Environment } from './environment';
 
-function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
+function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLike<string[]> {
   const filePaths: string[] = [];
   const stream = src(patterns, {
     cwd: from,
@@ -29,14 +28,14 @@ function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
     filePaths.push(path.relative(opt.relative, newPath));
     callback(null, mut);
   })).pipe(dest(to));
-  return wait(stream).then(() => {
-    return Promise.resolve(filePaths);
+  return <any>wait(stream).then(() => {
+    return Bluebird.resolve(filePaths);
   });
 };
 
-function link({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
+function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLike<string[]> {
   const filePaths: string[] = [];
-  return wait(src(patterns, {
+  return <any>wait(src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
   }).pipe(map((data: Vinyl.File, callback: Function) => {
@@ -52,7 +51,7 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions) {
     filePaths.push(path.relative(opt.relative, newPath));
     callback(null, mut);
   })).pipe(symlink(to))).then(() => {
-    return Promise.resolve(filePaths);
+    return Bluebird.resolve(filePaths);
   });
 }
 
@@ -61,24 +60,24 @@ function bin(env: Environment) {
     const base = path.join(args.runDir, 'bin');
     mkdir('-p', path.join(args.runDir, 'bin'));
     const binaries: string[] = [];
-    _.each(env.d.install.binaries, (ft: TMake.Install.Options) => {
+    each(env.d.install.binaries, (ft: TMake.Install.Options) => {
       const from = path.join(ft.from, env.project.name);
       const to = path.join(ft.to || base, env.project.name);
       log.verbose(`[ install bin ] from ${from} to ${to}`);
       mv(from, to);
       binaries.push(to);
     });
-    return Promise.resolve();
+    return Bluebird.resolve();
     // let cumulativeHash = '';
     // return Bluebird.each(binaries, (binPath) => {
     //   log.quiet('hash binary', binPath);
     //   return fileHash(binPath).then((hash) => {
     //     cumulativeHash = stringHash(cumulativeHash + hash);
-    //     return Promise.resolve();
+    //     return Bluebird.resolve();
     //   });
     // })
   }
-  return Promise.resolve();
+  return Bluebird.resolve();
 }
 
 function assets(env: Environment): PromiseLike<any> {
@@ -94,11 +93,11 @@ function assets(env: Environment): PromiseLike<any> {
         }
       });
     }).then(assetPaths => {
-      env.cache.assets.set(_.flatten(assetPaths).join(', '));
+      env.cache.assets.set(flatten(assetPaths).join(', '));
       return updateEnvironment(env);
     });
   };
-  return Promise.resolve();
+  return Bluebird.resolve();
 }
 
 function libs(env: Environment): PromiseLike<any> {
@@ -120,20 +119,20 @@ function libs(env: Environment): PromiseLike<any> {
       });
     }).then((libPaths) => {
       if (!libPaths.length) {
-        return Promise.resolve();
+        return Bluebird.resolve();
       }
-      return Bluebird.each(_.flatten(libPaths), (libPath) => {
+      return Bluebird.each(flatten(libPaths), (libPath) => {
         fileHash(path.join(env.project.d.home, libPath));
       }).then((hash) => {
         return updateProject(env.project, {
           $set: {
-            'cache.libs': _.flatten(libPaths)
+            'cache.libs': flatten(libPaths)
           }
         });
       });
     });
   }
-  return Promise.resolve();
+  return Bluebird.resolve();
 }
 
 export function installHeaders(project: TMake.Project): PromiseLike<any> {
@@ -154,7 +153,7 @@ export function installHeaders(project: TMake.Project): PromiseLike<any> {
       });
     })
   }
-  return Promise.resolve();
+  return Bluebird.resolve();
 }
 
 export function installProject(project: TMake.Project) {

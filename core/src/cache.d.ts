@@ -18,7 +18,7 @@ declare namespace TMake {
       update(): T
       combine(other: Property<T>): T
       dirty(dynamicMatch?: any): boolean
-      constructor(getter: () => T | Promise<T>, options?: Options<T>)
+      constructor(getter: () => T | PromiseLike<T>, options?: Options<T>)
     }
 
     class Base<T> {

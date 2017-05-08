@@ -9,18 +9,18 @@ import * as file from 'tmake-file';
 import { log } from './log';
 import { info } from './info';
 import { args } from './args';
-import { mkdir, which, exit } from './shell';
+import { mkdir, which } from './shell';
 import { cache, updateProject } from './db';
 import { stringHash } from './hash';
 
-function download(url: string, cacheDir = path.join(args.userCache,
-  'cache')) {
+function download(url: string) {
+  const cacheDir = path.join(args.userCache, 'cache')
   mkdir('-p', cacheDir);
   let cacheFile = path.join(cacheDir, stringHash(url));
   if (fs.existsSync(cacheFile)) {
-    return Promise.resolve(cacheFile);
+    return Bluebird.resolve(cacheFile);
   }
-  return new Promise<string>((resolve, reject) => {
+  return new Bluebird<string>((resolve, reject) => {
     let progressBar: ProgressBar;
     const options = {
       throttle: 100,
@@ -91,13 +91,13 @@ function upsertCache(project: TMake.Project) {
     }
     return cache.insert(project.toCache())
       .then(() => { return updateCache(project); });
-  }).then(() => Promise.resolve());
+  }).then(() => Bluebird.resolve());
 }
 
 function getSource(project: TMake.Project) {
   const url = project.url();
   if (url === 'none') {
-    return Promise.resolve('');
+    return Bluebird.resolve('');
   }
   mkdir('-p', project.d.root);
   info.fetch.url(project);
@@ -108,7 +108,7 @@ function getSource(project: TMake.Project) {
 function linkSource(project: TMake.Project) {
   const url = project.url();
   info.fetch.link(project);
-  return new Promise<void>((resolve, reject) => {
+  return new Bluebird<void>((resolve, reject) => {
     try {
       fs.symlink(url, project.d.root, 'dir', (err) => {
         if (err) {
@@ -136,26 +136,27 @@ function destroy(project: TMake.Project) {
   return updateProject(project, modifier);
 }
 
+function getIt(project: TMake.Project, exists: boolean) {
+  if (!exists || project.cache.fetch.dirty() || project.force()) {
+    info.fetch.dirty(project);
+    if (exists) {
+      return destroy(project).then(() => getSource(project));
+    }
+    return getSource(project)
+  }
+}
+
 function maybeFetch(project: TMake.Project) {
   if (project.link) {
-    return linkSource(project).then(() => Promise.resolve(true));
+    return linkSource(project).then(() => Bluebird.resolve(true));
   }
   if (project.archive || project.git) {
     const exists = fs.existsSync(project.d.clone);
-    function getIt() {
-      if (!exists || project.cache.fetch.dirty() || project.force()) {
-        info.fetch.dirty(project);
-        if (exists) {
-          return destroy(project).then(() => getSource(project));
-        }
-        return getSource(project)
-      }
-    }
-    const ret = getIt()
-    return ret ? ret.then(() => Promise.resolve(true)) : Promise.resolve(false);
+    const ret = getIt(project, exists)
+    return ret ? ret.then(() => Bluebird.resolve(true)) : Bluebird.resolve(false);
   }
   info.fetch.local(project);
-  return Promise.resolve(false);
+  return Bluebird.resolve(false);
 }
 
 function fetch(project: TMake.Project, isTest?: boolean) {

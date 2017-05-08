@@ -1,4 +1,4 @@
-import { each } from 'bluebird';
+import * as Bluebird from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
@@ -19,7 +19,7 @@ import { defaults } from './defaults';
 export function build(env: Environment, isTest?: boolean): PromiseLike<any> {
     if (env.project.force() || env.cache.build.dirty()) {
         const phase = new Phase(env.build);
-        return each(
+        return Bluebird.each(
             phase.commands,
             (i: TMake.CmdObj): PromiseLike<any> => {
                 log.verbose(`  ${i.cmd}:`);
@@ -39,5 +39,5 @@ export function build(env: Environment, isTest?: boolean): PromiseLike<any> {
             });
     }
     log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);
-    return Promise.resolve(env);
+    return Bluebird.resolve(env);
 }

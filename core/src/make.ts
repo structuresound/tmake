@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import { existsSync } from 'fs';
 import { arrayify, check, combine } from 'typed-json-transform';
 import { execAsync } from './shell';
@@ -10,7 +11,7 @@ import { fetch } from './tools';
 import { args } from './args';
 
 export function generate(node) {
-  return Promise.resolve('sorry, no support for Makefile creation yet - use cmake or ninja instead');
+  return Bluebird.resolve('sorry, no support for Makefile creation yet - use cmake or ninja instead');
 }
 
 export function install(node) {

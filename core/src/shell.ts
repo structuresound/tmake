@@ -1,4 +1,5 @@
-import { exec as _exec, cd, mv, mkdir, which, exit, ExecCallback, ExecOutputReturnValue } from 'shelljs';
+import * as Bluebird from 'bluebird';
+import { exec as _exec, cd, mv, mkdir, which, ExecCallback, ExecOutputReturnValue } from 'shelljs';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
 import { Spinner } from 'cli-spinner';
@@ -11,7 +12,6 @@ import { errors, TMakeError } from './errors';
 import { Environment, EnvironmentPlugin } from './environment';
 import { iterateOLHM } from './iterate';
 
-
 export function exec(command: string, options: TMake.Shell.Exec.Options = {}): string {
   const out = _exec(command, options) as any;
   return out.stdout ? out.stdout.replace('\r', '').replace('\n', '') : undefined;
@@ -20,7 +20,7 @@ export function exec(command: string, options: TMake.Shell.Exec.Options = {}): s
 export function ensureCommand(command: string) {
   if (!which(command)) {
     log.error('Sorry, this script requires git');
-    return exit(1);
+    process.exit(1);
   }
 }
 
@@ -47,7 +47,7 @@ function truncate(s) {
 }
 
 export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.Exec.Options = {}) {
-  return new Promise<string>((resolve: Function, reject: Function) => {
+  return new Bluebird<string>((resolve: Function, reject: Function) => {
     if (cwd) cd(cwd);
     const _silent = silent || !args.verbose
     var spinner = new Spinner(`%s ${short || truncate(command)}`);
@@ -62,6 +62,9 @@ export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.E
         spinner.stop(true)
       }
       if ((code && error) || findErrors(output)) {
+        if (args.test) {
+          throw new Error(error || findErrors(output));
+        }
         return errors.shell.report({ command, output, cwd, short }).then((error) => {
           reject(error);
         });
@@ -107,17 +110,19 @@ export class ShellPlugin extends EnvironmentPlugin {
     const buildFileCache = this.environment.cache[this.name + '_configure'];
     try {
       if (buildFileCache.value() === fileHashSync(buildFilePath)) {
-        return Promise.resolve();
+        return Bluebird.resolve();
       }
     } catch (e) {
 
     }
     console.log('dirty, exec', this.configureCommand());
     mkdir('-p', this.environment.d.build);
-    return execAsync(this.configureCommand(), { cwd: buildFileDir, silent: !args.quiet }).then(() => {
-      buildFileCache.update();
-      this.environment.cache.update();
-    });
+    return this.fetch().then((toolpaths: any) => {
+      return execAsync(this.configureCommand(), { cwd: buildFileDir, silent: !args.quiet }).then(() => {
+        buildFileCache.update();
+        this.environment.cache.update();
+      });
+    })
   }
   public build() {
     this.ensureBuildFile();
@@ -182,4 +187,4 @@ export class ShellPlugin extends EnvironmentPlugin {
   }
 }
 
-export { cd, exit, mkdir, mv, which }
+export { cd, mkdir, mv, which }

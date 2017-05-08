@@ -1,4 +1,5 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const minimist = require("minimist");
 const path = require("path");
 const fs = require("fs");

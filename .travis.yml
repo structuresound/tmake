@@ -1,0 +1,15 @@
+os:
+- linux
+dist: trusty
+language: node_js
+node_js:
+- '6'
+- '7'
+before_install:
+- npm config set progress=false
+script: npm run travis
+after_script:
+- cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
+deploy:
+  api_key:
+    secure: qk4a6EMdECHH8X52FtueK39IluYcCsjoUehGxAA3exGauOTL75fQ2CasrEHdlw7vvifKFdOKfBfNKLuR3ZS/udp15oaPhDAc9sjBl6HBeBBTW7n8M0l8ADaVM7PGZnjjkjrxgISR/LJ2bKrkOZVxt9tRBjtOMRBYNkl1+2MEgKY+ptLHnsUrH5CQeMALCEnhyD7K+GuhjjHTK70EshWlBoOrNGDg9BhIjFmCG0eBD1hIMwR8OOLpNpoKU/UhuIsMy9QfCTENj1BkRBQfTEjKauiFT8XkPkO1fCeQ9PfWmhp0Xe2cA9l6QzrZ9sw+yfqrxE0M6xBJdiIkj2vefyI6SRPyexi+T1XMMwKs7o3TJxO6YeJpd1fKyFyHJjwQujT3rSOpBB2b7yrBw4uPLHwsRCUSnzuzuQ5ne3rYZdHfZ28i9rnZ+kW9Y4WxO4LVycxaPyqmej6WUsQ+8Q+iPp5iu1b7ybGLmbLzqHTcUhzx35GbbH0g8hB3j7N3WHpiYfdJ8AvSN4QkIpdoaEZX37m/abGmZpMB/ahEZCJrGwftcqBVDga81JTpOOaGzq/ZJfhVpB7Li2Sr0EbYg4xVDh2OaPP92iVwKQ5vDOT6x1U+gguanhM0AuTbTaJHrehx1YnK1OXWu1eyGHoPdVdiCR3lWPqgzNLlaoV60MLlPBn+26g=

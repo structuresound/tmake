@@ -4,7 +4,7 @@ import * as colors from 'chalk';
 import { args } from './args';
 import { log } from './log';
 
-const {quiet, verbose, add, warn} = log;
+const { quiet, verbose, add, warn } = log;
 
 export const info = {
   fetch: {

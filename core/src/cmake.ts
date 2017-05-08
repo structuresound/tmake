@@ -46,10 +46,10 @@ export class CMake extends Compiler {
     return command;
   }
   buildCommand(toolpaths?: string) {
-    return 'ninja';
+    return this.environment.tools.ninja.bin;
   }
   fetch() {
-    return fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
+    return fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate() {
     const header = () => {
@@ -117,7 +117,7 @@ target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${this.linkerFl
     }
 
     const options = this.options;
-    return Promise.resolve(
+    return Bluebird.resolve(
       header() +
       includeDirectories() +
       matching() +

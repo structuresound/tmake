@@ -5,7 +5,7 @@ import { check } from 'typed-json-transform';
 import { graph } from '../src/graph';
 import { resolveName } from '../src/project';
 import * as file from 'tmake-file';
-
+import * as Bluebird from 'bluebird';
 import { args } from './args';
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
@@ -16,7 +16,7 @@ describe('graph', () => {
     return graph(helloWorld).then((res) => {
       modules = res;
       rootModule = modules[modules.length - 1];
-      return Promise.resolve(rootModule);
+      return Bluebird.resolve(rootModule);
     });
   });
 

@@ -1,4 +1,4 @@
-import { each as eachAsync } from 'bluebird';
+import * as Bluebird from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
@@ -23,7 +23,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
   const phase = new Phase(env.configure);
   console.log('phase: ', phase);
   if (env.project.force() || env.cache.configure.dirty()) {
-    return eachAsync(
+    return Bluebird.each(
       phase.commands,
       (i: TMake.CmdObj): PromiseLike<any> => {
         log.verbose(`  ${i.cmd}:`);
@@ -41,7 +41,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
               const pattern = env.globArray(replEntry.matching);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
-                  return eachAsync(files, (file) => {
+                  return Bluebird.each(files, (file) => {
                     return replaceInFile(file, replEntry, env);
                   })
                 })
@@ -56,7 +56,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
                   return file.writeFileAsync(filePath, entry.string,
                     { encoding: 'utf8' });
                 }
-                return Promise.resolve();
+                return Bluebird.resolve();
               });
           case 'copy':
             return iterateOLHM(i.arg,
@@ -83,7 +83,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
                       return callback(null, file);
                     }))
                     .pipe(file.dest(options.to)))
-                  .then(() => { return Promise.resolve(filePaths); });
+                  .then(() => { return Bluebird.resolve(filePaths); });
               });
         }
       }).then(() => {
@@ -92,5 +92,5 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
       });
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);
-  return Promise.resolve(env);
+  return Bluebird.resolve(env);
 }

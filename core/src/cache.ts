@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import { jsonStableHash, stringHash } from './hash';
 
 export class Property<T> {
@@ -38,7 +39,7 @@ export class Property<T> {
         }
         return true;
     }
-    constructor(getter: () => T | Promise<T>, options?: TMake.Cache.Options<T>) {
+    constructor(getter: () => T | PromiseLike<T>, options?: TMake.Cache.Options<T>) {
         this._get = getter;
         if (options) {
             this._combine = options.combine;

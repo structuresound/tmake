@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import * as crypto from 'crypto';
 import { existsSync, readFileSync, createReadStream } from 'fs';
 import stringify = require('json-stable-stringify');
@@ -31,7 +32,7 @@ export function fileHashSync(filePath: string) {
 
 export function fileHash(filePath: string) {
   if (existsSync(filePath)) {
-    return new Promise<string>((resolve) => {
+    return new Bluebird<string>((resolve) => {
       const hash = crypto.createHash('md5');
       const stream = createReadStream(filePath);
       stream.on('data', (data: any) => {
@@ -42,5 +43,5 @@ export function fileHash(filePath: string) {
       });
     });
   }
-  return Promise.resolve("");
+  return Bluebird.resolve("");
 }

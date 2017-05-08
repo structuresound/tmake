@@ -1,3 +1,4 @@
+import * as Bluebird from 'bluebird';
 import * as yaml from 'js-yaml';
 import * as sh from 'shelljs';
 import * as _ from 'lodash';
@@ -10,11 +11,15 @@ import { check } from 'typed-json-transform';
 import { src as _src, dest, symlink } from 'vinyl-fs';
 import _unarchive from './archive';
 
+export { map, symlink, dest };
+
+export const defaultConfig = 'tmake';
+
 function startsWith(string: string, s: string) {
   return string.slice(0, s.length) === s;
 }
 
-function nuke(folderPath: string) {
+export function nuke(folderPath: string) {
   if (!folderPath || (folderPath === '/')) {
     throw new Error("don't nuke everything");
   }
@@ -34,7 +39,7 @@ function nuke(folderPath: string) {
   }
 };
 
-function prune(folderPath: string): boolean {
+export function prune(folderPath: string): boolean {
   try {
     const files = fs.readdirSync(folderPath);
     if (files.length) {
@@ -59,8 +64,8 @@ function prune(folderPath: string): boolean {
   }
 };
 
-function wait(stream: any, readOnly?: boolean) {
-  return new Promise<any>((resolve: Function, reject: Function) => {
+export function wait(stream: any, readOnly?: boolean) {
+  return new Bluebird<any>((resolve: Function, reject: Function) => {
     stream.on('error', reject);
     if (readOnly) {
       return stream.on('finish', resolve);
@@ -69,8 +74,8 @@ function wait(stream: any, readOnly?: boolean) {
   });
 };
 
-function deleteAsync(filePath: string) {
-  return new Promise<void>((resolve: Function, reject: Function) => {
+export function deleteAsync(filePath: string) {
+  return new Bluebird<void>((resolve: Function, reject: Function) => {
     fs.unlink(filePath, (err) => {
       if (err) {
         reject(err);
@@ -80,9 +85,9 @@ function deleteAsync(filePath: string) {
   });
 }
 
-function _glob(srcPattern: string[], relative: string,
+export function _glob(srcPattern: string[], relative: string,
   cwd: string) {
-  return new Promise<string[]>((resolve: Function, reject: Function) => {
+  return new Bluebird<string[]>((resolve: Function, reject: Function) => {
     return globAll(srcPattern,
       {
         cwd: cwd || process.cwd(),
@@ -106,7 +111,7 @@ function _glob(srcPattern: string[], relative: string,
   });
 }
 
-function glob(patternS: any, relative: string, cwd: string) {
+export function glob(patternS: any, relative: string, cwd: string) {
   let patterns: string[] = [];
   if (check(patternS, String)) {
     patterns.push(patternS);
@@ -124,8 +129,8 @@ export function readIfExists(filePath: string) {
   }
 }
 
-function readFileAsync(filePath: string, format: string = 'utf8') {
-  return new Promise<string>((resolve: Function, reject: Function) => fs.readFile(
+export function readFileAsync(filePath: string, format: string = 'utf8') {
+  return new Bluebird<string>((resolve: Function, reject: Function) => fs.readFile(
     filePath, format, (err: Error, data: string) => {
       if (err) {
         reject(err);
@@ -134,9 +139,9 @@ function readFileAsync(filePath: string, format: string = 'utf8') {
     }));
 };
 
-function writeFileAsync(filePath: string, data: string,
+export function writeFileAsync(filePath: string, data: string,
   options?: Object) {
-  return new Promise<void>((resolve: Function, reject: Function) => {
+  return new Bluebird<void>((resolve: Function, reject: Function) => {
     fs.writeFile(filePath, data, options, (err) => {
       if (err) {
         reject(err);
@@ -146,20 +151,19 @@ function writeFileAsync(filePath: string, data: string,
   });
 };
 
-function findOneAsync(srcPattern: string[], relative: string,
+export function findOneAsync(srcPattern: string[], relative: string,
   cwd: string) {
   return glob(srcPattern, relative, cwd)
     .then((array: string[]) => {
       if (array.length) {
-        return Promise.resolve(array[0]);
+        return Bluebird.resolve(array[0]);
       }
-      return Promise.resolve(undefined);
+      return Bluebird.resolve(undefined);
     });
 }
 
-const defaultConfig = 'tmake';
 
-function getConfigPath(configDir: string): string {
+export function getConfigPath(configDir: string): string {
   const exts = ['yaml', 'json', 'cson'];
   for (const ext of exts) {
     const filePath = `${configDir}/${defaultConfig}.${ext}`;
@@ -170,33 +174,33 @@ function getConfigPath(configDir: string): string {
   return <string>undefined;
 };
 
-function findConfigAsync(configDir: string) {
-  return Promise.resolve(getConfigPath(configDir));
+export function findConfigAsync(configDir: string) {
+  return Bluebird.resolve(getConfigPath(configDir));
 }
 
-function readConfigAsync(configDir: string) {
+export function readConfigAsync(configDir: string) {
   return findConfigAsync(configDir)
     .then((configPath: string) => {
       if (configPath) {
         return parseFileAsync(configPath);
       }
-      return Promise.resolve(<any>undefined);
+      return Bluebird.resolve(<any>undefined);
     });
 };
 
-function parseFileAsync(configPath: string) {
+export function parseFileAsync(configPath: string) {
   return readFileAsync(configPath, 'utf8')
     .then((data: string) => {
-      return Promise.resolve(parseData(data, configPath));
+      return Bluebird.resolve(parseData(data, configPath));
     });
 };
 
-function parseFileSync(configPath: string) {
+export function parseFileSync(configPath: string) {
   const data = fs.readFileSync(configPath, 'utf8');
   return parseData(data, configPath);
 };
 
-function parseData(data: string, configPath: string): any {
+export function parseData(data: string, configPath: string): any {
   switch (path.extname(configPath)) {
     case '.cson':
       return CSON.parse(data);
@@ -209,7 +213,7 @@ function parseData(data: string, configPath: string): any {
   }
 }
 
-function readConfigSync(configDir: string) {
+export function readConfigSync(configDir: string) {
   const configPath = getConfigPath(configDir);
   if (configPath) {
     return parseFileSync(configPath);
@@ -217,13 +221,12 @@ function readConfigSync(configDir: string) {
   return undefined;
 };
 
-function unarchive(archive: string, tempDir: string, toDir: string,
+export function unarchive(archive: string, tempDir: string, toDir: string,
   toPath?: string) {
-  return _unarchive(archive, tempDir)
-    .then(() => moveArchive(tempDir, toDir, toPath));
+  return _unarchive(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
 };
 
-function src(glob: string[], opt: Object) {
+export function src(glob: string[], opt: Object) {
   const patterns = _.map(glob, (string) => {
     if (startsWith(string, '/')) {
       return string.slice(1);
@@ -233,7 +236,7 @@ function src(glob: string[], opt: Object) {
   return _src(patterns, opt);
 }
 
-function moveArchive(tempDir: string, toDir: string, toPath: string) {
+export function moveArchive(tempDir: string, toDir: string, toPath: string) {
   const files = fs.readdirSync(tempDir);
   if (files.length === 1) {
     let resolvedToPAth = toPath;
@@ -262,24 +265,4 @@ function moveArchive(tempDir: string, toDir: string, toPath: string) {
     const newPath = path.join(toDir, file);
     return sh.mv(fullPath, newPath);
   });
-};
-
-export {
-  nuke,
-  glob,
-  unarchive,
-  moveArchive,
-  findConfigAsync,
-  readConfigSync,
-  readConfigAsync,
-  getConfigPath,
-  parseFileSync,
-  parseFileAsync,
-  writeFileAsync,
-  src,
-  dest,
-  map,
-  prune,
-  wait,
-  symlink,
 };
