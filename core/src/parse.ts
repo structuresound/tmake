@@ -9,7 +9,7 @@ import { log } from './log';
 import { exec } from './shell';
 import { interpolate } from './interpolate';
 import * as file from 'tmake-file';
-import { args } from './args';
+import { args } from './runtime';
 import { endsWith } from './string';
 
 interface MacroObject {

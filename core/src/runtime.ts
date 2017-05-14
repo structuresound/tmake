@@ -1,25 +1,56 @@
+import { readdirSync } from 'fs';
+
 import { log } from './log';
 
 import { defaults } from './defaults';
 import { Project } from './project';
 import { Environment } from './environment';
 import { Plugin } from './plugin';
+import { Db } from './db';
 
-import { args } from './args';
+import { extend, clone, plain, stringify } from 'typed-json-transform';
 
-export class Runtime {
-  static pluginMap: { [index: string]: typeof Plugin } = {};
-  static loadPlugins = (local?: string[]) => {
-    defaults.plugins.forEach((name) => {
-      Runtime.registerPlugin(require(`./${name}`).default);
-    })
-    if (local) {
-      local.forEach((name) => {
-        Runtime.registerPlugin(require(`${args.userCache}/plugins/${name}`).default);
-      })
+export const args: TMake.Args = {}
+
+export namespace Args {
+  let lock = false;
+
+  export function init(runtime) {
+    if (!lock) {
+      lock = true;
+      extend(args, runtime);
+    } else {
+      throw new Error("second call to init(), something must be wrong");
     }
   }
-  static registerPlugin = (plugin: typeof Plugin) => {
+  export function encode() {
+    const cp = plain(args);
+    delete cp._;
+    return new Buffer(stringify(cp)).toString('base64');
+  }
+  export function decode(str) {
+    const decoded = new Buffer(str, 'base64').toString('ascii');
+    const json = JSON.parse(decoded);
+    delete json._;
+    return json;
+  }
+}
+
+export namespace Runtime {
+  export const pluginMap: { [index: string]: typeof Plugin } = {};
+
+  export function init(args) {
+    Args.init(args);
+    Db.init(args);
+  }
+  export function loadPlugins() {
+    const files = readdirSync(`${args.userCache}/plugins/`);
+    files.forEach((file) => {
+      registerPlugin(require(`${args.userCache}/plugins/${file}`).default);
+    })
+  }
+
+  export function registerPlugin(plugin: typeof Plugin) {
     let instance: Plugin;
     try {
       const ctx = new Project({ name: 'null' }).environments[0];
@@ -29,13 +60,14 @@ export class Runtime {
       log.error(`error creating instance of plugin while registering it`);
       throw (e);
     }
-    if (!Runtime.pluginMap[instance.name]) {
-      Runtime.pluginMap[instance.name] = plugin;
+    if (!pluginMap[instance.name]) {
+      pluginMap[instance.name] = plugin;
     } else {
       throw new Error(`plugin ${instance.name} was already registered, are you trying to override a built in plugin?`);
     }
   }
-  static getPlugin = (name: string) => {
-    return Runtime.pluginMap[name];
+
+  export function getPlugin(name: string) {
+    return pluginMap[name];
   }
 }

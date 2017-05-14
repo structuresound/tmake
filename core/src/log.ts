@@ -3,7 +3,7 @@
 import { dump, DumpOptions } from 'js-yaml';
 import * as colors from 'chalk';
 import { check, map } from 'typed-json-transform';
-import { args as environment } from './args';
+import { args as environment } from './runtime';
 
 function yamlify(...args: any[]): string {
   return map(args, (el: any) => {
@@ -26,7 +26,7 @@ function yamlify(...args: any[]): string {
 function white(...args: any[]) { console.log(colors.white(yamlify(...args))); }
 function gray(...args: any[]) { console.log(colors.gray(yamlify(...args))); }
 
-class Log {
+export class Log {
   getMessage(...args: any[]): string { return yamlify(args); }
 
   log(...args: any[]) {
@@ -61,5 +61,4 @@ class Log {
   parse(...args: any[]) { return yamlify(args); }
 }
 
-const log = new Log();
-export { Log, log };
+export const log = new Log();

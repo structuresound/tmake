@@ -6,10 +6,10 @@ import * as fs from 'fs';
 import { defaults } from './defaults';
 import { src, map, dest, wait, symlink } from 'tmake-file';
 import { log } from './log';
-import { args } from './args';
-import { mv, mkdir } from './shell';
+import { args } from './runtime';
+import { mv, mkdir } from 'shelljs';
 import { stringHash, fileHash } from './hash';
-import { updateProject, updateEnvironment } from './db';
+import { Db } from './db';
 import { startsWith } from './string';
 
 import { Environment } from './environment';
@@ -19,7 +19,7 @@ function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
   const stream = src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(map((data: Vinyl.File, callback: Function) => {
+  }).pipe(map((data: TMake.Vinyl.File, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
@@ -38,7 +38,7 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
   return <any>wait(src(patterns, {
     cwd: from,
     followSymlinks: opt.followSymlinks
-  }).pipe(map((data: Vinyl.File, callback: Function) => {
+  }).pipe(map((data: TMake.Vinyl.File, callback: Function) => {
     const mut = data;
     if (opt.flatten) {
       mut.base = path.dirname(mut.path);
@@ -94,7 +94,7 @@ function assets(env: Environment): PromiseLike<any> {
       });
     }).then(assetPaths => {
       env.cache.assets.set(flatten(assetPaths).join(', '));
-      return updateEnvironment(env);
+      return Db.updateEnvironment(env);
     });
   };
   return Bluebird.resolve();
@@ -124,7 +124,7 @@ function libs(env: Environment): PromiseLike<any> {
       return Bluebird.each(flatten(libPaths), (libPath) => {
         fileHash(path.join(env.project.d.home, libPath));
       }).then((hash) => {
-        return updateProject(env.project, {
+        return Db.updateProject(env.project, {
           $set: {
             'cache.libs': flatten(libPaths)
           }

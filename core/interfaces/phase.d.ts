@@ -1,5 +1,3 @@
-/// <reference path="cmake.d.ts" />
-/// <reference path="make.d.ts" />
 /// <reference path="ninja.d.ts" />
 /// <reference path="iterate.d.ts" />
 
@@ -8,14 +6,10 @@ declare namespace TMake {
     replace?: any;
     create?: any;
     shell?: any;
-    ninja?: Ninja;
-    cmake?: CMake;
-    make?: Make;
+    ninja?: Plugin.Compiler;
   }
 
   interface Phase extends Plugins {
-    /**/
-
     commands: CmdObj[];
   }
 }

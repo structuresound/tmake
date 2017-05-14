@@ -4,7 +4,7 @@ import * as fs from 'fs';
 
 import { stringHash } from '../src/hash';
 import { Project } from '../src/project';
-import { fetch as fetchToolchain, pathForTool } from '../src/tools';
+import { Tools } from '../src/tools';
 
 import { args } from './args';
 
@@ -29,8 +29,8 @@ describe('tools', function () {
   });
 
   it('can fetch a zip', () => {
-    return fetchToolchain(hostChain).then(() => {
-      const ninjaPath = pathForTool(hostChain.ninja);
+    return Tools.fetch(hostChain).then(() => {
+      const ninjaPath = Tools.pathForTool(hostChain.ninja);
       return expect(fs.existsSync(ninjaPath))
         .to
         .equal(true);
@@ -46,7 +46,7 @@ describe('tools', function () {
   });
 
   return it('put the executable in the right place', () => {
-    const ninjaPath = pathForTool(hostChain.ninja);
+    const ninjaPath = Tools.pathForTool(hostChain.ninja);
     const hash = stringHash(hostChain.ninja.url);
     expect(ninjaPath)
       .to

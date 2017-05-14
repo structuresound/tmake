@@ -1,16 +1,11 @@
+/// <reference path="cmake.d.ts" />
+
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import { existsSync } from 'fs';
 import { arrayify, check, map } from 'typed-json-transform';
-import { log } from './log';
-import { startsWith } from './string';
-import { fetch } from './tools';
-import { execAsync } from './shell';
-import { args } from './args';
-import { Environment } from './environment';
-import { Plugin } from './plugin';
-import { Compiler } from './compiler';
+import { log, execAsync, execute, startsWith, Tools, Compiler } from 'tmake-core';
 
 export function quotedList(array: string[]) {
   return map(array, (el) => {
@@ -19,9 +14,9 @@ export function quotedList(array: string[]) {
 }
 
 export class CMake extends Compiler {
-  options: TMake.Plugin.Shell.Compiler.CMake.Options;
+  options: TMake.Plugin.CMake.Options;
 
-  constructor(environment: TMake.Environment, options?: TMake.Plugin.Shell.Compiler.CMake.Options) {
+  constructor(environment: TMake.Environment, options?: TMake.Plugin.CMake.Options) {
     super(environment, options);
     this.name = 'cmake';
     this.projectFileName = 'CMakeLists.txt';
@@ -45,11 +40,11 @@ export class CMake extends Compiler {
     }
     return command;
   }
-  buildCommand(toolpaths?: string) {
+  buildCommand() {
     return this.environment.tools.ninja.bin;
   }
   fetch() {
-    return fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools.fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate() {
     const header = () => {

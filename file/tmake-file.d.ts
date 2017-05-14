@@ -1,18 +1,22 @@
-declare namespace Vinyl {
-    interface File {
-        path: string;
-        base: string;
-        cwd?: string;
-    }
+declare namespace TMake {
+    namespace Vinyl {
+        interface File {
+            path: string;
+            base: string;
+            cwd?: string;
+        }
 
-    interface Options {
-        followSymlinks?: boolean;
-        flatten?: boolean;
-        relative?: string;
-        from?: string;
-        to?: string;
+        interface Options {
+            followSymlinks?: boolean;
+            flatten?: boolean;
+            relative?: string;
+            from?: string;
+            to?: string;
+        }
     }
-} declare module 'tmake-file' {
+}
+
+declare module 'tmake-file' {
     /// <reference types="node" />
     import map = require('map-stream');
     import { dest, symlink } from 'vinyl-fs'; function nuke(folderPath: string): void; function prune(folderPath: string): boolean; function wait(stream: any, readOnly?: boolean): Promise<any>; function glob(patternS: any, relative: string, cwd: string): Promise<string[]>;

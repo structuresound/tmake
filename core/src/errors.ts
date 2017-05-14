@@ -2,8 +2,8 @@ import { check } from 'typed-json-transform';
 import * as colors from 'chalk';
 import * as Bluebird from 'bluebird';
 
-import { args } from './args';
-import { cache } from './db';
+import { args } from './runtime';
+import { Db } from './db';
 import { log } from './log';
 import { info } from './info';
 
@@ -45,7 +45,7 @@ export const errors = {
     }
   },
   configure: {
-    noProjectFile: function (plugin: TMake.Plugin.Shell) {
+    noProjectFile: function (plugin: TMake.Plugin.Compiler) {
       const fileError = new Error(`no build file @ ${plugin.projectFilePath()}`);
       if (!plugin.generate) {
         throw new TMakeError(`did you forget to specify [ generate ] options for ${plugin.name}?`, fileError);
@@ -60,7 +60,7 @@ export const errors = {
         return new TMakeError(`command ${command} failed on `, error);
       }
     },
-    noBuildFile: function (plugin: TMake.Plugin.Shell) {
+    noBuildFile: function (plugin: TMake.Plugin.Compiler) {
       const fileError = new Error(`no build file @ ${plugin.buildFilePath()}`);
       if (!plugin.configure) {
         throw new TMakeError(`did you forget to specify [ configure ] options for ${plugin.name}?`, fileError);
@@ -86,7 +86,7 @@ export const errors = {
       return new TMakeError(`command ${command} \n failed with error: \n `, error);
     },
     report: function ({ command, output, cwd, short }) {
-      return cache.update({ type: 'report' }, { $set: { type: 'report', command, output, createdAt: new Date().toDateString() } }, { upsert: true }).then(() => {
+      return Db.cache.update({ type: 'report' }, { $set: { type: 'report', command, output, createdAt: new Date().toDateString() } }, { upsert: true }).then(() => {
         return Bluebird.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun tmake report for more info`));
       });
     }

@@ -136,6 +136,8 @@ declare namespace TMake {
       }
     }
   }
+}
 
-
+declare module 'tmake-core/project' {
+  class Project extends TMake.Project { }
 }

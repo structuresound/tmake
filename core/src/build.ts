@@ -5,9 +5,9 @@ import { arrayify, check } from 'typed-json-transform';
 import { execAsync, ensureCommand } from './shell';
 import { log } from './log';
 import { deps } from './graph';
-import { args } from './args';
+import { args } from './runtime';
 import { replaceInFile, ReplEntry } from './parse';
-import { updateEnvironment } from './db';
+import { Db } from './db';
 import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';
@@ -35,7 +35,7 @@ export function build(env: Environment, isTest?: boolean): PromiseLike<any> {
                 }
             }).then(() => {
                 env.cache.build.update();
-                return updateEnvironment(env);
+                return Db.updateEnvironment(env);
             });
     }
     log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);

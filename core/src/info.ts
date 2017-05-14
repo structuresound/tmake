@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { check } from 'typed-json-transform';
 import * as colors from 'chalk';
-import { args } from './args';
+import { args } from './runtime';
 import { log } from './log';
 
 const { quiet, verbose, add, warn } = log;

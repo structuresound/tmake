@@ -4,7 +4,7 @@ import * as path from 'path';
 import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, combine, plain as toJSON, arrayify, OLHM, select } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
-import { args } from './args';
+import { args } from './runtime';
 import { parse, absolutePath, pathArray } from './parse';
 import { jsonStableHash, stringHash } from './hash';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';

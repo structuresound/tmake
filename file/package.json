@@ -1,7 +1,7 @@
 {
   "name": "tmake-file",
   "description": "tmake module for archive, fs, glob",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "Leif Shackelford",

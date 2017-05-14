@@ -6,9 +6,9 @@ import * as file from 'tmake-file';
 import { execAsync, ensureCommand } from './shell';
 import { log } from './log';
 import { deps } from './graph';
-import { args } from './args';
+import { args } from './runtime';
 import { replaceInFile, ReplEntry } from './parse';
-import { updateEnvironment } from './db';
+import { Db } from './db';
 import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';
@@ -17,11 +17,11 @@ import { Project } from './project';
 import { Phase } from './phase';
 import { defaults } from './defaults';
 
-function copy(patterns: string[], options: Vinyl.Options) {
+function copy(patterns: string[], options: TMake.Vinyl.Options) {
   const filePaths: string[] = [];
   return file
     .wait(file.src(patterns, { cwd: options.from, followSymlinks: false })
-      .pipe(file.map((data: Vinyl.File, callback: Function) => {
+      .pipe(file.map((data: TMake.Vinyl.File, callback: Function) => {
         const mutable = data;
         log.verbose(`+ ${relative(mutable.cwd, mutable.path)}`);
         if (options.flatten) {
@@ -88,7 +88,7 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
         }
       }).then(() => {
         env.cache.generate.update();
-        return updateEnvironment(env);
+        return Db.updateEnvironment(env);
       });
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);

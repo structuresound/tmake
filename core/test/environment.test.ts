@@ -1,5 +1,3 @@
-/// <reference path="../src/tmake.d.ts" />
-
 import * as path from 'path';
 import { assert } from 'chai';
 import { contains, containsAny, check } from 'typed-json-transform';
@@ -13,11 +11,6 @@ import { Runtime } from '../src/runtime';
 import { args } from './args';
 
 describe('environment', () => {
-  console.log('registering built in plugins . . .');
-  const d = new Date();
-  Runtime.loadPlugins();
-  console.log('took:', new Date().valueOf() - d.valueOf());
-
   let project: TMake.Project;
   let env: TMake.Environment;
 

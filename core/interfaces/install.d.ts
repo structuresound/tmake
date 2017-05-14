@@ -8,7 +8,7 @@ declare namespace TMake {
     }
 
     interface CopyOptions {
-      patterns: string[], from: string, to: string, opt: Vinyl.Options
+      patterns: string[], from: string, to: string, opt: TMake.Vinyl.Options
     }
   }
 

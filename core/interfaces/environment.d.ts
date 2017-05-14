@@ -32,7 +32,6 @@ declare namespace TMake {
     parse(input: any, conf?: any): any;
   }
 
-
   namespace Environment {
     interface Dirs extends Project.Dirs {
       project: string
@@ -51,8 +50,19 @@ declare namespace TMake {
       cache: any
     }
 
-    class Plugin extends TMake.Plugin {
-      environment: Environment;
+    class Cache extends TMake.Cache.Base<string> {
+      env: TMake.Environment;
+      assets?: TMake.Cache.Property<string>
+      plugin: TMake.Cache.Base<string>
+      constructor(env)
+      update()
+      toJSON()
+    }
+  }
+
+  namespace Plugin {
+    class Environment extends TMake.Plugin {
+      environment: TMake.Environment;
       options: any;
       toolpaths: any;
       projectFileName: string;
@@ -61,13 +71,15 @@ declare namespace TMake {
       constructor(env: Environment, options?: TMake.Plugin.Options)
     }
 
-    class Cache extends TMake.Cache.Base<string> {
-      env: Environment;
-      assets?: TMake.Cache.Property<string>
-      plugin: TMake.Cache.Base<string>
-      constructor(env)
-      update()
-      toJSON()
+    namespace Environment {
+      interface Options extends Plugin.Options {
+
+      }
     }
   }
+}
+
+declare module 'tmake-core/environment' {
+  class Environment extends TMake.Environment { }
+  class EnvironmentPlugin extends TMake.Plugin.Environment { }
 }

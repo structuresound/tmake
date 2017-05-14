@@ -28,3 +28,12 @@ declare namespace TMake {
     clang?: Tool
   }
 }
+
+declare module 'tmake-core/tools' {
+  namespace Tools {
+    function tools(toolchain: any): TMake.Tools
+    function pathForTool(tool: any): string
+    function fetchAndUnarchive(tool: any): PromiseLike<void>
+    function fetch(toolchain: any): PromiseLike<TMake.Tools>
+  }
+}

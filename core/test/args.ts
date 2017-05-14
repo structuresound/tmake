@@ -1,9 +1,9 @@
 import { join, dirname } from 'path';
 import { realpathSync } from 'fs';
-import { init, args } from '../src/args';
+import { args, Runtime } from '../src';
 
 const npmDir = join(dirname(realpathSync(__filename)), '../');
-init({
+Runtime.init({
     npmDir,
     runDir: join(npmDir, 'tests'),
     configDir: join(npmDir, 'tests'),
@@ -11,7 +11,6 @@ init({
     settingsDir: join(npmDir, 'settings'),
     userCache: join(npmDir, 'tests_cache'),
     cachePath: 'trie_modules',
-    pgname: 'tmake',
     quiet: false,
     verbose: true,
     test: true,

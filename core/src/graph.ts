@@ -4,16 +4,16 @@ import * as file from 'tmake-file';
 import { combine, check, Graph, OLHM, extend } from 'typed-json-transform';
 import { log } from './log';
 import { errors } from './errors';
-import { args } from './args';
+import { args } from './runtime';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
-import { cache as db, environmentCache } from './db';
+import { Db } from './db';
 import { jsonStableHash } from './hash';
 
 import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
 
 function loadCache(project: TMake.Project): Bluebird<TMake.Project> {
-  return db.findOne({ name: project.name })
+  return Db.cache.findOne({ name: project.name })
     .then((result: TMake.Project.File) => {
       if (result) {
         project.merge(<any>result);
@@ -27,7 +27,7 @@ function loadCache(project: TMake.Project): Bluebird<TMake.Project> {
 }
 
 function loadEnvironment(env: TMake.Environment) {
-  return environmentCache(env.hash())
+  return Db.environmentCache(env.hash())
     .then((result) => {
       return Bluebird.resolve(env.merge(<any>result));
     });

@@ -3,7 +3,6 @@ import * as Bluebird from 'bluebird';
 import { contains, check, OLHM, arrayify } from 'typed-json-transform';
 
 import { errors } from './errors';
-import { CMake } from './cmake';
 import { Ninja } from './ninja';
 import { Runtime } from './runtime';
 
@@ -13,7 +12,6 @@ export class Phase implements TMake.Plugins {
   create: any;
   shell: any;
   ninja: Ninja;
-  cmake: CMake;
   commands: TMake.CmdObj[];
 
   constructor(input) {

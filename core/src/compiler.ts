@@ -4,14 +4,18 @@ import { existsSync } from 'fs';
 import { arrayify, check, clone, combine, each, extend } from 'typed-json-transform';
 import { log } from './log';
 import { startsWith } from './string';
-import { fetch } from './tools';
+import { Tools } from './tools';
 import { execAsync } from './shell';
-import { args } from './args';
+import { args } from './runtime';
 import { Environment } from './environment';
-import { ShellPlugin } from './shell';
-import { jsonStableHash } from './hash';
+import { mkdir } from 'shelljs';
+import { Shell } from './shell';
+import { jsonStableHash, fileHash, fileHashSync } from './hash';
 import { Project } from './project';
 import { defaults } from './defaults';
+import { join, dirname } from 'path';
+import { errors, TMakeError } from './errors';
+import { Property as CacheProperty } from './cache';
 
 export function jsonToFrameworks(object: any) {
   const flags: string[] = [];
@@ -28,7 +32,7 @@ export function jsonToFrameworks(object: any) {
   return flags;
 }
 
-function _jsonToFlags(object: any, globals: TMake.Plugin.Shell.Compiler.Flags.MapOptions) {
+function _jsonToFlags(object: any, globals: TMake.Plugin.Compiler.Flags.MapOptions) {
   const flags: string[] = [];
   each(object, (val: any, key: string) => {
     let { prefix } = globals;
@@ -54,7 +58,7 @@ function _jsonToFlags(object: any, globals: TMake.Plugin.Shell.Compiler.Flags.Ma
   return flags;
 }
 
-export function jsonToFlags(object: any, options?: TMake.Plugin.Shell.Compiler.Flags.MapOptions) {
+export function jsonToFlags(object: any, options?: TMake.Plugin.Compiler.Flags.MapOptions) {
   const defaults = { prefix: '-', join: '=' };
   extend(defaults, options);
   return _jsonToFlags(object, defaults);
@@ -103,7 +107,7 @@ export function jsonToCFlags(object: any) {
   return jsonToFlags(opt);
 }
 
-function resolveFlags(environment: TMake.Environment, options: TMake.Plugin.Shell.Compiler.Options) {
+function resolveFlags(environment: TMake.Environment, options: TMake.Plugin.Compiler.Options) {
   const cFlags = options.cFlags || options.cxxFlags || {};
   const cxxFlags = options.cxxFlags || options.cFlags || {};
   const linkerFlags = options.linkerFlags || {};
@@ -118,12 +122,12 @@ function resolveFlags(environment: TMake.Environment, options: TMake.Plugin.Shel
   }
 }
 
-export class Compiler extends ShellPlugin {
-  options: TMake.Plugin.Shell.Compiler.Options;
-  flags: TMake.Plugin.Shell.Compiler.Flags;
+export class Compiler extends Shell {
+  options: TMake.Plugin.Compiler.Options;
+  flags: TMake.Plugin.Compiler.Flags;
   libs: string[];
 
-  constructor(environment: TMake.Environment, options?: TMake.Plugin.Shell.Compiler.Options) {
+  constructor(environment: TMake.Environment, options?: TMake.Plugin.Compiler.Options) {
     super(environment, options);
     this.name = 'compiler';
     this.projectFileName = 'CMakeLists.txt';
@@ -131,6 +135,12 @@ export class Compiler extends ShellPlugin {
     this.flags = resolveFlags(this.environment, this.options);
   }
 
+  projectFilePath() {
+    return join(this.environment.d.project, this.projectFileName);
+  }
+  buildFilePath() {
+    return join(this.environment.d.build, this.buildFileName);
+  }
   frameworks() { return jsonToFrameworks(this.flags.frameworks); }
   cFlags() { return jsonToCFlags(this.flags.c); }
   cxxFlags() { return jsonToCFlags(this.flags.cxx); }
@@ -139,8 +149,81 @@ export class Compiler extends ShellPlugin {
 
   fetch() {
     if (this.options.toolchain) {
-      return fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
+      return Tools.fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
     }
     return Bluebird.resolve();
+  }
+
+  public configure() {
+    this.ensureProjectFile();
+    const buildFilePath = this.buildFilePath();
+    const buildFileDir = dirname(buildFilePath);
+    console.log('check cache for matching file', buildFilePath);
+    if (!this.environment.cache[this.name + '_configure']) {
+      this.environment.cache[this.name + '_configure'] = new CacheProperty<string>(() => {
+        return fileHashSync(buildFilePath);
+      });
+    }
+    const buildFileCache = this.environment.cache[this.name + '_configure'];
+    try {
+      if (buildFileCache.value() === fileHashSync(buildFilePath)) {
+        return Bluebird.resolve();
+      }
+    } catch (e) {
+
+    }
+    console.log('dirty, exec', this.configureCommand());
+    mkdir('-p', this.environment.d.build);
+    return this.fetch().then((toolpaths: any) => {
+      return execAsync(this.configureCommand(), { cwd: buildFileDir, silent: !args.quiet }).then(() => {
+        buildFileCache.update();
+        this.environment.cache.update();
+      });
+    })
+  }
+  public build() {
+    this.ensureBuildFile();
+    return this.fetch().then((toolpaths: any) => {
+      const command = this.buildCommand(this.toolpaths);
+      if (command) {
+        const wd = dirname(this.buildFilePath());
+        log.verbose(command);
+        return execAsync(command, {
+          cwd: wd,
+          silent: !args.verbose,
+          short: this.name
+        });
+      }
+      throw new Error(`no build command for shell plugin ${this.name}`);
+    });
+  }
+  public install() {
+    const installCommand = this.installCommand();
+    if (installCommand) {
+      const wd = dirname(this.buildFilePath());
+      return execAsync(installCommand, {
+        cwd: wd,
+        silent: !args.verbose,
+        short: this.name
+      });
+    }
+  }
+  public ensureProjectFile(isTest?: boolean) {
+    const filePath = this.projectFilePath();
+    if (!check(filePath, 'String')) {
+      throw new Error('no build file specified');
+    }
+    if (!existsSync(filePath)) {
+      errors.configure.noProjectFile(this);
+    }
+  }
+  public ensureBuildFile(isTest?: boolean) {
+    const buildFilePath = this.buildFilePath();
+    if (!check(buildFilePath, 'String')) {
+      throw new Error('no build file specified');
+    }
+    if (!existsSync(buildFilePath)) {
+      errors.build.noBuildFile(this);
+    }
   }
 }

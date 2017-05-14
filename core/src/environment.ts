@@ -1,25 +1,26 @@
 import * as os from 'os';
 import * as _ from 'lodash';
-import * as path from 'path';
+import { join } from 'path';
 import * as fs from 'fs';
-import { cascade, check, clone, contains, arrayify, combine, combineN, extend, plain as toJSON, OLHM } from 'typed-json-transform';
-import { updateEnvironment } from './db';
+import { cascade, check, clone, contains, map, arrayify, combine, combineN, extend, plain as toJSON, OLHM } from 'typed-json-transform';
+import { Db } from './db';
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from 'tmake-file';
-import { args } from './args';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { iterable } from './iterate';
 import { Phase } from './phase';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Cache as BaseCache, Property as CacheProperty } from './cache';
-import { Runtime } from './runtime';
 import { defaults } from './defaults';
-import { execAsync, mkdir } from './shell';
+import { Runtime } from './runtime';
+import { execAsync } from './shell';
+import { mkdir } from 'shelljs';
 import { parse, absolutePath, pathArray } from './parse';
-import { pathForTool } from './tools';
-import { Plugin } from './plugin';
+import { Tools } from './tools';
+import { Plugin as BasePlugin } from './plugin';
 import { Project } from './project';
+import { args } from './runtime';
 
 export class Cache extends BaseCache<string> {
     env: Environment;
@@ -43,7 +44,7 @@ export class Cache extends BaseCache<string> {
         this
     }
     update() {
-        updateEnvironment(this.env);
+        Db.updateEnvironment(this.env);
     }
     toJSON() {
         const ret = {};
@@ -131,52 +132,37 @@ function parseSelectors(dict: any, prefix: string) {
     return _selectors;
 }
 
-const DEFAULT_ENV =
-    parseFileSync(path.join(args.settingsDir, 'environment.yaml'));
-const _keywords: any =
-    parseFileSync(path.join(args.settingsDir, 'keywords.yaml'));
-const defaultKeywords =
-    [].concat(_.map(_keywords.host, (key) => { return `host-${key}`; }))
-        .concat(_keywords.target)
-        .concat(_keywords.architecture)
-        .concat(_keywords.compiler)
-        .concat(_keywords.sdk)
-        .concat(_keywords.ide)
-        .concat(_keywords.deploy);
-
-const argvSelectors = Object.keys(_.pick(args, defaultKeywords));
-argvSelectors.push(args.compiler);
 
 function getEnvironmentDirs(pathOptions: TMake.Environment.Dirs, projectDirs: TMake.Project.Dirs): TMake.Environment.Dirs {
     const d = <TMake.Environment.Dirs>clone(projectDirs);
 
-    d.build = path.join(d.root, pathOptions.build);
-    d.project = path.join(d.root, pathOptions.project || '');
+    d.build = join(d.root, pathOptions.build);
+    d.project = join(d.root, pathOptions.project || '');
     if (d.build == null) {
-        d.build = path.join(projectDirs.build, pathOptions.build);
+        d.build = join(projectDirs.build, pathOptions.build);
     }
     d.install = <TMake.Install>{
-        binaries: _.map(arrayify(pathOptions.install.binaries), (ft: TMake.Install.Options) => {
+        binaries: map(arrayify(pathOptions.install.binaries), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
-                from: path.join(d.root, ft.from),
+                from: join(d.root, ft.from),
             };
         }),
-        libraries: _.map(arrayify(pathOptions.install.libraries), (ft: TMake.Install.Options) => {
+        libraries: map(arrayify(pathOptions.install.libraries), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
-                from: path.join(d.root, ft.from),
-                to: path.join(d.home, (ft.to || 'lib'))
+                from: join(d.root, ft.from),
+                to: join(d.home, (ft.to || 'lib'))
             };
         })
     }
     if (pathOptions.install.assets) {
-        d.install.assets = _.map(arrayify(pathOptions.install.assets),
+        d.install.assets = map(arrayify(pathOptions.install.assets),
             (ft: TMake.Install.Options) => {
                 return {
                     matching: ft.matching,
-                    from: path.join(d.root, ft.from),
-                    to: path.join(args.runDir, ft.to)
+                    from: join(d.root, ft.from),
+                    to: join(args.runDir, ft.to)
                 };
             });
     }
@@ -190,7 +176,7 @@ function getEnvironmentPaths(conf: TMake.Environment.Dirs, architecture: string,
         test: 'build_tests'
     }, conf);
 
-    paths.build = path.join(paths.build, architecture);
+    paths.build = join(paths.build, architecture);
 
     if (!check(paths.project, String)) {
         if (outputType === 'executable') {
@@ -247,11 +233,21 @@ export class Environment implements TMake.Toolchain {
     _environment: any;
     environment: Environment;
     outputType: string;
-    plugins: { [index: string]: Plugin }
+    plugins: { [index: string]: TMake.Plugin }
     cache: Cache;
     project: TMake.Project;
-
     constructor(t: TMake.Toolchain, project: TMake.Project) {
+        const DEFAULT_ENV = parseFileSync(join(args.settingsDir, 'environment.yaml'));
+        const _keywords = parseFileSync(join(args.settingsDir, 'keywords.yaml'));
+        const defaultKeywords = [].concat(map(_keywords.host, (key) => { return `host-${key}`; }))
+            .concat(_keywords.target)
+            .concat(_keywords.architecture)
+            .concat(_keywords.compiler)
+            .concat(_keywords.sdk)
+            .concat(_keywords.ide)
+            .concat(_keywords.deploy);
+        const argvSelectors = Object.keys(_.pick(args, defaultKeywords)).concat(args.compiler)
+
         /* set up selectors + environment */
         this.project = project;
 
@@ -324,7 +320,7 @@ export class Environment implements TMake.Toolchain {
         this.environment[key] = clone(val);
     }
     globArray(val: any) {
-        return _.map(arrayify(val), (v) => { return parse(v, this); });
+        return map(arrayify(val), (v) => { return parse(v, this); });
     }
     j() { return this.host.cpu.num; }
     hash(): string {
@@ -367,7 +363,7 @@ export class Environment implements TMake.Toolchain {
         return getProjectFile(this, system);
     }
     getProjectFilePath(system: string) {
-        return path.join(this.d.project, getProjectFile(this, system));
+        return join(this.d.project, getProjectFile(this, system));
     }
     ensureProjectFolder() {
         mkdir('-p', this.d.project);
@@ -391,7 +387,7 @@ export class Environment implements TMake.Toolchain {
             }
             if (tool.bin == null) {
                 tool.bin = name;
-                tool.bin = pathForTool(tool);
+                tool.bin = Tools.pathForTool(tool);
             }
         }
         return tools;
@@ -420,14 +416,14 @@ export class Environment implements TMake.Toolchain {
     }
 }
 
-export class EnvironmentPlugin extends Plugin {
+export class EnvironmentPlugin extends BasePlugin {
     environment: TMake.Environment;
     options: any;
     toolpaths: any;
     projectFileName: string;
     buildFileName: string;
 
-    constructor(env: TMake.Environment, options?: TMake.Plugin.Options) {
+    constructor(env: TMake.Environment, options?: TMake.Plugin.Environment.Options) {
         super(env, options);
         this.environment = env;
         const phases: TMake.Plugin.Phase[] = ['fetch', 'generate', 'configure', 'build', 'install'];

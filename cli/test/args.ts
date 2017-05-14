@@ -1,9 +1,9 @@
 import { join, dirname } from 'path';
 import { realpathSync } from 'fs';
-import { initArgs } from 'tmake-core';
+import { init, args } from 'tmake-core/args';
 
 const npmDir = join(__dirname, '../');
-initArgs({
+const testArgs = {
   npmDir,
   runDir: join(npmDir, 'tests'),
   configDir: join(npmDir, 'tests'),
@@ -17,4 +17,9 @@ initArgs({
   test: true,
   yes: true,
   _: []
-});
+}
+
+console.log(testArgs);
+init(testArgs);
+
+export { args };

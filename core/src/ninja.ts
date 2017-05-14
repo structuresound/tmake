@@ -5,7 +5,7 @@ import ninja_build_gen = require('ninja-build-gen');
 import { readFileSync } from 'fs';
 
 import { log } from './log';
-import { fetch } from './tools';
+import { Tools } from './tools';
 import { execAsync } from './shell';
 import { Compiler } from './compiler';
 import { Plugin } from './plugin';
@@ -13,7 +13,7 @@ import { Plugin } from './plugin';
 const ninjaVersion = '1.6.0';
 
 function build(env: TMake.Environment) {
-  return fetch(env.tools).then((toolpaths: any) => {
+  return Tools.fetch(env.tools).then((toolpaths: any) => {
     const directory = env.d.project;
     let command = '';
     if (env.target.docker) {
@@ -39,7 +39,7 @@ function getRule(ext: string) {
 }
 
 export class Ninja extends Compiler {
-  options: TMake.Plugin.Shell.Compiler.Ninja.Options;
+  options: TMake.Plugin.Ninja.Options;
 
   constructor(environment: TMake.Environment) {
     super(environment);
@@ -53,7 +53,7 @@ export class Ninja extends Compiler {
     return this.environment.tools.ninja.bin;
   }
   fetch() {
-    return fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools.fetch(this.options.toolchain || this.environment.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate(){
     return this.configure();

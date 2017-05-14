@@ -1,7 +1,7 @@
 import * as Bluebird from 'bluebird';
 import * as util from 'util';
 import { log } from './log';
-import { args } from './args';
+import { args } from './runtime';
 
 interface Prompt {
   done: Function;
