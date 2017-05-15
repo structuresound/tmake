@@ -3,7 +3,6 @@ import * as _ from 'lodash';
 import { join } from 'path';
 import * as fs from 'fs';
 import { cascade, check, clone, contains, map, arrayify, combine, combineN, extend, plain as toJSON, OLHM } from 'typed-json-transform';
-import { Db } from './db';
 import { startsWith } from './string';
 import { log } from './log';
 import { parseFileSync } from 'tmake-file';
@@ -13,7 +12,7 @@ import { Phase } from './phase';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Cache as BaseCache, Property as CacheProperty } from './cache';
 import { defaults } from './defaults';
-import { Runtime } from './runtime';
+import { Runtime, Db } from './runtime';
 import { execAsync } from './shell';
 import { mkdir } from 'shelljs';
 import { parse, absolutePath, pathArray } from './parse';
@@ -44,7 +43,7 @@ export class Cache extends BaseCache<string> {
         this
     }
     update() {
-        Db.updateEnvironment(this.env);
+        this.env.update();
     }
     toJSON() {
         const ret = {};
@@ -339,8 +338,11 @@ export class Environment implements TMake.Toolchain {
         }
         return parse(input, this.environment);
     }
-    toCache(): TMake.Environment.CacheFile {
-        return { hash: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
+    toCache(): TMake.Environment.Cache.File {
+        return { _id: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
+    }
+    update() {
+        return Db.cacheEnvironment(this.toCache());
     }
     select(base: any, options: TMake.Environment.Select.Options = { ignore: {} }): any {
         if (!base) {

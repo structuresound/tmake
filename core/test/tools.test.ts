@@ -6,7 +6,7 @@ import { stringHash } from '../src/hash';
 import { Project } from '../src/project';
 import { Tools } from '../src/tools';
 
-import { args } from './args';
+import {args} from '../../test';
 
 describe('tools', function () {
   const project = new Project({ name: 'tools-test' });

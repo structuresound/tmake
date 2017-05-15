@@ -2122,9 +2122,9 @@ timed-out@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/timed-out/-/timed-out-2.0.0.tgz#f38b0ae81d3747d628001f41dafc652ace671c0a"
 
-tmake-file@^0.6.6:
-  version "0.6.6"
-  resolved "https://registry.yarnpkg.com/tmake-file/-/tmake-file-0.6.6.tgz#66634a3697015d2aac13a6d3df174c7a2fce1258"
+tmake-file@^0.6.7:
+  version "0.6.7"
+  resolved "https://registry.yarnpkg.com/tmake-file/-/tmake-file-0.6.7.tgz#81c23148357a1e206d5fca608e14c8bfa8fe7a23"
   dependencies:
     cson "^3.0.2"
     file-type "^3.9.0"
@@ -2141,10 +2141,6 @@ tmake-file@^0.6.6:
     unbzip2-stream "^1.0.10"
     unzip "^0.1.11"
     vinyl-fs "^2.3.1"
-
-tmake-plugin-cmake@^0.6.0:
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/tmake-plugin-cmake/-/tmake-plugin-cmake-0.6.0.tgz#d8820d7c1583ee460fd017c0af2d058603d581e1"
 
 to-absolute-glob@^0.1.1:
   version "0.1.1"

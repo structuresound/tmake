@@ -1,3 +1,4 @@
+/// <reference path="error.d.ts" />
 /// <reference path="fetch.d.ts" />
 /// <reference path="graph.d.ts" />
 /// <reference path="log.d.ts" />
@@ -5,7 +6,6 @@
 /// <reference path="runtime.d.ts" />
 /// <reference path="string.d.ts" />
 
-export * from "tmake-core/args";
 export * from "tmake-core/compiler";
 export * from "tmake-core/environment";
 export * from "tmake-core/fetch";

@@ -1,4 +1,3 @@
-/// <reference path="args.d.ts" />
 /// <reference path="project.d.ts" />
 /// <reference path="shell.d.ts" />
 
@@ -35,7 +34,7 @@ declare module 'tmake-core/main' {
   function processDep(node: TMake.Project, phase: string): PromiseLike<void>
   function unlink(config: TMake.Project.File): PromiseLike<void>
   function push(config: TMake.Project.File): PromiseLike<void>
-  function list(repo: string, selector: Object): PromiseLike<void>
+  function list(repo: string, selector: Object): PromiseLike<TMake.Project>
   function findAndClean(depName: string): PromiseLike<TMake.Project.File>
   function execute(conf: TMake.Project.File, phase: string, subProject?: string)
 }

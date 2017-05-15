@@ -6,7 +6,6 @@ import { defaults } from './defaults';
 import { Project } from './project';
 import { Environment } from './environment';
 import { Plugin } from './plugin';
-import { Db } from './db';
 
 import { extend, clone, plain, stringify } from 'typed-json-transform';
 
@@ -15,10 +14,10 @@ export const args: TMake.Args = {}
 export namespace Args {
   let lock = false;
 
-  export function init(runtime) {
+  export function init(runtime: TMake.Args) {
     if (!lock) {
       lock = true;
-      extend(args, runtime);
+      return extend(args, runtime);
     } else {
       throw new Error("second call to init(), something must be wrong");
     }
@@ -36,12 +35,14 @@ export namespace Args {
   }
 }
 
+export const Db: TMake.Db = <any>{}
+
 export namespace Runtime {
   export const pluginMap: { [index: string]: typeof Plugin } = {};
 
-  export function init(args) {
+  export function init(args: TMake.Args, db: TMake.Db) {
     Args.init(args);
-    Db.init(args);
+    extend(Db, db);
   }
   export function loadPlugins() {
     const files = readdirSync(`${args.userCache}/plugins/`);

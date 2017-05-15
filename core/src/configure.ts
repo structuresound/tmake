@@ -9,7 +9,7 @@ import { log } from './log';
 import { deps } from './graph';
 import { args } from './runtime';
 import { replaceInFile, ReplEntry } from './parse';
-import { Db } from './db';
+import { Db } from './runtime';
 import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';
@@ -88,7 +88,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
         }
       }).then(() => {
         env.cache.configure.update();
-        return Db.updateEnvironment(env);
+        return env.update();
       });
   }
   log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);

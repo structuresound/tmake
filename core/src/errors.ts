@@ -3,9 +3,10 @@ import * as colors from 'chalk';
 import * as Bluebird from 'bluebird';
 
 import { args } from './runtime';
-import { Db } from './db';
 import { log } from './log';
 import { info } from './info';
+
+import { Db } from './runtime';
 
 export class TMakeError extends Error {
   reason: Error
@@ -86,8 +87,8 @@ export const errors = {
       return new TMakeError(`command ${command} \n failed with error: \n `, error);
     },
     report: function ({ command, output, cwd, short }) {
-      return Db.cache.update({ type: 'report' }, { $set: { type: 'report', command, output, createdAt: new Date().toDateString() } }, { upsert: true }).then(() => {
-        return Bluebird.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun tmake report for more info`));
+      return Db.insertReport({ command, output, createdAt: new Date() }).then((id) => {
+        return Bluebird.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun "tmake report ${id}" for more info`));
       });
     }
   }

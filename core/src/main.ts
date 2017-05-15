@@ -6,10 +6,9 @@ import * as fs from 'fs';
 import * as file from 'tmake-file';
 import { contains, plain as toJSON } from 'typed-json-transform';
 
-
 import { args, Args } from './runtime';
 import { login, get, post } from './cloud';
-import { Db } from './Db';
+import { Db } from './runtime';
 import { Fetch } from './fetch';
 import { build } from './build';
 import { configure } from './configure';
@@ -157,21 +156,21 @@ export class ProjectRunner {
       });
   }
   test() { return this.build(true).then(() => test(this)); }
-  link() {
-    const root = this.project;
-    return this.install()
-      .then(() => {
-        return graph(this.project).then((deps) => {
-          return Bluebird.each(deps, (project) => {
-            if (!project.tree) {
-              const doc = project.toRegistry();
-              const query = { name: doc.name, tag: doc.tag || 'master' };
-              return Db.user.update(query, { $set: doc }, { upsert: true });
-            }
-          })
-        });
-      });
-  }
+  // link() {
+  //   const root = this.project;
+  //   return this.install()
+  //     .then(() => {
+  //       return graph(this.project).then((deps) => {
+  //         return Bluebird.each(deps, (project) => {
+  //           if (!project.tree) {
+  //             const doc = project.toRegistry();
+  //             const query = { name: doc.name, tag: doc.tag || 'master' };
+  //             return Db.link(query, { $set: doc }, { upsert: true });
+  //           }
+  //         })
+  //       });
+  //     });
+  // }
   clean() {
     log.quiet(`cleaning ${this.project.name}`);
     _.each(this.project.cache.libs.value(), (libFile) => {
@@ -187,13 +186,10 @@ export class ProjectRunner {
     });
     return Bluebird.each(this.project.environments, (env) => {
       const hash = env.hash();
-      return Db.cache.remove({ hash: hash });
-    }).then(() => {
-      log.verbose('clean environment caches');
-      return Db.cache.remove({ project: this.project.name })
+      return Db.clearEnvironment(hash);
     }).then(() => {
       log.verbose('clean project cache');
-      return Db.cache.remove({ name: this.project.name })
+      return Db.removeProject(this.project.name)
     })
   }
 }
@@ -204,17 +200,6 @@ export function processDep(node: TMake.Project, phase: string) {
   }
   process.chdir(args.runDir);
   return new ProjectRunner(node)[phase]();
-}
-
-export function unlink(config: TMake.Project.File) {
-  const query = { name: config.name, tag: config.tag || 'master' };
-  return Db.user.remove(query);
-  // return Db.user.findOne(query).then((doc: TMake.Project.File) => {
-  //   if (doc) {
-
-  //   }
-  //   return Bluebird.resolve();
-  // });
 }
 
 export function push(config: TMake.Project.File) {
@@ -245,10 +230,7 @@ export function push(config: TMake.Project.File) {
 export function list(repo: string, selector: Object) {
   switch (repo) {
     default:
-    case 'cache':
-      return Db.cache.find(selector) as PromiseLike<TMake.Project.File[]>;
-    case 'user':
-      return Db.user.find(selector) as PromiseLike<TMake.Project.File[]>;
+    case 'cache': return Db.findProjects(selector) as PromiseLike<TMake.Project.File[]>;
   }
 }
 

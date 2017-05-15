@@ -11,7 +11,7 @@ import { log } from './log';
 import { info } from './info';
 import { args } from './runtime';
 
-import { Db } from './db';
+import { Db } from './runtime';
 import { stringHash } from './hash';
 
 export namespace Fetch {
@@ -87,11 +87,11 @@ export namespace Fetch {
   }
 
   function upsertCache(project: TMake.Project) {
-    return Db.cache.findOne({ name: project.name }).then((res: any) => {
+    return Db.projectNamed(project.name).then((res: any) => {
       if (res) {
         return updateCache(project);
       }
-      return Db.cache.insert(project.toCache())
+      return Db.insertProject(project.toCache())
         .then(() => { return updateCache(project); });
     }).then(() => Bluebird.resolve());
   }

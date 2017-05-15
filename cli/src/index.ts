@@ -6,8 +6,9 @@ import * as minimist from 'minimist';
 import { onPossiblyUnhandledRejection } from 'bluebird';
 import { check, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
-import { log, db, execute, list, unlink, push, Runtime, info, TMakeError, initArgs, decodeArgs } from 'tmake-core';
+import { log, execute, list, unlink, push, Args, Runtime } from 'tmake-core';
 
+import { Db } from './db';
 import { example } from './example';
 
 import {
@@ -147,8 +148,6 @@ const args = <TMake.Args>minimist(process.argv.slice(2));
 
 export function tmake(rootConfig: TMake.Project.File,
   positionalArgs = args._, projectName?: string) {
-  db.cache.loadDatabase();
-  db.user.loadDatabase();
 
   if (!projectName) {
     projectName = positionalArgs[1] || rootConfig.name;
@@ -156,14 +155,14 @@ export function tmake(rootConfig: TMake.Project.File,
   const command = positionalArgs[0]
   switch (command) {
     case 'rm':
-      return db.cache.remove({ name: projectName })
+      return Db.cache.remove({ name: projectName })
         .then(() => {
-          return db.cache.remove({ project: projectName })
+          return Db.cache.remove({ project: projectName })
         }).then(() => {
           log.quiet(`cleared cache for ${projectName}`)
         });
     case 'unlink':
-      return db.cache.findOne({ name: projectName })
+      return Db.cache.findOne({ name: projectName })
         .then((dep: TMake.Project.File) => unlink(dep || rootConfig));
     case 'ls':
     case 'list':
@@ -176,7 +175,7 @@ export function tmake(rootConfig: TMake.Project.File,
         return list('cache', {});
       })().then(nodes => log.log(nodes));
     case 'report':
-      return db.cache.findOne({ type: 'report' }).then((report) => {
+      return Db.cache.findOne({ type: 'report' }).then((report) => {
         // info.report(report);
       })
     default:
@@ -240,10 +239,11 @@ function init() {
   }
 
   if (process.env.TMAKE_ARGS) {
-    extend(args, decodeArgs(process.env.TMAKE_ARGS));
+    extend(args, Args.decode(process.env.TMAKE_ARGS));
   }
 
-  initArgs(args);
+  Db.init(args);
+  Runtime.init(args, Db);
 }
 
 export function run() {

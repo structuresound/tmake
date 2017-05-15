@@ -6,7 +6,8 @@ import { graph } from '../src/graph';
 import { resolveName } from '../src/project';
 import * as file from 'tmake-file';
 import * as Bluebird from 'bluebird';
-import { args } from './args';
+
+import {args} from '../../test';
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
 describe('graph', () => {

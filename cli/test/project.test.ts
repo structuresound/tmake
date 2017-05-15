@@ -1,17 +1,15 @@
 import * as fs from 'fs';
-import { parseFileSync, nuke } from 'tmake-file';
-
 import * as path from 'path';
 import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
-import { parseFileAsync } from 'tmake-file';
+import { parseFileSync, nuke } from 'tmake-file';
 
-import { ProjectRunner, list, unlink, findAndClean } from 'tmake-core';
-import { loadPlugins } from 'tmake-core/runtime';
-import { execAsync } from 'tmake-core/shell';
-import { graph, loadCache } from 'tmake-core/graph';
+import {
+  ProjectRunner, list, unlink, findAndClean,
+  Runtime, execAsync, graph, loadCache
+} from 'tmake-core';
 
-import { args } from './args';
+import { args } from '../../test';
 
 const helloWorld = parseFileSync(path.join(args.npmDir, 'test/config/hello.yaml'));
 
@@ -24,7 +22,7 @@ describe('tmake lib: ', function () {
   before(() => {
     console.log('registering built in plugins . . .');
     const d = new Date();
-    loadPlugins();
+    Runtime.loadPlugins();
     console.log('took:', new Date().valueOf() - d.valueOf());
 
     return graph(helloWorld)

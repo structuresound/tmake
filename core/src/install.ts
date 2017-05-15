@@ -9,7 +9,7 @@ import { log } from './log';
 import { args } from './runtime';
 import { mv, mkdir } from 'shelljs';
 import { stringHash, fileHash } from './hash';
-import { Db } from './db';
+import { Db } from './runtime';
 import { startsWith } from './string';
 
 import { Environment } from './environment';
@@ -94,16 +94,14 @@ function assets(env: Environment): PromiseLike<any> {
       });
     }).then(assetPaths => {
       env.cache.assets.set(flatten(assetPaths).join(', '));
-      return Db.updateEnvironment(env);
+      return Db.cacheEnvironment(env);
     });
   };
   return Bluebird.resolve();
 }
 
 function libs(env: Environment): PromiseLike<any> {
-  if (contains([
-    'static', 'dynamic'
-  ], env.outputType)) {
+  if (contains(['static', 'dynamic'], env.outputType)) {
     return Bluebird.map(env.d.install.libraries, (ft: TMake.Install.Options) => {
       let patterns = ft.matching || ['**/*.a'];
       if (env.project.outputType === 'dynamic') {

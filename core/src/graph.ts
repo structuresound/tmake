@@ -7,27 +7,29 @@ import { errors } from './errors';
 import { args } from './runtime';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
-import { Db } from './db';
+import { Db } from './runtime';
 import { jsonStableHash } from './hash';
 
 import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
 
-function loadCache(project: TMake.Project): Bluebird<TMake.Project> {
-  return Db.cache.findOne({ name: project.name })
-    .then((result: TMake.Project.File) => {
-      if (result) {
-        project.merge(<any>result);
-      }
-      return Bluebird.each(project.environments, (e) => {
-        return loadEnvironment(e);
-      });
-    }).then(() => {
-      return Bluebird.resolve(project);
-    })
+function loadCache(project: TMake.Project) {
+  return new Bluebird((resolve) => {
+    Db.projectNamed(project.name)
+      .then((result) => {
+        if (result) {
+          project.merge(<any>result);
+        }
+        return Bluebird.each(project.environments, (e) => {
+          return loadEnvironment(e);
+        });
+      }).then(() => {
+        resolve(project);
+      })
+  });
 }
 
 function loadEnvironment(env: TMake.Environment) {
-  return Db.environmentCache(env.hash())
+  return Db.loadEnvironment(env.hash())
     .then((result) => {
       return Bluebird.resolve(env.merge(<any>result));
     });

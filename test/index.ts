@@ -1,9 +1,11 @@
 import { join, dirname } from 'path';
 import { realpathSync } from 'fs';
-import { init, args } from 'tmake-core/args';
+import { Runtime } from 'tmake-core';
 
-const npmDir = join(__dirname, '../');
-const testArgs = {
+import { Db } from 'cli/src/db';
+
+const npmDir = join(dirname(realpathSync(__filename)), '../');
+const options = {
   npmDir,
   runDir: join(npmDir, 'tests'),
   configDir: join(npmDir, 'tests'),
@@ -11,7 +13,6 @@ const testArgs = {
   settingsDir: join(npmDir, 'settings'),
   userCache: join(npmDir, 'tests_cache'),
   cachePath: 'trie_modules',
-  pgname: 'tmake',
   quiet: false,
   verbose: true,
   test: true,
@@ -19,7 +20,7 @@ const testArgs = {
   _: []
 }
 
-console.log(testArgs);
-init(testArgs);
+Db.init(options);
+const args = Runtime.init(options);
 
 export { args };

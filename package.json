@@ -13,7 +13,7 @@
     "quick-test": "cd cli && yarn && npm test",
     "full-test": "npm run test-file && npm run test-core && npm run test-cli",
     "travis": "npm run full-test",
-    "test": "npm run travis"
+    "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail"
   },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",

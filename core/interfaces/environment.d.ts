@@ -30,6 +30,7 @@ declare namespace TMake {
     merge(other: Environment.Cache): void;
     select(base: any, options?: Environment.Select.Options): any;
     parse(input: any, conf?: any): any;
+    toCache(): TMake.Environment.Cache.File;
   }
 
   namespace Environment {
@@ -44,12 +45,6 @@ declare namespace TMake {
       interface Options { keywords?: string[], selectors?: string[], dict?: {}, ignore?: { keywords?: string[], selectors?: string[] } }
     }
 
-    interface CacheFile {
-      hash: string
-      project: string
-      cache: any
-    }
-
     class Cache extends TMake.Cache.Base<string> {
       env: TMake.Environment;
       assets?: TMake.Cache.Property<string>
@@ -58,6 +53,15 @@ declare namespace TMake {
       update()
       toJSON()
     }
+
+    namespace Cache {
+      interface File {
+        _id: string
+        project: string
+        cache: any
+      }
+    }
+
   }
 
   namespace Plugin {

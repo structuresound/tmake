@@ -3,7 +3,7 @@ import * as path from 'path';
 import { assert, expect } from 'chai';
 import { every } from 'typed-json-transform';
 
-import './args';
+import { args } from '../../test';
 
 import { manual, commands } from '../src';
 

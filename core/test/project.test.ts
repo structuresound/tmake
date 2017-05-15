@@ -8,7 +8,7 @@ import { parseFileAsync } from 'tmake-file';
 
 import { Project } from '../src';
 
-import { args } from './args';
+import {args} from '../../test';
 
 describe('project', () => {
   let project: TMake.Project;

@@ -8,7 +8,7 @@ import { Environment } from '../src/environment';
 
 import { Runtime } from '../src/runtime';
 
-import { args } from './args';
+import {args} from '../../test';
 
 describe('environment', () => {
   let project: TMake.Project;
