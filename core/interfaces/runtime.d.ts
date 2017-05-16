@@ -3,15 +3,18 @@
 /// <reference path="plugin.d.ts" />
 
 declare module 'tmake-core/runtime' {
-  namespace Runtime {
-    function init(args: TMake.Args, db: TMake.Db)
-    function loadPlugins(): void
-    function registerPlugin(plugin: typeof Plugin): void
-    function getPlugin(name: string): Plugin
-  }
+  const args: TMake.Args;
 
+  class Runtime {
+    static Db: TMake.Database.Interface
+
+    static init(database: TMake.Database.Interface)
+    static loadPlugins(): void
+    static registerPlugin(plugin: typeof Plugin): void
+    static getPlugin(name: string): Plugin
+  }
   namespace Args {
-    export function encode(): Buffer
-    export function decode(str: string): TMake.Args
+    function encode(): Buffer
+    function decode(str: string): TMake.Args
   }
 }

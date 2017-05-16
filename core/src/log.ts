@@ -3,7 +3,7 @@
 import { dump, DumpOptions } from 'js-yaml';
 import * as colors from 'chalk';
 import { check, map } from 'typed-json-transform';
-import { args as environment } from './runtime';
+import { Runtime, args as environment } from './runtime';
 
 function yamlify(...args: any[]): string {
   return map(args, (el: any) => {

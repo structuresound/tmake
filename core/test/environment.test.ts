@@ -3,12 +3,7 @@ import { assert } from 'chai';
 import { contains, containsAny, check } from 'typed-json-transform';
 
 import { parseFileAsync } from 'tmake-file';
-import { Project } from '../src/project';
-import { Environment } from '../src/environment';
-
-import { Runtime } from '../src/runtime';
-
-import {args} from '../../test';
+import { Project, Environment, Runtime, args } from '../src';
 
 describe('environment', () => {
   let project: TMake.Project;

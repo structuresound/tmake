@@ -12,7 +12,7 @@ import { Phase } from './phase';
 import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
 import { Cache as BaseCache, Property as CacheProperty } from './cache';
 import { defaults } from './defaults';
-import { Runtime, Db } from './runtime';
+import { Runtime } from './runtime';
 import { execAsync } from './shell';
 import { mkdir } from 'shelljs';
 import { parse, absolutePath, pathArray } from './parse';
@@ -342,7 +342,7 @@ export class Environment implements TMake.Toolchain {
         return { _id: this.hash(), project: this.project.name, cache: this.cache.toJSON() };
     }
     update() {
-        return Db.cacheEnvironment(this.toCache());
+        return Runtime.Db.cacheEnvironment(this.toCache());
     }
     select(base: any, options: TMake.Environment.Select.Options = { ignore: {} }): any {
         if (!base) {

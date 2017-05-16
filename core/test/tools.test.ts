@@ -2,11 +2,7 @@ import { expect } from 'chai';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { stringHash } from '../src/hash';
-import { Project } from '../src/project';
-import { Tools } from '../src/tools';
-
-import {args} from '../../test';
+import { args,stringHash, Project, Tools } from '../src';
 
 describe('tools', function () {
   const project = new Project({ name: 'tools-test' });

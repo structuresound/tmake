@@ -3,6 +3,7 @@
 declare class TMakeError extends Error {
   reason: Error
   constructor(message: string, reason?: Error);
+  postMortem();
 }
 
 declare namespace TMake {
@@ -37,5 +38,5 @@ declare namespace TMake {
     }
   }
 
-  declare const errors: TMake.Error.Helper;
-
+const errors: TMake.Error.Helper;
+}

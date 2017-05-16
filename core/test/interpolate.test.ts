@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import { interpolate } from '../src/interpolate';
+import { interpolate } from '../src';
 
 const data = {
   some: {

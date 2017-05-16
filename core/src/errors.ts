@@ -6,7 +6,7 @@ import { args } from './runtime';
 import { log } from './log';
 import { info } from './info';
 
-import { Db } from './runtime';
+import { Runtime } from './runtime';
 
 export class TMakeError extends Error {
   reason: Error
@@ -23,6 +23,7 @@ export class TMakeError extends Error {
       log.log('\ntmake error report {\n', '', this.message);
       if (this.reason) {
         if (args.verbose) {
+          log.log(this.reason);
           log.log(this.reason.stack);
         } else {
           log.log(this.reason.message);
@@ -87,7 +88,7 @@ export const errors = {
       return new TMakeError(`command ${command} \n failed with error: \n `, error);
     },
     report: function ({ command, output, cwd, short }) {
-      return Db.insertReport({ command, output, createdAt: new Date() }).then((id) => {
+      return Runtime.Db.insertReport({ command, output, createdAt: new Date() }).then((id) => {
         return Bluebird.resolve(new TMakeError(`    a subprocess failed: ${command},\n\nrun "tmake report ${id}" for more info`));
       });
     }

@@ -8,7 +8,7 @@ import { contains, plain as toJSON } from 'typed-json-transform';
 
 import { args, Args } from './runtime';
 import { login, get, post } from './cloud';
-import { Db } from './runtime';
+import { Runtime } from './runtime';
 import { Fetch } from './fetch';
 import { build } from './build';
 import { configure } from './configure';
@@ -186,10 +186,10 @@ export class ProjectRunner {
     });
     return Bluebird.each(this.project.environments, (env) => {
       const hash = env.hash();
-      return Db.clearEnvironment(hash);
+      return Runtime.Db.cleanEnvironment(hash);
     }).then(() => {
       log.verbose('clean project cache');
-      return Db.removeProject(this.project.name)
+      return Runtime.Db.removeProject(this.project.name)
     })
   }
 }
@@ -212,7 +212,7 @@ export function push(config: TMake.Project.File) {
       }
       return Bluebird.reject('user aborted push command');
     })
-    .then(() => { return Db.projectNamed(config.name); })
+    .then(() => { return Runtime.Db.projectNamed(config.name); })
     .then((json: any) => {
       if (json.cache.bin || json.cache.libs) {
         return post(json).then((res) => {
@@ -230,12 +230,12 @@ export function push(config: TMake.Project.File) {
 export function list(repo: string, selector: Object) {
   switch (repo) {
     default:
-    case 'cache': return Db.findProjects(selector) as PromiseLike<TMake.Project.File[]>;
+    case 'cache': return Runtime.Db.findProjects(selector) as PromiseLike<TMake.Project.File[]>;
   }
 }
 
 export function findAndClean(depName: string): PromiseLike<TMake.Project.File> {
-  return Db.projectNamed(depName)
+  return Runtime.Db.projectNamed(depName)
     .then((config: TMake.Project.File) => {
       if (config) {
         return createNode(config, undefined)
@@ -243,7 +243,7 @@ export function findAndClean(depName: string): PromiseLike<TMake.Project.File> {
             return new ProjectRunner(project).clean();
           })
           .then(() => {
-            return Db.projectNamed(depName)
+            return Runtime.Db.projectNamed(depName)
               .then((cleaned: TMake.Project.File) => {
                 log.verbose('cleaned project', cleaned);
                 return Bluebird.resolve(cleaned);

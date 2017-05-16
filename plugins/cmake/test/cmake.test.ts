@@ -5,13 +5,12 @@ import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
 import { parseFileSync, nuke } from 'tmake-file';
 
-import { ProjectRunner, list, unlink, findAndClean } from 'tmake-core';
-import { registerPlugin } from 'tmake-core';
-import { execAsync } from 'tmake-core';
-import { graph, loadCache } from 'tmake-core';
-import { args } from 'tmake-core';
+import {
+  ProjectRunner, list, unlink, findAndClean,
+  Runtime, execAsync, graph, loadCache, args
+} from 'tmake-core';
 
-const helloWorld = parseFileSync(path.join(args.npmDir, 'test/config/hello.yaml'));
+const helloWorld = parseFileSync('../config/hello.yaml');
 
 describe('tmake-cmake-plugin', function () {
   this.timeout(120000);
@@ -19,7 +18,7 @@ describe('tmake-cmake-plugin', function () {
   let googleNode: TMake.Project;
 
   before(() => {
-    registerPlugin(require(path.join(__dirname, 'dist/cmake.js')).default);
+    Runtime.registerPlugin(require(path.join(__dirname, 'dist/cmake.js')).default);
     return graph(helloWorld)
       .then((res) => {
         googleNode = res[0];

@@ -8,7 +8,6 @@ import { log } from './log';
 import { deps } from './graph';
 import { args } from './runtime';
 import { replaceInFile, ReplEntry } from './parse';
-import { Db } from './runtime';
 import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';

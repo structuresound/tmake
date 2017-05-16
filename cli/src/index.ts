@@ -1,14 +1,17 @@
+/// <reference path="../interfaces/index.d.ts" />
+
+import * as Bluebird from 'bluebird';
 import * as _ from 'lodash';
 import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import * as minimist from 'minimist';
+
 import { onPossiblyUnhandledRejection } from 'bluebird';
 import { check, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
-import { log, execute, list, unlink, push, Args, Runtime } from 'tmake-core';
+import { log, execute, list, unlink, push, Runtime, args } from 'tmake-core';
 
-import { Db } from './db';
+import { Database } from './db';
 import { example } from './example';
 
 import {
@@ -91,7 +94,7 @@ export function globalCommands(): GlobalCommands {
 }
 
 export function commands(): Commands {
-  return Object.assign(packageCommands(), globalCommands())
+  return { ...packageCommands(), ...globalCommands() }
 }
 
 export function version() {
@@ -141,13 +144,14 @@ export const defaultPackage = {
 };
 
 export function createPackage() {
-  return Promise.resolve(defaultPackage);
+  return Bluebird.resolve(defaultPackage);
 }
-
-const args = <TMake.Args>minimist(process.argv.slice(2));
 
 export function tmake(rootConfig: TMake.Project.File,
   positionalArgs = args._, projectName?: string) {
+
+  const Db = new Database();
+  Runtime.init(Db)
 
   if (!projectName) {
     projectName = positionalArgs[1] || rootConfig.name;
@@ -155,14 +159,14 @@ export function tmake(rootConfig: TMake.Project.File,
   const command = positionalArgs[0]
   switch (command) {
     case 'rm':
-      return Db.cache.remove({ name: projectName })
+      return Db.cleanEnvironments(projectName)
         .then(() => {
-          return Db.cache.remove({ project: projectName })
+          return Db.removeProject(projectName)
         }).then(() => {
           log.quiet(`cleared cache for ${projectName}`)
         });
     case 'unlink':
-      return Db.cache.findOne({ name: projectName })
+      return Db.projectNamed(projectName)
         .then((dep: TMake.Project.File) => unlink(dep || rootConfig));
     case 'ls':
     case 'list':
@@ -175,8 +179,10 @@ export function tmake(rootConfig: TMake.Project.File,
         return list('cache', {});
       })().then(nodes => log.log(nodes));
     case 'report':
-      return Db.cache.findOne({ type: 'report' }).then((report) => {
-        // info.report(report);
+      return Db.getReports().then((reports) => {
+        reports.array.forEach(report => {
+          log.log(report);
+        });
       })
     default:
       if (contains(Object.keys(packageCommands()), command)) {
@@ -198,56 +204,7 @@ export function initRepo(): any {
     'aborting init, this folder already has a package file present');
 }
 
-function init() {
-  function homeDir() {
-    return process.env[process.platform === 'win32'
-      ? 'USERPROFILE'
-      : 'HOME'];
-  }
-
-  const runDir = process.cwd();
-  if (!args.runDir) {
-    args.runDir = runDir;
-  }
-  if (!args.configDir) {
-    args.configDir = args.runDir;
-  }
-
-  const npmDir = path.join(path.dirname(realpathSync(__filename)), '../');
-  const settingsDir = path.join(npmDir, 'settings');
-
-  if (!args.npmDir) {
-    args.npmDir = npmDir;
-  }
-
-  if (!args.cachePath) {
-    args.cachePath = 'trie_modules';
-  }
-  if (!args.program) {
-    args.program = 'tmake';
-  }
-  if (!args.userCache) {
-    args.userCache = `${homeDir()}/.tmake`;
-  }
-  if (args.v) {
-    if (!args.verbose) {
-      args.verbose = args.v;
-    }
-  }
-  if (args.f) {
-    args.force = 'all';
-  }
-
-  if (process.env.TMAKE_ARGS) {
-    extend(args, Args.decode(process.env.TMAKE_ARGS));
-  }
-
-  Db.init(args);
-  Runtime.init(args, Db);
-}
-
 export function run() {
-  init();
   let defaultCommand = false;
   if (args._[0] == null) {
     args._[0] = 'all';
@@ -306,7 +263,7 @@ export function run() {
             default:
               log.log(hello());
           }
-          return Promise.resolve();
+          return Bluebird.resolve();
         })
         .catch((e: TMakeError) => {
           try {

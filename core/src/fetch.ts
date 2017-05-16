@@ -11,7 +11,7 @@ import { log } from './log';
 import { info } from './info';
 import { args } from './runtime';
 
-import { Db } from './runtime';
+import { Runtime } from './runtime';
 import { stringHash } from './hash';
 
 export namespace Fetch {
@@ -83,15 +83,15 @@ export namespace Fetch {
         'cache.fetch': project.cache.fetch.update()
       }
     };
-    return Db.updateProject(project, modifier);
+    return Runtime.Db.updateProject(project, modifier);
   }
 
   function upsertCache(project: TMake.Project) {
-    return Db.projectNamed(project.name).then((res: any) => {
+    return Runtime.Db.projectNamed(project.name).then((res: any) => {
       if (res) {
         return updateCache(project);
       }
-      return Db.insertProject(project.toCache())
+      return Runtime.Db.insertProject(project.toCache())
         .then(() => { return updateCache(project); });
     }).then(() => Bluebird.resolve());
   }
@@ -135,7 +135,7 @@ export namespace Fetch {
         'cache.fetch': ''
       }
     };
-    return Db.updateProject(project, modifier);
+    return Runtime.Db.updateProject(project, modifier);
   }
 
   function getIt(project: TMake.Project, exists: boolean) {

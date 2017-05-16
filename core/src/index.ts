@@ -2,8 +2,10 @@
 
 export * from './runtime';
 export * from './compiler';
+export * from './interpolate';
 export * from './environment';
 export * from './fetch';
+export * from './hash';
 export * from './log';
 export * from './main';
 export * from './graph';

@@ -5,26 +5,28 @@ import { contains, check } from 'typed-json-transform';
 import { parseFileSync, nuke } from 'tmake-file';
 
 import {
-  ProjectRunner, list, unlink, findAndClean,
-  Runtime, execAsync, graph, loadCache
+  ProjectRunner, list, findAndClean,
+  Runtime, execAsync, graph, loadCache, args
 } from 'tmake-core';
 
-import { args } from '../../test';
+import { Database } from '../src/db';
 
-const helloWorld = parseFileSync(path.join(args.npmDir, 'test/config/hello.yaml'));
+describe('tmake', function () {
 
-describe('tmake lib: ', function () {
   this.timeout(120000);
 
   let googleNode: TMake.Project;
   let helloNode: TMake.Project;
 
-  before(() => {
-    console.log('registering built in plugins . . .');
-    const d = new Date();
-    Runtime.loadPlugins();
-    console.log('took:', new Date().valueOf() - d.valueOf());
+  const testDb = new Database();
+  Runtime.init(testDb);
+  console.log('test db', Runtime.Db.projectNamed);
 
+  before(() => {
+    const d = new Date();
+    const helloWorld = parseFileSync('../config/hello.yaml');
+    Runtime.registerPlugin(require(path.join(__dirname, '../../plugins/cmake/dist/cmake.js')).default);
+    assert.equal('CMake', (<any>Runtime.getPlugin('cmake')).name);
     return graph(helloWorld)
       .then((res) => {
         googleNode = res[0];
@@ -111,23 +113,6 @@ describe('tmake lib: ', function () {
         return expect(results[results.length - 2])
           .to.equal('Hello, world, from Visual C++!');
       });
-  });
-
-  it('link: add', () => {
-    return loadCache(helloNode)
-      .then(() => { return new ProjectRunner(helloNode).link() })
-      .then(() => { return list('user', { name: helloNode.name }); })
-      .then((res) => {
-        const msg = JSON.stringify(res, [], 2);
-        return expect(res[0].name).to.equal(helloNode.name, msg);
-      });
-  });
-
-  it('link: remove', () => {
-    return list('cache', { name: helloNode.name })
-      .then(res => unlink(res[0]))
-      .then(() => list('user', { name: helloNode.name }))
-      .then(res => expect(res.length).to.not.be.ok);
   });
 
   it('can clean libbson project', () => {

@@ -7,7 +7,7 @@ import { log } from './log';
 import { deps } from './graph';
 import { args } from './runtime';
 import { replaceInFile, ReplEntry } from './parse';
-import { Runtime, Db } from './runtime';
+import { Runtime } from './runtime';
 import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { EnvironmentPlugin, Environment } from './environment';
@@ -34,7 +34,7 @@ export function build(env: Environment, isTest?: boolean): PromiseLike<any> {
                 }
             }).then(() => {
                 env.cache.build.update();
-                return Db.updateEnvironment(env);
+                return env.update();
             });
     }
     log.verbose(`configuration is current, use --force=${env.project.name} if you suspect the cache is stale`);

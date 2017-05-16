@@ -7,14 +7,14 @@ import { errors } from './errors';
 import { args } from './runtime';
 import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
-import { Db } from './runtime';
+import { Runtime } from './runtime';
 import { jsonStableHash } from './hash';
 
 import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
 
 function loadCache(project: TMake.Project) {
-  return new Bluebird((resolve) => {
-    Db.projectNamed(project.name)
+  return new Bluebird<TMake.Project>((resolve) => {
+    Runtime.Db.projectNamed(project.name)
       .then((result) => {
         if (result) {
           project.merge(<any>result);
@@ -29,7 +29,7 @@ function loadCache(project: TMake.Project) {
 }
 
 function loadEnvironment(env: TMake.Environment) {
-  return Db.loadEnvironment(env.hash())
+  return Runtime.Db.loadEnvironment(env.hash())
     .then((result) => {
       return Bluebird.resolve(env.merge(<any>result));
     });
@@ -134,6 +134,9 @@ function _map(node: TMake.Project.File, graphType: string,
       return Bluebird.resolve(nodes);
     }).catch((error) => {
       const nodeNames = graph[graphType](graphArg);
+      if (args.verbose){
+        return Bluebird.reject(error);
+      }
       return Bluebird.reject(errors.graph.failed(nodeNames, error));
     });
 }

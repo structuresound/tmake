@@ -9,7 +9,7 @@ import { log } from './log';
 import { args } from './runtime';
 import { mv, mkdir } from 'shelljs';
 import { stringHash, fileHash } from './hash';
-import { Db } from './runtime';
+import { Runtime } from './runtime';
 import { startsWith } from './string';
 
 import { Environment } from './environment';
@@ -94,7 +94,7 @@ function assets(env: Environment): PromiseLike<any> {
       });
     }).then(assetPaths => {
       env.cache.assets.set(flatten(assetPaths).join(', '));
-      return Db.cacheEnvironment(env);
+      return env.update();
     });
   };
   return Bluebird.resolve();
@@ -122,7 +122,7 @@ function libs(env: Environment): PromiseLike<any> {
       return Bluebird.each(flatten(libPaths), (libPath) => {
         fileHash(path.join(env.project.d.home, libPath));
       }).then((hash) => {
-        return Db.updateProject(env.project, {
+        return Runtime.Db.updateProject(env.project, {
           $set: {
             'cache.libs': flatten(libPaths)
           }

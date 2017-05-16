@@ -6,9 +6,7 @@ import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
 import { parseFileAsync } from 'tmake-file';
 
-import { Project } from '../src';
-
-import {args} from '../../test';
+import { args, Project } from '../src';
 
 describe('project', () => {
   let project: TMake.Project;
