@@ -7,7 +7,17 @@ import { resolveName } from '../src/project';
 import * as file from 'tmake-file';
 import * as Bluebird from 'bluebird';
 
-import {args} from '../src';
+import {args, Runtime} from '../src';
+
+const MockDb = {
+  projectNamed(){
+    return Bluebird.resolve();
+  },
+  loadEnvironment(){
+    return Bluebird.resolve();
+  }
+}
+Runtime.init(<any>MockDb);
 
 const helloWorld = file.parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
 describe('graph', () => {

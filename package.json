@@ -3,17 +3,16 @@
   "description": "meta/dev package",
   "version": "0.0.1",
   "scripts": {
-    "clean-file": "cd file && rm -Rf node_modules yarn.lock && yarn",
-    "clean-core": "npm run clean-file && cd core && rm -Rf node_modules yarn.lock && yarn",
     "clean-cli": "cd cli && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
-    "build": "npm run clean-cli && cd cli && npm run build",
-    "test-file": "npm run clean-file && cd file && npm run build && npm test",
-    "test-core": "npm run clean-core && cd core && npm run build && npm test",
-    "test-cli": "npm run clean-cli && cd cli && npm run build && npm test",
-    "quick-test": "cd cli && yarn && npm test",
-    "full-test": "npm run test-file && npm run test-core && npm run test-cli",
-    "travis": "npm run full-test",
-    "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail"
+    "clean-plugins": "cd plugins/cmake && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
+    "build-file": "cd file && rm -Rf node_modules yarn.lock && yarn && npm run build",
+    "build-core": "cd core && rm -Rf node_modules yarn.lock && yarn && npm run build",
+    "build-cli": "npm run clean-cli && cd cli && npm run build",
+    "build-plugins": "npm run clean-plugins && cd plugins/cmake && npm run build",
+    "build": "npm run build-file && npm run build-core && npm run build-plugins && npm run build-cli",
+    "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail",
+    "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
+    "travis": "npm run build && npm run cover"
   },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",
@@ -51,9 +50,34 @@
   },
   "dependencies": {
     "shelljs": "^0.7.7",
-    "typed-json-transform": "^0.16.2",
+    "typed-json-transform": "^0.16.3",
     "bluebird": "^3.0.5",
     "lodash": "^4.3.0",
     "js-yaml": "^3.6.1"
+  },
+  "nyc": {
+    "include": [
+      "src/*.ts"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "**/node_modules",
+      "docs",
+      "examples",
+      "server",
+      "triebugger"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "json",
+      "html",
+      "lcov"
+    ],
+    "all": true
   }
 }

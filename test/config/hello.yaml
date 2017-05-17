@@ -1,6 +1,9 @@
 ---
 git: structuresound/hello
-configure: ninja
+generate:
+  ninja:
+    matching:
+    - '**/*.c'
 build: ninja
 outputType: executable
 require:

@@ -50,7 +50,7 @@ export class Git implements TMake.Git.Config {
   }
   name() {
     if (this.repository) {
-      return this.repository.slice(this.repository.indexOf('/') + 1);
+      return this.repository;
     }
     if (this.url) {
       const lastPathComponent =

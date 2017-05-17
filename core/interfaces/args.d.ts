@@ -20,7 +20,7 @@ declare namespace TMake {
         y?: boolean;
         yes?: boolean;
         test?: boolean;
-        userCache?: string;
+        homeDir?: string;
         _?: string[];
         environment?: any;
 

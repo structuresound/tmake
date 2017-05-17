@@ -16,7 +16,7 @@ import { stringHash } from './hash';
 
 export namespace Fetch {
   export function download(url: string) {
-    const cacheDir = path.join(args.userCache, 'cache')
+    const cacheDir = path.join(args.homeDir, 'cache')
     mkdir('-p', cacheDir);
     let cacheFile = path.join(cacheDir, stringHash(url));
     if (fs.existsSync(cacheFile)) {
@@ -73,7 +73,7 @@ export namespace Fetch {
   }
 
   function unarchiveSource(filePath: string, toDir: string) {
-    const tempDir = path.join(args.userCache, 'temp', stringHash(filePath));
+    const tempDir = path.join(args.homeDir, 'temp', stringHash(filePath));
     return file.unarchive(filePath, tempDir, toDir);
   }
 
@@ -93,7 +93,7 @@ export namespace Fetch {
       }
       return Runtime.Db.insertProject(project.toCache())
         .then(() => { return updateCache(project); });
-    }).then(() => Bluebird.resolve());
+    })
   }
 
   function getSource(project: TMake.Project) {

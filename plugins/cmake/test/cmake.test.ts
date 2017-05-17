@@ -6,9 +6,9 @@ import { contains, check } from 'typed-json-transform';
 import { parseFileSync, nuke } from 'tmake-file';
 
 import {
-  ProjectRunner, list, unlink, findAndClean,
+  ProjectRunner, list, findAndClean,
   Runtime, execAsync, graph, loadCache, args
-} from 'tmake-core';
+} from '../../../core/src';
 
 const helloWorld = parseFileSync('../config/hello.yaml');
 

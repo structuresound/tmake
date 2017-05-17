@@ -129,8 +129,7 @@ function _map(node: TMake.Project.File, graphType: string,
   return graphNode(node, undefined, graph, cache, fileCache)
     .then(() => {
       const nodeNames = graph[graphType](graphArg);
-      const nodes: TMake.Project[] =
-        _.map(nodeNames, (name: string) => { return cache[name]; });
+      const nodes: TMake.Project[] = _.map(nodeNames, (name: string) => { return cache[name]; });
       return Bluebird.resolve(nodes);
     }).catch((error) => {
       const nodeNames = graph[graphType](graphArg);

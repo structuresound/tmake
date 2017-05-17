@@ -23,11 +23,7 @@
     "npm": ">= 3"
   },
   "scripts": {
-    "build": "../node_modules/.bin/gulp scripts",
-    "test": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail",
-    "debug": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail --inspect=PORT --debug-brk",
-    "cover": "NODE_ENV=test ../node_modules/.bin/nyc --report-dir coverage npm t",
-    "travis": "npm run build && npm run cover"
+    "build": "gulp scripts"
   },
   "Keywords": [],
   "preferGlobal": true,

@@ -16,7 +16,7 @@ export class Plugin {
     fetch(): PromiseLike<any> {
         return Bluebird.resolve();
     }
-    generate(): PromiseLike<string> {
+    generate(): PromiseLike<any> {
         return Bluebird.resolve('');
     }
     configure(): PromiseLike<any> {

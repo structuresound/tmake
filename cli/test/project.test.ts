@@ -12,19 +12,18 @@ import {
 import { Database } from '../src/db';
 
 describe('tmake', function () {
-
   this.timeout(120000);
 
   let googleNode: TMake.Project;
   let helloNode: TMake.Project;
 
   const testDb = new Database();
-  Runtime.init(testDb);
-  console.log('test db', Runtime.Db.projectNamed);
 
   before(() => {
-    const d = new Date();
-    const helloWorld = parseFileSync('../config/hello.yaml');
+    assert.ok(testDb.projectNamed);
+    Runtime.init(testDb);
+    assert.equal(args.runDir, path.join(__dirname, '../../test/cache'), 'test env');
+    const helloWorld = parseFileSync('test/config/hello.yaml');
     Runtime.registerPlugin(require(path.join(__dirname, '../../plugins/cmake/dist/cmake.js')).default);
     assert.equal('CMake', (<any>Runtime.getPlugin('cmake')).name);
     return graph(helloWorld)
@@ -54,12 +53,12 @@ describe('tmake', function () {
   });
 
   it('check: built libs got added to local cache', () => {
-    return list('cache', { name: googleNode.name })
-      .then((res) => {
-        const entry = res[0];
-        const msg = JSON.stringify(entry, [], 2);
+    return testDb.projectNamed(googleNode.name)
+      .then((entry) => {
+        assert.ok(entry.name);
+        const msg = JSON.stringify(entry);
         assert.equal(entry.name, googleNode.name, msg);
-        assert.equal(entry.version, 'release-1.7.0', msg);
+        assert.equal(entry.version, '1.7.0', msg);
         assert.ok(!entry.configure, msg);
         assert.ok(!entry.path, msg);
         return expect(entry.cache.libs)
@@ -90,7 +89,7 @@ describe('tmake', function () {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
         const filePath = fs.existsSync(
-          path.join(args.runDir, 'build', helloNode.environments[0].host.architecture, `${helloNode.name}`));
+          path.join(args.runDir, 'build', helloNode.environments[0].environment.host.architecture, `${helloNode.name}`));
         return expect(filePath).to.equal(true);
       });
     });

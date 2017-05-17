@@ -7,7 +7,7 @@ import { defaults } from './defaults';
 import { Project } from './project';
 import { Environment } from './environment';
 import { Plugin } from './plugin';
-
+import { Ninja } from './ninja';
 import { extend, clone, plain, stringify } from 'typed-json-transform';
 
 export const args = <TMake.Args>minimist(process.argv.slice(2));
@@ -25,16 +25,16 @@ if (process.env.NODE_ENV == 'test') {
   args.verbose = true;
   args.quiet = false;
   args.runDir = `${npmDir}/test/cache`
-  args.userCache = `${args.npmDir}/test/homedir`;
+  args.homeDir = `${npmDir}/test/homedir`;
 
   mkdir('-p', args.runDir);
-  mkdir('-p', args.userCache);
-  console.log('entering test dir: ', args.runDir);
-  process.chdir(args.runDir);
+  mkdir('-p', args.homeDir);
+  console.log('creating test dir: ', args.runDir);
+  // process.chdir(args.runDir);
 }
 
-if (!args.settingsDir) {
-  args.settingsDir = join(npmDir, 'settings');
+if (!args.npmDir) {
+  args.npmDir = npmDir;
 }
 if (!args.runDir) {
   args.runDir = process.cwd();
@@ -42,8 +42,8 @@ if (!args.runDir) {
 if (!args.configDir) {
   args.configDir = args.runDir;
 }
-if (!args.npmDir) {
-  args.npmDir = npmDir;
+if (!args.settingsDir) {
+  args.settingsDir = join(args.npmDir, 'settings');
 }
 if (!args.cachePath) {
   args.cachePath = 'trie_modules';
@@ -51,8 +51,8 @@ if (!args.cachePath) {
 if (!args.program) {
   args.program = 'tmake';
 }
-if (!args.userCache) {
-  args.userCache = `${homeDir()}/.tmake`;
+if (!args.homeDir) {
+  args.homeDir = `${homeDir()}/.tmake`;
 }
 if (args.v) {
   if (!args.verbose) {
@@ -87,12 +87,13 @@ export class Runtime {
   static pluginMap: { [index: string]: typeof Plugin } = {};
   static init(database: TMake.Database.Interface) {
     this.Db = database;
+    this.registerPlugin(Ninja);
   }
 
   static loadPlugins() {
-    const files = readdirSync(`${args.userCache}/plugins/`);
+    const files = readdirSync(`${args.homeDir}/plugins/`);
     files.forEach((file) => {
-      this.registerPlugin(require(`${args.userCache}/plugins/${file}`).default);
+      this.registerPlugin(require(`${args.homeDir}/plugins/${file}`).default);
     })
   }
 

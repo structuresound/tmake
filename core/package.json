@@ -21,11 +21,7 @@
   "main": "dist/index.js",
   "types": "interfaces/index.d.ts",
   "scripts": {
-    "build": "gulp scripts",
-    "test": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail",
-    "debug": "NODE_ENV=test ../node_modules/.bin/mocha --recursive --compilers ts:ts-node/register --bail --inspect=PORT --debug-brk",
-    "cover": "NODE_ENV=test ../node_modules/.bin/nyc --report-dir coverage npm t",
-    "travis": "npm run build && npm run cover"
+    "build": "gulp scripts"
   },
   "devDependencies": {
     "@types/form-data": "0.0.33",
@@ -55,26 +51,5 @@
     "request-promise": "^4.1.1",
     "which": "^1.2.11",
     "tmake-file": "^0.6.7"
-  },
-  "nyc": {
-    "include": [
-      "src/*.ts"
-    ],
-    "exclude": [
-      "**/*.d.ts",
-      "node_modules"
-    ],
-    "extension": [
-      ".ts"
-    ],
-    "require": [
-      "ts-node/register"
-    ],
-    "reporter": [
-      "json",
-      "html",
-      "lcov"
-    ],
-    "all": true
   }
 }

@@ -1,13 +1,16 @@
 import * as Bluebird from 'bluebird';
+import * as _ from 'lodash';
+import * as path from 'path';
 import { omit } from 'lodash';
 import { existsSync } from 'fs';
-import { arrayify, check, clone, combine, each, extend } from 'typed-json-transform';
+import { arrayify, check, clone, map, combine, each, extend } from 'typed-json-transform';
 import { log } from './log';
 import { startsWith } from './string';
 import { Tools } from './tools';
 import { execAsync } from './shell';
 import { args } from './runtime';
 import { Environment } from './environment';
+import { deps } from './graph';
 import { mkdir } from 'shelljs';
 import { Shell } from './shell';
 import { jsonStableHash, fileHash, fileHashSync } from './hash';
@@ -16,6 +19,7 @@ import { defaults } from './defaults';
 import { join, dirname } from 'path';
 import { errors, TMakeError } from './errors';
 import { Property as CacheProperty } from './cache';
+import { glob } from 'tmake-file';
 
 export function jsonToFrameworks(object: any) {
   const flags: string[] = [];
@@ -146,7 +150,29 @@ export class Compiler extends Shell {
   cxxFlags() { return jsonToCFlags(this.flags.cxx); }
   linkerFlags() { return jsonToFlags(this.flags.linker); }
   compilerFlags() { return jsonToFlags(this.flags.compiler, { join: ' ' }); }
-
+  sources() {
+    const { environment } = this;
+    const patterns = arrayify(this.options.matching || defaults.sources.glob);
+    return glob(patterns, environment.d.source, environment.project.d.source);
+  }
+  libraries(): PromiseLike<any> {
+    // return deps(this.environment.project)
+    // .then((depGraph) => {
+      console.log(this.environment.project.require.google);
+      const depGraph = this.environment.project.require
+      if (depGraph) {
+        const stack = _.map(depGraph, (dep: Project) => {
+          console.log('get libs from project', dep.cache.libs.value());
+          return _.map(dep.cache.libs.value(), (lib) => {
+            console.log('+', path.join(dep.d.home, lib));
+            return path.join(dep.d.home, lib);
+          })
+        })
+        return Bluebird.resolve(_.flatten(stack));
+      }
+      return Bluebird.resolve()
+    // });
+  }
   fetch() {
     if (this.options.toolchain) {
       return Tools.fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
@@ -154,7 +180,7 @@ export class Compiler extends Shell {
     return Bluebird.resolve();
   }
 
-  public configure() {
+  public configure(): PromiseLike<any> {
     this.ensureProjectFile();
     const buildFilePath = this.buildFilePath();
     const buildFileDir = dirname(buildFilePath);
@@ -181,7 +207,7 @@ export class Compiler extends Shell {
       });
     })
   }
-  public build() {
+  public build(): PromiseLike<any> {
     this.ensureBuildFile();
     return this.fetch().then((toolpaths: any) => {
       const command = this.buildCommand(this.toolpaths);
@@ -197,7 +223,7 @@ export class Compiler extends Shell {
       throw new Error(`no build command for shell plugin ${this.name}`);
     });
   }
-  public install() {
+  public install(): PromiseLike<any> {
     const installCommand = this.installCommand();
     if (installCommand) {
       const wd = dirname(this.buildFilePath());

@@ -17,9 +17,10 @@ describe('zip', () => {
     return nuke('test/results');
   });
   it('unzip', () => {
-    return unarchive('test/archives/hello.zip', 'test/tmp', 'test/results')
+    console.log(process.cwd());
+    return unarchive('test/archives/hello.zip', 'test/archives/tmp', 'test/archives/results')
       .then(() => {
-        const hello = readFileSync('test/results/hello', 'utf8');
+        const hello = readFileSync('test/archives/results/hello', 'utf8');
         return expect(hello)
           .to
           .equal('hello world\n');

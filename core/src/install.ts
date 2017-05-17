@@ -1,6 +1,6 @@
 import * as Bluebird from 'bluebird';
 import * as path from 'path';
-import { contains, flatten, each } from 'typed-json-transform';
+import { setValueForKeyPath, contains, flatten, each } from 'typed-json-transform';
 import * as fs from 'fs';
 
 import { defaults } from './defaults';
@@ -8,10 +8,9 @@ import { src, map, dest, wait, symlink } from 'tmake-file';
 import { log } from './log';
 import { args } from './runtime';
 import { mv, mkdir } from 'shelljs';
-import { stringHash, fileHash } from './hash';
+import { stringHash, fileHashSync } from './hash';
 import { Runtime } from './runtime';
-import { startsWith } from './string';
-
+import { replaceAll, startsWith } from './string';
 import { Environment } from './environment';
 
 function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLike<string[]> {
@@ -119,14 +118,17 @@ function libs(env: Environment): PromiseLike<any> {
       if (!libPaths.length) {
         return Bluebird.resolve();
       }
-      return Bluebird.each(flatten(libPaths), (libPath) => {
-        fileHash(path.join(env.project.d.home, libPath));
-      }).then((hash) => {
-        return Runtime.Db.updateProject(env.project, {
-          $set: {
-            'cache.libs': flatten(libPaths)
-          }
-        });
+      const checksums: any = {};
+      const libs = flatten(libPaths);
+      env.project.cache.libs.set(libs)
+      each(libs, (lib) => {
+        checksums[stringHash(path.basename(lib))] = fileHashSync(path.join(env.project.d.home, lib));
+      });
+      return Runtime.Db.updateProject(env.project, {
+        $set: {
+          'cache.checksums': checksums,
+          'cache.libs': libs
+        }
       });
     });
   }

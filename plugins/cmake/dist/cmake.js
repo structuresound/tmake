@@ -16,8 +16,6 @@ var Bluebird = require("bluebird");
 var path = require("path");
 var typed_json_transform_1 = require("typed-json-transform");
 var tmake_core_1 = require("tmake-core");
-var tmake_core_2 = require("tmake-core");
-var tmake_core_3 = require("tmake-core");
 function quotedList(array) {
     return typed_json_transform_1.map(array, function (el) {
         return "\"" + el + "\"";
@@ -56,7 +54,7 @@ var CMake = (function (_super) {
     };
     CMake.prototype.fetch = function () {
         var _this = this;
-        return tmake_core_2.Tools.fetch(this.options.toolchain || this.environment.tools).then(function (toolpaths) { return _this.toolpaths = toolpaths; });
+        return tmake_core_1.Tools.fetch(this.options.toolchain || this.environment.tools).then(function (toolpaths) { return _this.toolpaths = toolpaths; });
     };
     CMake.prototype.generate = function () {
         var _this = this;
@@ -116,6 +114,6 @@ var CMake = (function (_super) {
             link());
     };
     return CMake;
-}(tmake_core_3.Compiler));
+}(tmake_core_1.Compiler));
 exports.CMake = CMake;
 exports.default = CMake;

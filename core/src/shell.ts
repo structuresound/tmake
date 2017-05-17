@@ -45,7 +45,11 @@ function truncate(s) {
 
 export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.Exec.Options = {}) {
   return new Bluebird<string>((resolve: Function, reject: Function) => {
-    if (cwd) cd(cwd);
+    let revert;
+    if (cwd) {
+      revert = process.cwd();
+      cd(cwd);
+    }
     const _silent = silent || !args.verbose
     var spinner = new Spinner(`%s ${short || truncate(command)}`);
     if (_silent) {
@@ -55,6 +59,9 @@ export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.E
     _exec(command, {
       silent: _silent
     }, <ExecCallback>(code: number, output: string, error: string) => {
+      if (revert){
+        cd(revert);
+      }
       if (_silent) {
         spinner.stop(true)
       }

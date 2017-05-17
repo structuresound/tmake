@@ -38,6 +38,7 @@ export class Database implements TMake.Database.Interface {
   }
 
   insertProject(project: TMake.Project.Cache.File) {
+    console.log('insert project', project);
     return this.collections.project.update({ name: project.name }, { $set: project }, { upsert: true });
   }
   projectNamed(name: string): PromiseLike<TMake.Project> {
@@ -46,8 +47,9 @@ export class Database implements TMake.Database.Interface {
   findProjects(query: string) {
     return this.collections.project.find({ name: name });
   }
-  updateProject(node: TMake.Project, modifier: Mongo.Modifier) {
-    return this.collections.project.update({ name: node.name }, modifier, { upsert: true });
+  updateProject(project: TMake.Project, modifier: Mongo.Modifier) {
+    console.log('update project', modifier);
+    return this.collections.project.update({ name: project.name }, modifier);
   }
   removeProject(name: string, version?: string) {
     if (version) {
@@ -61,7 +63,8 @@ export class Database implements TMake.Database.Interface {
   cacheEnvironment(doc: TMake.Environment.Cache.File) {
     return this.loadEnvironment(doc._id).then((res) => {
       if (res) {
-        return this.collections.environment.update(doc._id, { $set: doc }, { upsert: true }).then(() => Bluebird.resolve(res._id));
+        return this.collections.environment.update({ _id: res._id }, { $set: doc })
+          .then(() => Bluebird.resolve(res._id));
       }
       return this.collections.environment.insert(doc);
     })

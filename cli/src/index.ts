@@ -6,7 +6,6 @@ import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
-import { onPossiblyUnhandledRejection } from 'bluebird';
 import { check, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
 import { log, execute, list, unlink, push, Runtime, args } from 'tmake-core';
@@ -21,8 +20,6 @@ import {
 } from 'tmake-file';
 
 const name = 'tmake';
-
-onPossiblyUnhandledRejection(function (error) { throw error; });
 
 export function sortKeysBy(obj: any, comparator?: Function) {
   const keys = _.sortBy(_.keys(obj), (key) => {

@@ -14,14 +14,12 @@ var _ = require("lodash");
 var colors = require("chalk");
 var path = require("path");
 var yaml = require("js-yaml");
-var bluebird_1 = require("bluebird");
 var typed_json_transform_1 = require("typed-json-transform");
 var tmake_core_1 = require("tmake-core");
 var db_1 = require("./db");
 var example_1 = require("./example");
 var tmake_file_1 = require("tmake-file");
 var name = 'tmake';
-bluebird_1.onPossiblyUnhandledRejection(function (error) { throw error; });
 function sortKeysBy(obj, comparator) {
     var keys = _.sortBy(_.keys(obj), function (key) {
         if (comparator) {
@@ -137,8 +135,8 @@ function createPackage() {
 exports.createPackage = createPackage;
 function tmake(rootConfig, positionalArgs, projectName) {
     if (positionalArgs === void 0) { positionalArgs = tmake_core_1.args._; }
-    var Db = new db_1.Database(tmake_core_1.args);
-    tmake_core_1.Runtime.setDb(Db);
+    var Db = new db_1.Database();
+    tmake_core_1.Runtime.init(Db);
     if (!projectName) {
         projectName = positionalArgs[1] || rootConfig.name;
     }

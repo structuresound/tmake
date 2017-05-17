@@ -12,6 +12,7 @@ import { Git } from './git';
 import { Property as CacheProperty } from './cache';
 import { Environment } from './environment';
 import { errors } from './errors';
+import { semverRegex } from './lib';
 
 export const metaDataKeys = ['name', 'user', 'path'];
 export const sourceKeys = ['git', 'archive', 'version'];
@@ -221,6 +222,18 @@ export class Project implements TMake.Project.File {
     if (!this.name) {
       this.name = resolveName(projectFile);
     }
+    // LAZY Defaults
+    if (!this.version) {
+      const version = resolveVersion(this);
+      if (semverRegex().test(version)) {
+        this.version = semverRegex().exec(version)[0];
+      } else {
+        this.version = version;
+      }
+    }
+    if (!this.user) {
+      this.user = 'local';
+    }
 
     this.p = getProjectPaths(this);
     this.d = getProjectDirs(this, parent);
@@ -249,13 +262,6 @@ export class Project implements TMake.Project.File {
           }
         }
       }
-    }
-    // LAZY Defaults
-    if (!this.version) {
-      this.version = resolveVersion(this);
-    }
-    if (!this.user) {
-      this.user = 'local';
     }
     /* CACHE */
     const fetch = new CacheProperty(() => stringHash(this.url()));
@@ -299,6 +305,7 @@ export class Project implements TMake.Project.File {
     const ret = <TMake.Project.File>_.pick(this,
       ['name', 'libs', 'version']);
     ret.cache = {};
+    ret.hash = this.hash();
     for (const k of Object.keys(this.cache)) {
       const v = this.cache[k].value();
       if (v) {

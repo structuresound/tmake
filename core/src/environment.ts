@@ -318,9 +318,6 @@ export class Environment implements TMake.Toolchain {
         this[key] = val;
         this.environment[key] = clone(val);
     }
-    globArray(val: any) {
-        return map(arrayify(val), (v) => { return parse(v, this); });
-    }
     j() { return this.host.cpu.num; }
     hash(): string {
         const buildSettings = _.pick(this.environment, ['host', 'target', 'generate', 'build', 'configure']);

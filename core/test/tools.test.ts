@@ -18,7 +18,7 @@ describe('tools', function () {
       .equal('ninja');
     expect(hostChain.ninja.bin)
       .to
-      .equal(path.join(args.userCache, 'toolchain/ninja', '9d0c46a1ff1ad7dea95b0814e6919d84', 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain/ninja', '9d0c46a1ff1ad7dea95b0814e6919d84', 'ninja'));
     return expect(hostChain.ninja.url)
       .to
       .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${env.environment.host.platform}.zip`);
@@ -35,7 +35,7 @@ describe('tools', function () {
 
   it('cached the zip to the right location', () => {
     const hash = stringHash(hostChain.ninja.url);
-    const cachePath = path.join(args.userCache, 'cache', hash);
+    const cachePath = path.join(args.homeDir, 'cache', hash);
     return expect(fs.existsSync(cachePath))
       .to
       .equal(true);
@@ -46,7 +46,7 @@ describe('tools', function () {
     const hash = stringHash(hostChain.ninja.url);
     expect(ninjaPath)
       .to
-      .equal(path.join(args.userCache, 'toolchain', 'ninja', hash, 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain', 'ninja', hash, 'ninja'));
     return expect(fs.existsSync(ninjaPath))
       .to
       .equal(true);

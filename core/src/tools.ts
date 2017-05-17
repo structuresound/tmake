@@ -60,23 +60,23 @@ export namespace Tools {
       throw new Error(`tool needs a resolved url, ${tool.name}`);
     }
     const hash = stringHash(tool.url);
-    return path.join(args.userCache, 'toolchain', tool.name, hash, tool.bin);
+    return path.join(args.homeDir, 'toolchain', tool.name, hash, tool.bin);
   }
 
   function sanityCheck() {
-    if (!args.userCache) {
-      throw new Error('no userCache specified');
+    if (!args.homeDir) {
+      throw new Error('no homeDir specified');
     }
   }
 
   function fetchAndUnarchive(tool: any) {
     sanityCheck();
-    const rootDir = path.join(args.userCache, 'toolchain', tool.name);
+    const rootDir = path.join(args.homeDir, 'toolchain', tool.name);
     mkdir('-p', rootDir);
-    const tempDir = path.join(args.userCache, 'temp', stringHash(tool.url));
+    const tempDir = path.join(args.homeDir, 'temp', stringHash(tool.url));
     const toolpath = pathForTool(tool);
     return Fetch.download(tool.url).then((archivePath) => {
-      const tooldir = path.join(args.userCache, 'toolchain', tool.name, stringHash(tool.url));
+      const tooldir = path.join(args.homeDir, 'toolchain', tool.name, stringHash(tool.url));
       return file.unarchive(archivePath, tempDir, tooldir, toolpath);
     });
   }
