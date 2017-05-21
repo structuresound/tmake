@@ -1,3 +1,5 @@
+/// <reference types="tmake-core" />
+
 declare namespace TMake.Plugin {
   class CMake extends TMake.Plugin.Compiler {
     options: TMake.Plugin.CMake.Options;
