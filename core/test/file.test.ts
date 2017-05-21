@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import * as path from 'path';
 import { check } from 'typed-json-transform';
-import * as file from '../src/index';
+import {parseFileAsync} from '../src';
 
 interface YamlConfig {
   git: any
@@ -12,8 +12,7 @@ interface YamlConfig {
 
 describe('file', () => {
   it('can parse a yaml file', () => {
-    return file
-      .parseFileAsync('test/config/libbson.yaml')
+    return parseFileAsync('test/config/libbson.yaml')
       .then((_config) => {
         let config = <YamlConfig><any>_config;
         if (check(config, Error)) {

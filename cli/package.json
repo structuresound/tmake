@@ -23,13 +23,10 @@
     "npm": ">= 3"
   },
   "scripts": {
-    "build": "gulp scripts"
+    "build": "NODE_ENV='production' webpack --config=webpack/cli.js"
   },
   "Keywords": [],
   "preferGlobal": true,
-  "bin": {
-    "tmake": "bin/tmake.js"
-  },
   "devDependencies": {
     "@types/minimist": "^1.2.0",
     "@types/progress": "^1.1.28",
@@ -43,7 +40,6 @@
     "progress": "^1.1.8",
     "progress-stream": "^1.2.0",
     "which": "^1.2.11",
-    "tmake-core": "0.6.1",
-    "tmake-file": "0.6.3"
+    "tmake-core": "0.6.1"
   }
 }

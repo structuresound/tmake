@@ -2,11 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
-import { parseFileSync, nuke } from 'tmake-file';
 
 import {
   ProjectRunner, list, findAndClean,
-  Runtime, execAsync, graph, loadCache, args
+  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke 
 } from 'tmake-core';
 
 import { Database } from '../src/db';

@@ -17,7 +17,7 @@ import {
   src, dest, nuke,
   readConfigAsync, findConfigAsync,
   writeFileAsync, parseFileSync
-} from 'tmake-file';
+} from 'tmake-core';
 
 const name = 'tmake';
 
@@ -83,7 +83,7 @@ export function globalCommands(): GlobalCommands {
     reset: { description: 'nuke the cache' },
     nuke: { description: 'nuke the cache' },
 
-    init: { description: 'create new tmake project file @ config.cson' },
+    init: { description: 'create new tmake project file @ tmake.yaml' },
     help: { description: 'usage guide' },
     report: { description: 'show details of an error report' },
     version: { description: `get current version of ${name}` }

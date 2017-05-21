@@ -5,6 +5,7 @@ export * from './compiler';
 export * from './interpolate';
 export * from './environment';
 export * from './fetch';
+export * from './file';
 export * from './hash';
 export * from './log';
 export * from './main';

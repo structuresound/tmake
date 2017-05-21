@@ -1,6 +1,6 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import * as file from 'tmake-file';
+import * as file from './file';
 import { combine, check, Graph, OLHM, extend } from 'typed-json-transform';
 import { log } from './log';
 import { errors } from './errors';

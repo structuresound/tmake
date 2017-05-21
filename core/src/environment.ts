@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { cascade, check, clone, contains, map, arrayify, combine, combineN, extend, plain as toJSON, OLHM } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
-import { parseFileSync } from 'tmake-file';
+import { parseFileSync } from './file';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
 import { iterable } from './iterate';
 import { Phase } from './phase';

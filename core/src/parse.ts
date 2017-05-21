@@ -8,7 +8,7 @@ import { replaceAll, startsWith } from './string';
 import { log } from './log';
 import { exec } from './shell';
 import { interpolate } from './interpolate';
-import * as file from 'tmake-file';
+import * as file from './file';
 import { args } from './runtime';
 import { endsWith } from './string';
 

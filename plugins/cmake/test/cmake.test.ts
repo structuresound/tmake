@@ -3,11 +3,9 @@ import { mkdir } from 'shelljs';
 import * as path from 'path';
 import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
-import { parseFileSync, nuke } from 'tmake-file';
-
 import {
   ProjectRunner, list, findAndClean,
-  Runtime, execAsync, graph, loadCache, args
+  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke
 } from '../../../core/src';
 
 const helloWorld = parseFileSync('../config/hello.yaml');

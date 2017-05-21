@@ -1,26 +1,49 @@
 {
   "name": "tmake",
-  "description": "meta/dev package",
-  "version": "0.0.1",
+  "description": "trieMake can fetch, build, and manage c++ dependencies",
+  "version": "0.6.5",
+  "homepage": "https://github.com/structuresound/tmake",
+  "author": {
+    "name": "Leif Shackelford",
+    "email": "structuresound@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/structuresound/tmake.git"
+  },
+  "bugs": {
+    "url": "https://github.com/structuresound/tmake/issues"
+  },
+  "licenses": [{
+    "type": "MIT",
+    "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+  }],
+  "bin": "bin/tmake.js",
+  "preferGlobal": true,
   "scripts": {
     "clean-cli": "cd cli && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
     "clean-plugins": "cd plugins/cmake && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
-    "build-file": "cd file && rm -Rf node_modules yarn.lock && yarn && npm run build",
-    "build-core": "cd core && rm -Rf node_modules yarn.lock && yarn && npm run build",
+    "build-core": "cd core && rm -Rf node_modules yarn.lock && yarn && npm run build && npm link",
     "build-cli": "npm run clean-cli && cd cli && npm run build",
     "build-plugins": "npm run clean-plugins && cd plugins/cmake && npm run build",
-    "build": "npm run build-file && npm run build-core && npm run build-plugins && npm run build-cli",
+    "build": "npm run build-core && npm run build-plugins && npm run build-cli && yarn",
     "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail",
     "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
     "travis": "npm run build && npm run cover"
   },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",
+    "@types/bluebird": "^3.0.37",
     "@types/chai": "^3.4.34",
     "@types/chalk": "^0.4.31",
+    "@types/js-yaml": "^3.5.29",
+    "@types/lodash": "^4.14.52",
     "@types/mocha": "^2.2.32",
     "@types/node": "^7.0.18",
+    "@types/shelljs": "^0.6.0",
+    "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.0",
+    "babel-loader": "^6.2.10",
     "babel-preset-es2015": "^6.18.0",
     "chai": "^3.5.0",
     "coveralls": "^2.11.15",
@@ -39,21 +62,23 @@
     "gulp-typescript": "^3.1.6",
     "mocha": "^3.2.0",
     "nyc": "^8.4.0",
+    "ts-loader": "^2.0.0",
     "ts-node": "^1.6.1",
     "tslint": "^4.3.1",
     "tslint-microsoft-contrib": "^4.0.0",
     "typescript": "^2.3.2",
-    "@types/lodash": "^4.14.52",
-    "@types/bluebird": "^3.0.37",
-    "@types/js-yaml": "^3.5.29",
-    "@types/shelljs": "^0.6.0"
-  },
-  "dependencies": {
+    "webpack": "^2.2.0",
+    "bluebird": "^3.0.5",
+    "js-yaml": "^3.6.1",
+    "lodash": "^4.3.0",
     "shelljs": "^0.7.7",
     "typed-json-transform": "^0.16.3",
-    "bluebird": "^3.0.5",
-    "lodash": "^4.3.0",
-    "js-yaml": "^3.6.1"
+    "webpack-node-externals": "^1.6.0"
+  },
+  "dependencies": {
+    "read-chunk": "^2.0.0",
+    "lzma-native": "^2.0.1",
+    "unzip": "^0.1.11"
   },
   "nyc": {
     "include": [

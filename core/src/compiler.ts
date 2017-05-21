@@ -19,7 +19,7 @@ import { defaults } from './defaults';
 import { join, dirname } from 'path';
 import { errors, TMakeError } from './errors';
 import { Property as CacheProperty } from './cache';
-import { glob } from 'tmake-file';
+import { glob } from './file';
 
 export function jsonToFrameworks(object: any) {
   const flags: string[] = [];

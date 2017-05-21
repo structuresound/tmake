@@ -3,7 +3,7 @@ import * as Bluebird from 'bluebird';
 import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
-import * as file from 'tmake-file';
+import * as file from './file';
 import { contains, plain as toJSON } from 'typed-json-transform';
 
 import { args, Args } from './runtime';

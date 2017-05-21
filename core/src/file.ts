@@ -4,7 +4,6 @@ import * as sh from 'shelljs';
 import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as CSON from 'cson';
 import map = require('map-stream');
 import globAll = require('glob-all');
 import { check } from 'typed-json-transform';
@@ -164,7 +163,7 @@ export function findOneAsync(srcPattern: string[], relative: string,
 
 
 export function getConfigPath(configDir: string): string {
-  const exts = ['yaml', 'json', 'cson'];
+  const exts = ['yaml', 'json'];
   for (const ext of exts) {
     const filePath = `${configDir}/${defaultConfig}.${ext}`;
     if (fs.existsSync(filePath)) {
@@ -202,8 +201,6 @@ export function parseFileSync(configPath: string) {
 
 export function parseData(data: string, configPath: string): any {
   switch (path.extname(configPath)) {
-    case '.cson':
-      return CSON.parse(data);
     case '.json':
       return JSON.parse(data);
     case '.yaml':

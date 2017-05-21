@@ -4,7 +4,7 @@ import { setValueForKeyPath, contains, flatten, each } from 'typed-json-transfor
 import * as fs from 'fs';
 
 import { defaults } from './defaults';
-import { src, map, dest, wait, symlink } from 'tmake-file';
+import { src, map, dest, wait, symlink } from './file';
 import { log } from './log';
 import { args } from './runtime';
 import { mv, mkdir } from 'shelljs';

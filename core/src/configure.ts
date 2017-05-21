@@ -3,7 +3,7 @@ import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';
 
 
-import * as file from 'tmake-file';
+import * as file from './file';
 import { execAsync, ensureCommand } from './shell';
 import { log } from './log';
 import { deps } from './graph';

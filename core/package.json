@@ -33,7 +33,13 @@
     "base62": "^1.1.2",
     "coveralls": "^2.11.15",
     "dts-generator": "^2.1.0",
-    "nodemon": "^1.11.0"
+    "nodemon": "^1.11.0",
+    "@types/file-type": "0.0.1",
+    "@types/glob": "^5.0.30",
+    "@types/glob-stream": "^3.1.30",
+    "@types/progress": "^1.1.28",
+    "@types/vinyl": "^2.0.0",
+    "@types/vinyl-fs": "0.0.28"
   },
   "Keywords": [],
   "dependencies": {
@@ -50,6 +56,17 @@
     "request-progress": "^3.0.0",
     "request-promise": "^4.1.1",
     "which": "^1.2.11",
-    "tmake-file": "^0.6.7"
+    "tar-fs": "^1.13.0",
+    "gunzip-maybe": "^1.3.1",
+    "lzma-native": "^2.0.1",
+    "unbzip2-stream": "^1.0.10",
+    "unzip": "^0.1.11",
+    "through": "^2.3.8",
+    "file-type": "^3.9.0",
+    "glob-all": "^3.0.1",
+    "progress": "^1.1.8",
+    "progress-stream": "^1.2.0",
+    "read-chunk": "^2.0.0",
+    "vinyl-fs": "^2.3.1"
   }
 }

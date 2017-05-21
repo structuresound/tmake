@@ -4,10 +4,9 @@ import { check } from 'typed-json-transform';
 
 import { graph } from '../src/graph';
 import { resolveName } from '../src/project';
-import * as file from 'tmake-file';
 import * as Bluebird from 'bluebird';
 
-import {args, Runtime} from '../src';
+import {args, Runtime, parseFileSync} from '../src';
 
 const MockDb = {
   projectNamed(){
@@ -19,7 +18,7 @@ const MockDb = {
 }
 Runtime.init(<any>MockDb);
 
-const helloWorld = file.parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
+const helloWorld = parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
 describe('graph', () => {
   let modules;
   let rootModule;

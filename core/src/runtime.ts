@@ -91,10 +91,18 @@ export class Runtime {
   }
 
   static loadPlugins() {
-    const files = readdirSync(`${args.homeDir}/plugins/`);
-    files.forEach((file) => {
-      this.registerPlugin(require(`${args.homeDir}/plugins/${file}`).default);
-    })
+    try {
+      const files = readdirSync(`${args.homeDir}/plugins/`);
+      files.forEach((file) => {
+        try {
+          this.registerPlugin(require(`${args.homeDir}/plugins/${file}`).default);
+        } catch (error) {
+          console.log("skipping bad plugin @ ", file);
+        }
+      })
+    } catch (error) {
+      console.log("bad or missing plugins folder, using internals only");
+    }
   }
 
   static registerPlugin(plugin: typeof Plugin) {

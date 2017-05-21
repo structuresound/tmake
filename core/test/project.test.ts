@@ -1,12 +1,9 @@
 import * as fs from 'fs';
-import { parseFileSync, nuke } from 'tmake-file';
-
 import * as path from 'path';
 import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
-import { parseFileAsync } from 'tmake-file';
 
-import { args, Project } from '../src';
+import { args, Project, parseFileAsync, nuke } from '../src';
 
 describe('project', () => {
   let project: TMake.Project;
