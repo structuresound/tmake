@@ -26,7 +26,7 @@
     "build-core": "cd core && rm -Rf node_modules && yarn && npm run build && npm link",
     "build-cli": "npm run clean-cli && cd cli && npm run build",
     "build-plugins": "npm run clean-plugins && cd plugins/cmake && npm run build",
-    "build": "npm run build-core && npm run build-plugins && npm run build-linter && npm run build-cli",
+    "build": "npm run build-core && npm run build-plugins && npm run build-cli",
     "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail",
     "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
     "dist": "rm -Rf node_modules && yarn --production",
