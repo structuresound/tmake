@@ -23,7 +23,7 @@
   "main": "dist/index.js",
   "types": "src/cmake.d.ts",
   "scripts": {
-    "build": "gulp scripts",
+    "build": "npm link tmake-core && gulp scripts",
     "install": "npm run build && cp dist/cmake.js ~/.tmake/plugins"
   },
   "peerDependencies": {

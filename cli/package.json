@@ -23,7 +23,7 @@
     "npm": ">= 3"
   },
   "scripts": {
-    "build": "NODE_ENV='production' webpack --config=webpack/cli.js"
+    "build": "npm link tmake-core && NODE_ENV='production' webpack --config=webpack/cli.js"
   },
   "Keywords": [],
   "preferGlobal": true,

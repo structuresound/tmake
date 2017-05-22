@@ -21,15 +21,19 @@
   "bin": "bin/tmake.js",
   "preferGlobal": true,
   "scripts": {
-    "clean-cli": "cd cli && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
-    "clean-plugins": "cd plugins/cmake && rm -Rf node_modules yarn.lock && yarn && cd node_modules && npm link tmake-core",
-    "build-core": "cd core && rm -Rf node_modules yarn.lock && yarn && npm run build && npm link",
+    "clean-cli": "cd cli && rm -Rf node_modules && yarn",
+    "clean-plugins": "cd plugins/cmake && rm -Rf node_modules",
+    "build-core": "cd core && rm -Rf node_modules && yarn && npm run build && npm link",
+    "build-linter-cli": "cd linter/client && yarn && npm run compile",
+    "build-linter-server": "cd linter/server && yarn && npm run compile",
+    "build-linter": "npm run build-linter-server && npm run build-linter-cli",
     "build-cli": "npm run clean-cli && cd cli && npm run build",
     "build-plugins": "npm run clean-plugins && cd plugins/cmake && npm run build",
-    "build": "npm run build-core && npm run build-plugins && npm run build-cli && yarn",
+    "build": "npm run build-core && npm run build-plugins && npm run build-linter && npm run build-cli",
     "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail",
     "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
-    "travis": "npm run build && npm run cover"
+    "dist": "rm -Rf node_modules && yarn --production",
+    "travis": "npm run build && npm run cover && npm run dist"
   },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",
@@ -77,7 +81,7 @@
   },
   "dependencies": {
     "read-chunk": "^2.0.0",
-    "lzma-native": "^2.0.1",
+    "lzma-native": "^2.0.2",
     "unzip": "^0.1.11"
   },
   "nyc": {

@@ -9,7 +9,6 @@ import bz2 = require('unbzip2-stream');
 import * as readChunk from 'read-chunk';
 import fileType = require('file-type');
 import pstream = require('progress-stream');
-// import { unxz } from './lzma-stream';
 import { createDecompressor as unxz } from 'lzma-native';
 
 // const packageJson = {
