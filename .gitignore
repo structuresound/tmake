@@ -5,3 +5,4 @@ coverage
 .istanbul.yml
 .nyc_output
 .vscode
+.tmake
