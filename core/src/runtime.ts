@@ -106,19 +106,20 @@ export class Runtime {
   }
 
   static registerPlugin(plugin: typeof Plugin) {
+    const { name } = (<any>plugin);
     let instance: Plugin;
     try {
-      const ctx = new Project({ name: 'null' }).environments[0];
+      const ctx = new Project({ name }).environments[0];
       instance = new plugin(ctx);
     }
     catch (e) {
-      console.error(`error creating instance of plugin while registering it`);
+      console.error(`error creating instance of plugin: ${name} while registering it`);
       throw (e);
     }
     if (!this.pluginMap[instance.name]) {
       this.pluginMap[instance.name] = plugin;
     } else {
-      throw new Error(`plugin ${instance.name} was already registered, are you trying to override a built in plugin?`);
+      throw new Error(`plugin ${name} was already registered, are you trying to override a built in plugin?`);
     }
   }
 

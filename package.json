@@ -1,11 +1,15 @@
 {
   "name": "tmake",
-  "description": "trieMake can fetch, build, and manage c++ dependencies",
+  "description": "",
   "version": "0.6.5",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "Leif Shackelford",
     "email": "structuresound@gmail.com"
+  },
+  "engines": {
+    "node": ">= 6.0.0",
+    "npm": ">= 3"
   },
   "repository": {
     "type": "git",
@@ -18,7 +22,7 @@
     "type": "MIT",
     "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
   }],
-  "bin": "bin/tmake.js",
+  "bin": "cli/bin/tmake.js",
   "preferGlobal": true,
   "scripts": {
     "clean-cli": "cd cli && rm -Rf node_modules && yarn",
@@ -29,8 +33,7 @@
     "build": "npm run build-core && npm run build-plugins && npm run build-cli",
     "test": "NODE_ENV=test mocha */*/*.test.ts --recursive --compilers ts:ts-node/register --bail",
     "cover": "NODE_ENV=test nyc --report-dir coverage npm t",
-    "dist": "rm -Rf node_modules && yarn --production",
-    "travis": "npm run build && npm run cover && npm run dist"
+    "travis": "npm run build && npm run cover"
   },
   "devDependencies": {
     "@ssense/tslint-config": "^4.0.0",

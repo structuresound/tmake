@@ -1,7 +1,7 @@
 {
-  "name": "tmake",
-  "description": "trieMake can fetch, build, and manage c++ dependencies",
-  "version": "0.6.0",
+  "name": "tmake-cli",
+  "description": "command line tool for building with tmake",
+  "version": "0.6.5",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
     "name": "Leif Shackelford",
@@ -18,21 +18,17 @@
     "type": "MIT",
     "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
   }],
-  "engines": {
-    "node": ">= 6.0.0",
-    "npm": ">= 3"
-  },
+  "bin": "bin/dev.js",
   "scripts": {
-    "build": "npm link tmake-core && NODE_ENV='production' webpack --config=webpack/cli.js"
+    "build": "npm link tmake-core && NODE_ENV='production' webpack --config=webpack/cli.js",
+    "watch": "gulp watch"
   },
   "Keywords": [],
   "preferGlobal": true,
   "devDependencies": {
     "@types/minimist": "^1.2.0",
     "@types/progress": "^1.1.28",
-    "@types/which": "^1.0.28"
-  },
-  "dependencies": {
+    "@types/which": "^1.0.28",
     "chalk": "^1.1.1",
     "cli-spinner": "^0.2.6",
     "minimist": "^1.2.0",
@@ -40,6 +36,6 @@
     "progress": "^1.1.8",
     "progress-stream": "^1.2.0",
     "which": "^1.2.11",
-    "tmake-core": "0.6.1"
+    "tmake-core": "0.6.3"
   }
 }

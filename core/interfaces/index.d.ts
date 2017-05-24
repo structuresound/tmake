@@ -9,6 +9,7 @@
 
 export * from "tmake-core/compiler";
 export * from "tmake-core/environment";
+export * from "tmake-core/error";
 export * from "tmake-core/fetch";
 export * from "tmake-core/file";
 export * from "tmake-core/log";

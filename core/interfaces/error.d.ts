@@ -1,10 +1,13 @@
 /// <reference path="project.d.ts" />
 
-declare class TMakeError extends Error {
-  reason: Error
-  constructor(message: string, reason?: Error);
-  postMortem();
+declare module 'tmake-core/error' {
+  class TMakeError extends Error {
+    reason: Error
+    constructor(message: string, reason?: Error);
+    postMortem();
+  }
 }
+
 
 declare namespace TMake {
   interface Report {
@@ -38,5 +41,5 @@ declare namespace TMake {
     }
   }
 
-const errors: TMake.Error.Helper;
+  const errors: TMake.Error.Helper;
 }

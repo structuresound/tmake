@@ -97,22 +97,6 @@ function resolveVersion(conf: Project) {
   }
 }
 
-export function resolveName(conf: TMake.Project.File | Project, fallback?: string): string {
-  if (check(conf, String)) {
-    return new Git(<string><any>conf).name();
-  }
-  if (check(conf.name, String)) {
-    return conf.name;
-  }
-  if (conf.git) {
-    return new Git(conf.git).name();
-  }
-  if (fallback) {
-    return fallback;
-  }
-  log.throw('resolveName() failed on module', conf);
-}
-
 function mergeNodes(a: Project, b: any) {
   if (!a || !b) return;
   for (const k of Object.keys(b)) {
@@ -125,7 +109,7 @@ function mergeNodes(a: Project, b: any) {
       const v = b.cache[k]
       if (v) {
         log.dev('cache -->', k, ':', v);
-        a.cache[k].set(v);
+        a.cache[k] && a.cache[k].set(v);
       }
     }
   }
@@ -220,7 +204,7 @@ export class Project implements TMake.Project.File {
     extend(this, ephemeralFields);
 
     if (!this.name) {
-      this.name = resolveName(projectFile);
+      this.name = Project.resolveName(projectFile);
     }
     // LAZY Defaults
     if (!this.version) {
@@ -325,4 +309,22 @@ export class Project implements TMake.Project.File {
   hash() {
     return jsonStableHash(this.toRegistry());
   }
+}
+
+export namespace Project {
+  export function resolveName(conf: TMake.Project.File | Project, fallback?: string): string {
+  if (check(conf, String)) {
+    return new Git(<string><any>conf).name();
+  }
+  if (check(conf.name, String)) {
+    return conf.name;
+  }
+  if (conf.git) {
+    return new Git(conf.git).name();
+  }
+  if (fallback) {
+    return fallback;
+  }
+  log.throw('resolveName() failed on module', conf);
+}
 }

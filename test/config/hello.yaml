@@ -3,7 +3,7 @@ git: structuresound/hello
 generate:
   ninja:
     matching:
-    - '**/*.c'
+    - '**/*.cpp'
 build: ninja
 outputType: executable
 require:

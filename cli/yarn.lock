@@ -157,7 +157,7 @@ block-stream@*:
   dependencies:
     inherits "~2.0.0"
 
-bluebird@^3.0.5, bluebird@^3.5.0:
+bluebird@^3.5.0:
   version "3.5.0"
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.0.tgz#791420d7f551eea2897453a8a77653f96606d67c"
 
@@ -354,10 +354,6 @@ delayed-stream@~1.0.0:
 delegates@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/delegates/-/delegates-1.0.0.tgz#84c6e159b81904fdca59a0ef44cd870d31250f9a"
-
-dependency-graph@^0.4.1:
-  version "0.4.1"
-  resolved "https://registry.yarnpkg.com/dependency-graph/-/dependency-graph-0.4.1.tgz#302e58218d85c51a97638730dbf9b7d852a19693"
 
 duplexify@^3.1.2, duplexify@^3.2.0, duplexify@^3.5.0:
   version "3.5.0"
@@ -625,7 +621,7 @@ glob@^5.0.3:
     once "^1.3.0"
     path-is-absolute "^1.0.0"
 
-glob@^7.0.0, glob@^7.0.5:
+glob@^7.0.5:
   version "7.1.2"
   resolved "https://registry.yarnpkg.com/glob/-/glob-7.1.2.tgz#c19c9df9a028702d678612384a6552404c636d15"
   dependencies:
@@ -744,10 +740,6 @@ inline-process-browser@^1.0.0:
   dependencies:
     falafel "^1.0.1"
     through2 "^0.6.5"
-
-interpret@^1.0.0:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/interpret/-/interpret-1.0.3.tgz#cbc35c62eeee73f19ab7b10a801511401afc0f90"
 
 is-buffer@^1.1.5:
   version "1.1.5"
@@ -936,11 +928,11 @@ lodash.isequal@^4.0.0:
   version "4.5.0"
   resolved "https://registry.yarnpkg.com/lodash.isequal/-/lodash.isequal-4.5.0.tgz#415c4478f2bcc30120c22ce10ed3226f7d3e18e0"
 
-lodash@^4.13.1, lodash@^4.3.0:
+lodash@^4.13.1:
   version "4.17.4"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.4.tgz#78203a4d1c328ae1d86dca6460e369b57f4055ae"
 
-lzma-native@^2.0.1:
+lzma-native@^2.0.1, lzma-native@^2.0.2:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/lzma-native/-/lzma-native-2.0.2.tgz#35e74d6bd6182e1764a280c2979ff95a8b6ad7b3"
   dependencies:
@@ -1191,10 +1183,6 @@ path-is-absolute@^1.0.0:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/path-is-absolute/-/path-is-absolute-1.0.1.tgz#174b9268735534ffbc7ace6bf53a5a9e1b5c5f5f"
 
-path-parse@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/path-parse/-/path-parse-1.0.5.tgz#3c1adf871ea9cd6c9431b6ea2bd74a0ff055c4c1"
-
 peek-stream@^1.1.0:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/peek-stream/-/peek-stream-1.1.2.tgz#97eb76365bcfd8c89e287f55c8b69d4c3e9bcc52"
@@ -1326,12 +1314,6 @@ recast@^0.10.1:
     private "~0.1.5"
     source-map "~0.5.0"
 
-rechoir@^0.6.2:
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/rechoir/-/rechoir-0.6.2.tgz#85204b54dba82d5742e28c96756ef43af50e3384"
-  dependencies:
-    resolve "^1.1.6"
-
 regex-cache@^0.4.2:
   version "0.4.3"
   resolved "https://registry.yarnpkg.com/regex-cache/-/regex-cache-0.4.3.tgz#9b1a6c35d4d0dfcef5711ae651e8e9d3d7114145"
@@ -1409,12 +1391,6 @@ requirefresh@^2.0.0:
   dependencies:
     editions "^1.1.1"
 
-resolve@^1.1.6:
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/resolve/-/resolve-1.3.3.tgz#655907c3469a8680dc2de3a275a8fdd69691f0e5"
-  dependencies:
-    path-parse "^1.0.5"
-
 restore-cursor@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/restore-cursor/-/restore-cursor-1.0.1.tgz#34661f46886327fed2991479152252df92daa541"
@@ -1463,14 +1439,6 @@ sha.js@^2.4.0:
   resolved "https://registry.yarnpkg.com/sha.js/-/sha.js-2.4.8.tgz#37068c2c476b6baf402d14a49c67f597921f634f"
   dependencies:
     inherits "^2.0.1"
-
-shelljs@^0.7.6:
-  version "0.7.7"
-  resolved "https://registry.yarnpkg.com/shelljs/-/shelljs-0.7.7.tgz#b2f5c77ef97148f4b4f6e22682e10bba8667cff1"
-  dependencies:
-    glob "^7.0.0"
-    interpret "^1.0.0"
-    rechoir "^0.6.2"
 
 signal-exit@^3.0.0:
   version "3.0.2"
@@ -1665,17 +1633,15 @@ through@^2.3.6, through@^2.3.8, through@~2.3.4:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
 
-tmake-core@0.6.1:
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/tmake-core/-/tmake-core-0.6.1.tgz#2734f7a7670152c469818083d0ddcd2b17e6eaf1"
+tmake-core@0.6.3:
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/tmake-core/-/tmake-core-0.6.3.tgz#4e522eb80d75f0b1d8568fa2ed4ed4ec7101b466"
   dependencies:
-    bluebird "^3.0.5"
     chalk "^1.1.1"
+    cli-spinner "^0.2.6"
     create-hash "^1.1.2"
-    dependency-graph "^0.4.1"
     js-yaml "^3.6.1"
     json-stable-stringify "^1.0.1"
-    lodash "^4.3.0"
     map-stream "^0.0.6"
     nedb-promise "^2.0.0"
     ninja-build-gen "^0.2.1"
@@ -1683,13 +1649,11 @@ tmake-core@0.6.1:
     request "^2.75.0"
     request-progress "^3.0.0"
     request-promise "^4.1.1"
-    shelljs "^0.7.6"
-    source-map-support "^0.4.0"
-    tmake-file "^0.6.0"
-    typed-json-transform "^0.16.0"
+    tmake-file "^0.6.6"
+    tmake-plugin-cmake "^0.6.0"
     which "^1.2.11"
 
-tmake-file@^0.6.0:
+tmake-file@^0.6.6:
   version "0.6.8"
   resolved "https://registry.yarnpkg.com/tmake-file/-/tmake-file-0.6.8.tgz#62c69eac6909f47e2a8a9e8072f2a621d73aabc7"
   dependencies:
@@ -1708,6 +1672,10 @@ tmake-file@^0.6.0:
     unbzip2-stream "^1.0.10"
     unzip "^0.1.11"
     vinyl-fs "^2.3.1"
+
+tmake-plugin-cmake@^0.6.0:
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/tmake-plugin-cmake/-/tmake-plugin-cmake-0.6.0.tgz#d8820d7c1583ee460fd017c0af2d058603d581e1"
 
 to-absolute-glob@^0.1.1:
   version "0.1.1"
@@ -1740,10 +1708,6 @@ typechecker@^4.3.0:
   resolved "https://registry.yarnpkg.com/typechecker/-/typechecker-4.4.1.tgz#f97b95f51b038417212d677d45a373ee7bced7e6"
   dependencies:
     editions "^1.3.3"
-
-typed-json-transform@^0.16.0:
-  version "0.16.4"
-  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.16.4.tgz#019ea27e1beff44ffddca22cf4b6f53b2db600dc"
 
 uid-number@^0.0.6:
   version "0.0.6"

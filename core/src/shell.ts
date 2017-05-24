@@ -16,7 +16,7 @@ export function exec(command: string, options: TMake.Shell.Exec.Options = {}): s
 
 export function ensureCommand(command: string) {
   if (!which(command)) {
-    log.error('Sorry, this script requires git');
+    log.error(`Sorry, this script requires command: ${command} to be in your PATH`);
     process.exit(1);
   }
 }

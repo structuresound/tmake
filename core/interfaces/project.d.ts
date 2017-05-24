@@ -140,4 +140,7 @@ declare namespace TMake {
 
 declare module 'tmake-core/project' {
   class Project extends TMake.Project { }
+  namespace Project {
+    function resolveName(project: TMake.Project | TMake.Project.File): string;
+  }
 }

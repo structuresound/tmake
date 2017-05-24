@@ -8,10 +8,9 @@ declare namespace TMake.Plugin {
   }
   namespace CMake {
     interface Options extends TMake.Plugin.Compiler.Options {
-      cmake: {
-        minimumVersion: string;
-        version: string;
-      },
+      minimumVersion: string;
+      version: string;
+      defines: string[];
       toolchain?: {
         ninja?: {
           version?: string;

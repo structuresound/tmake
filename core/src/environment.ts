@@ -40,7 +40,6 @@ export class Cache extends BaseCache<string> {
         this.assets = new CacheProperty<string>(() => {
             return "";
         });
-        this
     }
     update() {
         this.env.update();
@@ -115,7 +114,7 @@ function mergeEnvironment(a: Environment, b: any) {
             const v = b.cache[k]
             if (v) {
                 log.dev('cache -->', k, ':', v);
-                a.cache[k].set(v);
+                a.cache[k] && a.cache[k].set(v);
             }
         }
     }
@@ -394,11 +393,9 @@ export class Environment implements TMake.Toolchain {
     runPhaseWithPlugin({ phase, pluginName }: { phase: string, pluginName: string }): PromiseLike<any> {
         if (!this.plugins[pluginName]) {
             const PluginConstructor = Runtime.getPlugin(pluginName);
-            console.log('plugin options for phase', phase, combine(this[phase], this[phase][pluginName]));
             const options = combine(this[phase], this[phase][pluginName]);
             delete options[pluginName];
-            const context = { [phase]: options };
-            const plugin = new PluginConstructor(this, context);
+            const plugin = new PluginConstructor(this, options);
             this.plugins[pluginName] = plugin;
         }
         return this.plugins[pluginName][phase]();

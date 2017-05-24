@@ -10,7 +10,7 @@ import { absolutePath } from './parse';
 import { Runtime } from './runtime';
 import { jsonStableHash } from './hash';
 
-import { Project as ProjectConstructor, resolveName, fromString as projectFromString } from './project';
+import { Project, fromString as projectFromString } from './project';
 
 function loadCache(project: TMake.Project) {
   return new Bluebird<TMake.Project>((resolve) => {
@@ -36,7 +36,7 @@ function loadEnvironment(env: TMake.Environment) {
 }
 
 function createNode(_conf: TMake.Project.File, parent?: TMake.Project) {
-  const node = new ProjectConstructor(_conf, <any>parent);
+  const node = new Project(_conf, <any>parent);
   return loadCache(<TMake.Project>node);
 }
 
@@ -61,7 +61,7 @@ function scanDependencies(require: OLHM<TMake.Project.File>, node: TMake.Project
         dep = projectFromString(<string><any>dep);
       }
       if (!dep.name) {
-        dep.name = resolveName(dep, key);
+        dep.name = Project.resolveName(dep, key);
       }
       return graphNode(dep, node, graph, cache, fileCache);
     })

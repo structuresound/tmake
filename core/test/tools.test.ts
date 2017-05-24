@@ -12,13 +12,17 @@ describe('tools', function () {
   const hostChain = env.tools;
   const ninjaVersion = 'v1.7.1';
 
+  const v171Checksums = {
+    linux: 'e3defdd347f045a15343255b13529ab0',
+    mac: '9d0c46a1ff1ad7dea95b0814e6919d84'
+  }
   it('can parse tools correctly', () => {
     expect(hostChain.ninja.name)
       .to
       .equal('ninja');
     expect(hostChain.ninja.bin)
       .to
-      .equal(path.join(args.homeDir, 'toolchain/ninja', '9d0c46a1ff1ad7dea95b0814e6919d84', 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[env.environment.host.platform], 'ninja'));
     return expect(hostChain.ninja.url)
       .to
       .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${env.environment.host.platform}.zip`);

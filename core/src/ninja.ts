@@ -43,8 +43,8 @@ function getRule(ext: string) {
 export class Ninja extends Compiler {
   options: TMake.Plugin.Ninja.Options;
 
-  constructor(environment: TMake.Environment) {
-    super(environment);
+  constructor(environment: TMake.Environment, options) {
+    super(environment, options);
     this.name = 'ninja';
     this.projectFileName = '';
     this.buildFileName = 'build.ninja';
@@ -70,16 +70,16 @@ export class Ninja extends Compiler {
       .then((libraries) => {
         artifacts.libraries = libraries;
         log.add('generate new ninja config');
-        const relativeToBuild = path.relative(this.environment.d.project, this.environment.d.build) || '.';
-        const relativeToSource = path.relative(this.environment.d.project, this.environment.d.source) || '.';
-        // console.log(`project to build dir = ${relativeToBuild}`);
-        const ninjaConfig = ninja_build_gen(ninjaVersion, relativeToBuild);
+        // const relativeToBuild = path.relative(this.environment.project.build, this.environment.d.build) || '.';
+        const relativeToSource = path.relative(this.environment.d.build, this.environment.d.source) || '.';
+        // console.log(`build to build dir = ${relativeToBuild}`);
+        const ninjaConfig = ninja_build_gen(ninjaVersion);
         log.verbose('note: this should scan dependencies for their possibly intermediate header install dirs');
         const includeString = `-I ${this.environment.d.root}/trie_modules/include` + _.map(this.options.includeDirs, (dir) => {
           return `-I${dir}`;
         }).join(' ');
 
-        // console.log('configure ninja plugin', this.options)
+        console.log('configure ninja plugin', this.options)
         const cc = 'gcc';
 
         const cCommand = `${cc} ${this
@@ -144,8 +144,8 @@ export class Ninja extends Compiler {
           const ext = path.extname(filePath);
           const name = path.basename(filePath, ext);
           const from = path.join(relativeToSource, filePath);
-          const edge = path.join(relativeToBuild, `${dir}/${name}.o`);
-          log.verbose('+ edge:', edge, 'from:', from);
+          const edge = `${dir}/${name}.o`;
+          // log.verbose('+ edge:', edge, 'from:', from);
           ninjaConfig
             .edge(edge)
             .from(from)
@@ -155,7 +155,7 @@ export class Ninja extends Compiler {
 
         const linkInput = edges.join(' ');
         ninjaConfig
-          .edge(path.join(relativeToBuild, libName))
+          .edge(libName)
           .from(linkInput)
           .using('link');
 

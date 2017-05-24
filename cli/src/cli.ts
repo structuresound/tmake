@@ -8,7 +8,7 @@ import * as yaml from 'js-yaml';
 
 import { check, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
-import { log, execute, list, unlink, push, Runtime, args } from 'tmake-core';
+import { Project, log, execute, list, unlink, push, Runtime, args, TMakeError } from 'tmake-core';
 
 import { Database } from './db';
 import { example } from './example';
@@ -148,10 +148,10 @@ export function tmake(rootConfig: TMake.Project.File,
   positionalArgs = args._, projectName?: string) {
 
   const Db = new Database();
-  Runtime.init(Db)
+  Runtime.init(Db);
 
   if (!projectName) {
-    projectName = positionalArgs[1] || rootConfig.name;
+    projectName = positionalArgs[1] || rootConfig.name || Project.resolveName(rootConfig);
   }
   const command = positionalArgs[0]
   switch (command) {
@@ -280,7 +280,7 @@ export function run() {
             log.log('exit with code:', (e as any).code || 1);
             process.exit((e as any).code || 1);
           } catch (e) {
-            log.log('... inception')
+            log.log('... inception', e)
           }
         })
   }

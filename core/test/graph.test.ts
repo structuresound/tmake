@@ -3,7 +3,7 @@ import { assert } from 'chai';
 import { check } from 'typed-json-transform';
 
 import { graph } from '../src/graph';
-import { resolveName } from '../src/project';
+import { Project } from '../src/project';
 import * as Bluebird from 'bluebird';
 
 import {args, Runtime, parseFileSync} from '../src';
@@ -39,6 +39,6 @@ describe('graph', () => {
   });
 
   it('build list puts root dep last (order)', () => {
-    assert.equal(rootModule.name, resolveName(helloWorld));
+    assert.equal(rootModule.name, Project.resolveName(helloWorld));
   });
 });

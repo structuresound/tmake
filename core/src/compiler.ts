@@ -152,16 +152,14 @@ export class Compiler extends Shell {
   compilerFlags() { return jsonToFlags(this.flags.compiler, { join: ' ' }); }
   sources() {
     const { environment } = this;
+    console.log('glob sources', this.options.matching);
     const patterns = arrayify(this.options.matching || defaults.sources.glob);
     return glob(patterns, environment.d.source, environment.project.d.source);
   }
   libraries(): PromiseLike<any> {
-    // return deps(this.environment.project)
-    // .then((depGraph) => {
-      console.log(this.environment.project.require.google);
-      const depGraph = this.environment.project.require
-      if (depGraph) {
-        const stack = _.map(depGraph, (dep: Project) => {
+      const {require} = this.environment.project
+      if (require) {
+        const stack = _.map(require, (dep: Project) => {
           console.log('get libs from project', dep.cache.libs.value());
           return _.map(dep.cache.libs.value(), (lib) => {
             console.log('+', path.join(dep.d.home, lib));
@@ -171,7 +169,6 @@ export class Compiler extends Shell {
         return Bluebird.resolve(_.flatten(stack));
       }
       return Bluebird.resolve()
-    // });
   }
   fetch() {
     if (this.options.toolchain) {

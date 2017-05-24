@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import map = require('map-stream');
 import globAll = require('glob-all');
-import { check } from 'typed-json-transform';
+import { check, arrayify } from 'typed-json-transform';
 import { src as _src, dest, symlink } from 'vinyl-fs';
 import _unarchive from './archive';
 
@@ -110,14 +110,8 @@ export function _glob(srcPattern: string[], relative: string,
   });
 }
 
-export function glob(patternS: any, relative: string, cwd: string) {
-  let patterns: string[] = [];
-  if (check(patternS, String)) {
-    patterns.push(patternS);
-  } else if (check(patternS, Array)) {
-    patterns = patternS;
-  }
-  return _glob(patterns, relative, cwd);
+export function glob(patterns: any, relative: string, cwd: string) {
+  return _glob(arrayify(patterns), relative, cwd);
 };
 
 export function readIfExists(filePath: string) {
@@ -223,8 +217,8 @@ export function unarchive(archive: string, tempDir: string, toDir: string,
   return _unarchive(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
 };
 
-export function src(glob: string[], opt: Object) {
-  const patterns = _.map(glob, (string) => {
+export function src(_patterns: string[], opt: Object) {
+  const patterns = _.map(_patterns, (string) => {
     if (startsWith(string, '/')) {
       return string.slice(1);
     }

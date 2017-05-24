@@ -4,6 +4,7 @@ export * from './runtime';
 export * from './compiler';
 export * from './interpolate';
 export * from './environment';
+export * from './errors';
 export * from './fetch';
 export * from './file';
 export * from './hash';
