@@ -115,7 +115,7 @@ function resolveFlags(environment: TMake.Environment, options: TMake.Plugin.Comp
   const cFlags = options.cFlags || options.cxxFlags || {};
   const cxxFlags = options.cxxFlags || options.cFlags || {};
   const linkerFlags = options.linkerFlags || {};
-  const compilerFlags = options.compilerFlags || {};
+  const compilerFlags = options.flags || {};
   const frameworks = options.frameworks || {};
   return {
     compiler: extend(environment.select(defaults.flags.compiler), compilerFlags),

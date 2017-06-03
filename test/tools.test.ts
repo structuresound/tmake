@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { args,stringHash, Project, Tools } from '../src';
+import { args,stringHash, Project, Tools } from 'tmake-core';
 
 describe('tools', function () {
   const project = new Project({ name: 'tools-test' });

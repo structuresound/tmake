@@ -1,8 +1,9 @@
 declare namespace TMake {
     interface Args {
         runDir?: string;
-        npmDir?: string;
         binDir?: string;
+        npmDir?: string;
+        homeDir?: string;
         settingsDir?: string;
         configDir?: string;
         cachePath?: string;
@@ -20,7 +21,6 @@ declare namespace TMake {
         y?: boolean;
         yes?: boolean;
         test?: boolean;
-        homeDir?: string;
         _?: string[];
         environment?: any;
 

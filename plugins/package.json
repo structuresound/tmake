@@ -1,0 +1,9 @@
+{
+  "name": "tmake-plugins",
+  "description": "",
+  "scripts": {
+    "build-cmake": "cd cmake && rm -Rf node_modules && yarn && npm run build && npm link",
+    "build-make": "cd cmake && rm -Rf node_modules && yarn && npm run build && npm link",
+    "build": "npm run build-cmake && npm run build-make"
+  }
+}

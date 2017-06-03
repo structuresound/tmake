@@ -1,8 +1,37 @@
 git:
   repository: mongodb/mongo-c-driver
   tag: 1.3.4
+generate:
+  ninja:
+    matching:
+    - src/mongoc/*.c
+    - "!src/mongoc/mongoc-rand-cng.c"
+    - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"
+    - "!src/mongoc/mongoc-crypto-cng.c"
+    - "!src/mongoc/mongoc-secure-channel.c"
+    - "!src/mongoc/mongoc-secure-transport"
+    - "!src/mongoc/mongoc-crypto-common-crypto"
+    - "!src/mongoc/mongoc-rand-common-crypto"
+    cFlags:
+      DMONGOC_COMPILATION: true
+      D_GNU_SOURCE: true
+      D_BSD_SOURCE: true
+      O3: true
+      std: c++11
+      g: true
+      Wall: true
+      Wextra: true
+      Wno-unused-parameter: true
+      Wno-missing-field-initializers: true
+      linux:
+        pthread: true
+      win:
+        D_CRT_SECURE_NO_WARNINGS: true
+      mac:
+        stdlib: libc++
+        Wno-deprecated-declarations: true
+    outputFile: libmongoc-1.0.a
 configure:
-  for: ninja
   replace:
     files:
       matching:
@@ -46,36 +75,7 @@ configure:
         bcon:
         - '#include <bcon.h>'
         - '#include <libbson-1.0/bcon.h>'
-build:
-  with: ninja
-  matching:
-  - src/mongoc/*.c
-  - "!src/mongoc/mongoc-rand-cng.c"
-  - "!src/mmongoc/mongoc-stream-tls-secure-channel-private.c"
-  - "!src/mongoc/mongoc-crypto-cng.c"
-  - "!src/mongoc/mongoc-secure-channel.c"
-  - "!src/mongoc/mongoc-secure-transport"
-  - "!src/mongoc/mongoc-crypto-common-crypto"
-  - "!src/mongoc/mongoc-rand-common-crypto"
-  cFlags:
-    DMONGOC_COMPILATION: true
-    D_GNU_SOURCE: true
-    D_BSD_SOURCE: true
-    O3: true
-    std: c++11
-    g: true
-    Wall: true
-    Wextra: true
-    Wno-unused-parameter: true
-    Wno-missing-field-initializers: true
-    linux:
-      pthread: true
-    win:
-      D_CRT_SECURE_NO_WARNINGS: true
-    mac:
-      stdlib: libc++
-      Wno-deprecated-declarations: true
-  outputFile: libmongoc-1.0.a
+build: ninja
 path:
   install:
     headers:

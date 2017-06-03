@@ -1,3 +1,5 @@
+/// <reference path="../interfaces/index.d.ts" />
+
 import * as Bluebird from 'bluebird';
 import { join, relative, dirname } from 'path';
 import { arrayify, check } from 'typed-json-transform';

@@ -18,9 +18,9 @@ import { Phase } from './phase';
 import { defaults } from './defaults';
 
 export function configure(env: Environment, isTest?: boolean): PromiseLike<any> {
-  console.log('configure:', env.configure);
+  // console.log('configure:', env.configure);
   const phase = new Phase(env.configure);
-  console.log('phase: ', phase);
+  // console.log('phase: ', phase);
   if (env.project.force() || env.cache.configure.dirty()) {
     return Bluebird.each(
       phase.commands,
@@ -38,6 +38,7 @@ export function configure(env: Environment, isTest?: boolean): PromiseLike<any> 
           case 'replace':
             return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
               const pattern = arrayify(replEntry.matching);
+              log.verbose(`replace in files matching ${pattern}`);
               return file.glob(pattern, undefined, env.project.d.source)
                 .then((files: string[]) => {
                   return Bluebird.each(files, (file) => {

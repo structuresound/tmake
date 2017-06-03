@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import { interpolate } from '../src';
+import { interpolate } from 'tmake-core';
 
 const data = {
   some: {

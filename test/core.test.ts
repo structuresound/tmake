@@ -21,9 +21,10 @@ describe('tmake', function () {
   before(() => {
     assert.ok(testDb.projectNamed);
     Runtime.init(testDb);
-    assert.equal(args.runDir, path.join(__dirname, '../../test/cache'), 'test env');
+    Runtime.loadPlugins();
+    assert.equal(args.runDir, path.join(__dirname, './cache'), 'test env');
     const helloWorld = parseFileSync('test/config/hello.yaml');
-    Runtime.registerPlugin(require(path.join(__dirname, '../../plugins/cmake/dist/cmake.js')).default);
+    // Runtime.registerPlugin(require(path.join(__dirname, '../plugins/cmake/dist/cmake.js')).default);
     assert.equal('CMake', (<any>Runtime.getPlugin('cmake')).name);
     return graph(helloWorld)
       .then((res) => {
@@ -34,6 +35,9 @@ describe('tmake', function () {
       });
   });
 
+  it('has a cache path', () => {
+    assert.ok(args.cachePath);
+  });
 
   it('install: a built static lib, and required headers', () => {
     this.slow(5000);

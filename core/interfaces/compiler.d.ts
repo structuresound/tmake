@@ -3,7 +3,6 @@
 declare namespace TMake.Plugin {
   class Compiler extends TMake.Plugin.Shell {
     options: Plugin.Compiler.Options;
-    flags: Plugin.Compiler.Flags;
     libs: string[];
 
     projectFilePath(): string;
@@ -25,9 +24,9 @@ declare namespace TMake.Plugin {
       includeDirs?: string[];
       outputFile?: string;
 
+      flags?: OLHM<string>;
       cFlags?: any;
       cxxFlags?: any;
-      compilerFlags?: any;
       linkerFlags?: any;
       frameworks?: any;
     }
@@ -48,4 +47,5 @@ declare namespace TMake.Plugin {
 
 declare module 'tmake-core/compiler' {
   class Compiler extends TMake.Plugin.Compiler { }
+  function jsonToFlags(object: any, options?: TMake.Plugin.Compiler.Flags.MapOptions);
 }

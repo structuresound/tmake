@@ -1,6 +1,6 @@
 {
-  "name": "tmake-plugin-cmake",
-  "description": "handle CMakeLists.txt with tmake",
+  "name": "tmake-plugin-make",
+  "description": "handle Makefile with tmake",
   "version": "0.6.6",
   "homepage": "https://github.com/structuresound/tmake",
   "author": {
@@ -20,8 +20,8 @@
       "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
     }
   ],
-  "main": "dist/cmake.js",
-  "types": "interfaces/cmake.d.ts",
+  "main": "dist/make.js",
+  "types": "interfaces/make.d.ts",
   "scripts": {
     "build": "npm link tmake-core && gulp scripts"
   },

@@ -53,16 +53,6 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
             return iterateOLHM(i.arg, (command: any) => {
               return env.sh(command);
             });
-          case 'replace':
-            return iterateOLHM(i.arg, (replEntry: ReplEntry) => {
-              const pattern = arrayify(replEntry.matching);
-              return file.glob(pattern, undefined, env.project.d.source)
-                .then((files: string[]) => {
-                  return Bluebird.each(files, (file) => {
-                    return replaceInFile(file, replEntry, env);
-                  })
-                })
-            });
           case 'create':
             return iterateOLHM(
               i.arg, (entry: any) => {
@@ -74,15 +64,6 @@ export function generate(env: Environment, isTest?: boolean): PromiseLike<any> {
                     { encoding: 'utf8' });
                 }
                 return Bluebird.resolve();
-              });
-          case 'copy':
-            return iterateOLHM(i.arg,
-              (e: { from: string, matching: string[], to: string }) => {
-                log.quiet(`copy ${e}`);
-                const fromDir = env.pathSetting(e.from);
-                return copy(
-                  e.matching,
-                  { from: fromDir, to: env.pathSetting(e.to) });
               });
         }
       }).then(() => {

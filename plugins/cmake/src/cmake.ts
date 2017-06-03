@@ -1,10 +1,9 @@
-/// <reference path="cmake.d.ts" />
+/// <reference path="../interfaces/cmake.d.ts" />
 
-import * as _ from 'lodash';
-import * as Bluebird from 'bluebird';
-import * as path from 'path';
+import { join,relative } from 'path';
 import { existsSync } from 'fs';
-import { arrayify, check, map } from 'typed-json-transform';
+import { resolve } from 'bluebird';
+import { arrayify, check, map, extend } from 'typed-json-transform';
 import { log, execAsync, execute, startsWith, Tools, Compiler } from 'tmake-core';
 
 export function quotedList(array: string[]) {
@@ -25,7 +24,7 @@ export class CMake extends Compiler {
 
   configureCommand() {
     const defines = this.options.defines || {};
-    const cMakeDefines = _.extend({
+    const cMakeDefines = extend({
       LIBRARY_OUTPUT_PATH: this.environment.d.install.libraries[0].from
     }, defines);
     let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${this.environment.tools.ninja.bin} ${this.environment.d.project}`;
@@ -77,9 +76,9 @@ include_directories(${quotedList(this.options.includeDirs)})`;
     }
 
     const matching = () => {
-      const relativeToSource = path.relative(this.environment.d.project, this.environment.d.source) || '.';
-      const src = _.map(this.environment.s, (fp) => {
-        return path.join(relativeToSource, fp);
+      const relativeToSource = relative(this.environment.d.project, this.environment.d.source) || '.';
+      const src = map(this.environment.s, (fp) => {
+        return join(relativeToSource, fp);
       })
       return `\n
 set(SOURCE_FILES \${SOURCE_FILES} ${quotedList(src)})`;
@@ -111,7 +110,7 @@ target_link_libraries(\${PROJECT_NAME} ${linkLibs} ${frameworks} ${this.linkerFl
       return '';
     }
 
-    return Bluebird.resolve(
+    return resolve(
       header() +
       includeDirectories() +
       matching() +

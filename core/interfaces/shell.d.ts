@@ -12,9 +12,8 @@ declare namespace TMake {
     }
     namespace Shell {
       interface Options extends Plugin.Options {
-        defines?: any;
-        arguments?: any;
-        prefix?: any;
+        arguments?: SIO;
+        prefix?: SIO;
         toolchain?: {
           [index: string]: {
             version?: string;

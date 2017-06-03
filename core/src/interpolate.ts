@@ -9,14 +9,8 @@ function defaultLookup(key: string, data: { [index: string]: any }) {
   return valueForKeyPath(key, data);
 }
 
-export interface InterpolateOptions {
-  [index: string]: any;
-  ref?: { [index: string]: any }
-  mustPass?: boolean
-}
-
 function _interpolate(template: string, func: Function | Object,
-  opt: InterpolateOptions): any {
+  opt: TMake.Interpolate.Options): any {
   let str: string = template;
   const matches = str.match(/\$\{[^}\r\n]*\}/g);
   if (!matches) {

@@ -3,7 +3,7 @@ import * as path from 'path';
 import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
 
-import { args, Project, parseFileAsync, nuke } from '../src';
+import { args, Project, parseFileAsync, nuke } from 'tmake-core';
 
 describe('project', () => {
   let project: TMake.Project;

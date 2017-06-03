@@ -8,7 +8,7 @@ import map = require('map-stream');
 import globAll = require('glob-all');
 import { check, arrayify } from 'typed-json-transform';
 import { src as _src, dest, symlink } from 'vinyl-fs';
-import _unarchive from './archive';
+import decompress = require('decompress');
 
 export { map, symlink, dest };
 
@@ -214,7 +214,7 @@ export function readConfigSync(configDir: string) {
 
 export function unarchive(archive: string, tempDir: string, toDir: string,
   toPath?: string) {
-  return _unarchive(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
+  return decompress(archive, tempDir).then(() => moveArchive(tempDir, toDir, toPath));
 };
 
 export function src(_patterns: string[], opt: Object) {

@@ -1,5 +1,5 @@
 "use strict";
-/// <reference path="cmake.d.ts" />
+/// <reference path="../interfaces/cmake.d.ts" />
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -11,9 +11,8 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var _ = require("lodash");
-var Bluebird = require("bluebird");
-var path = require("path");
+var path_1 = require("path");
+var bluebird_1 = require("bluebird");
 var typed_json_transform_1 = require("typed-json-transform");
 var tmake_core_1 = require("tmake-core");
 function quotedList(array) {
@@ -33,7 +32,7 @@ var CMake = (function (_super) {
     }
     CMake.prototype.configureCommand = function () {
         var defines = this.options.defines || {};
-        var cMakeDefines = _.extend({
+        var cMakeDefines = typed_json_transform_1.extend({
             LIBRARY_OUTPUT_PATH: this.environment.d.install.libraries[0].from
         }, defines);
         var command = "cmake -G Ninja -DCMAKE_MAKE_PROGRAM=" + this.environment.tools.ninja.bin + " " + this.environment.d.project;
@@ -78,9 +77,9 @@ var CMake = (function (_super) {
             }
         };
         var matching = function () {
-            var relativeToSource = path.relative(_this.environment.d.project, _this.environment.d.source) || '.';
-            var src = _.map(_this.environment.s, function (fp) {
-                return path.join(relativeToSource, fp);
+            var relativeToSource = path_1.relative(_this.environment.d.project, _this.environment.d.source) || '.';
+            var src = typed_json_transform_1.map(_this.environment.s, function (fp) {
+                return path_1.join(relativeToSource, fp);
             });
             return "\n\nset(SOURCE_FILES ${SOURCE_FILES} " + quotedList(src) + ")";
         };
@@ -105,7 +104,7 @@ var CMake = (function (_super) {
             }
             return '';
         };
-        return Bluebird.resolve(header() +
+        return bluebird_1.resolve(header() +
             includeDirectories() +
             matching() +
             flags() +

@@ -3,7 +3,7 @@ import { join } from 'path';
 import { check } from 'typed-json-transform';
 import { readFileSync } from 'fs';
 
-import { nuke, unarchive } from '../src';
+import { nuke, unarchive } from 'tmake-core';
 
 interface YamlConfig {
   git: any

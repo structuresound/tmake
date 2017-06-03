@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { assert } from 'chai';
 import { contains, containsAny, check } from 'typed-json-transform';
-import { Project, Environment, Runtime, args, parseFileAsync } from '../src';
+import { Project, Environment, Runtime, args, parseFileAsync } from 'tmake-core';
 
 describe('environment', () => {
   let project: TMake.Project;

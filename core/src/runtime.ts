@@ -1,6 +1,5 @@
 import { readdirSync } from 'fs';
 import * as minimist from 'minimist';
-import * as _ from 'lodash';
 import { mkdir } from 'shelljs'
 import { join } from 'path';
 import { defaults } from './defaults';
@@ -18,7 +17,8 @@ function homeDir() {
     : 'HOME'];
 }
 
-const npmDir = join(__dirname, '../..');
+const npmDir = join(__dirname, '../../..');
+console.log('npmDir: ', npmDir);
 
 if (process.env.NODE_ENV == 'test') {
   args.v = true;
@@ -92,12 +92,14 @@ export class Runtime {
 
   static loadPlugins() {
     try {
-      const files = readdirSync(`${args.homeDir}/plugins/`);
-      files.forEach((file) => {
+      // const files = readdirSync(`${args.homeDir}/plugins/`);
+      const standardPlugins = ['cmake', 'make'];
+      standardPlugins.forEach((plugin) => {
+        console.log('load plugin', plugin);
         try {
-          this.registerPlugin(require(`${args.homeDir}/plugins/${file}`).default);
+          this.registerPlugin(require(`tmake-plugin-${plugin}`).default);
         } catch (error) {
-          console.log("skipping bad plugin @ ", file);
+          console.log("skipping bad plugin @ ", plugin, error);
         }
       })
     } catch (error) {

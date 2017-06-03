@@ -1,22 +1,9 @@
 import * as path from 'path';
 import { assert } from 'chai';
 import { check } from 'typed-json-transform';
-
-import { graph } from '../src/graph';
-import { Project } from '../src/project';
 import * as Bluebird from 'bluebird';
 
-import {args, Runtime, parseFileSync} from '../src';
-
-const MockDb = {
-  projectNamed(){
-    return Bluebird.resolve();
-  },
-  loadEnvironment(){
-    return Bluebird.resolve();
-  }
-}
-Runtime.init(<any>MockDb);
+import {args, graph, Project, Runtime, parseFileSync} from 'tmake-core';
 
 const helloWorld = parseFileSync(path.join(args.npmDir, '/test/config/hello.yaml'));
 describe('graph', () => {

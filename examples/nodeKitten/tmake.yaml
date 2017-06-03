@@ -2,6 +2,6 @@ git:
   organization: structuresound
   repository: nodeKitten
 configure:
-  with: tmake
+  tmake: {}
 build:
-  with: tmake
+  tmake: {}
