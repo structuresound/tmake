@@ -5,7 +5,7 @@ import { contains, check } from 'typed-json-transform';
 
 import {
   ProjectRunner, list, findAndClean,
-  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke 
+  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke
 } from 'tmake-core';
 
 import { Database } from '../src/db';
@@ -22,7 +22,7 @@ describe('tmake', function () {
     assert.ok(testDb.projectNamed);
     Runtime.init(testDb);
     Runtime.loadPlugins();
-    assert.equal(args.runDir, path.join(__dirname, './cache'), 'test env');
+    assert.equal(args.runDir, path.join(__dirname, './cache'), 'test configuration');
     const helloWorld = parseFileSync('test/config/hello.yaml');
     // Runtime.registerPlugin(require(path.join(__dirname, '../plugins/cmake/dist/cmake.js')).default);
     assert.equal('CMake', (<any>Runtime.getPlugin('cmake')).name);
@@ -30,8 +30,8 @@ describe('tmake', function () {
       .then((res) => {
         googleNode = res[0];
         helloNode = res[res.length - 1];
-        assert.equal(helloNode.name, 'hello');
-        return expect(googleNode.name).to.equal('googletest');
+        assert.equal(helloNode.post.name, 'hello');
+        return expect(googleNode.post.name).to.equal('googletest');
       });
   });
 
@@ -56,14 +56,15 @@ describe('tmake', function () {
   });
 
   it('check: built libs got added to local cache', () => {
-    return testDb.projectNamed(googleNode.name)
+    return testDb.projectNamed(googleNode.post.name)
       .then((entry) => {
-        assert.ok(entry.name);
+        const { post } = entry;
+        assert.ok(post.name);
         const msg = JSON.stringify(entry);
-        assert.equal(entry.name, googleNode.name, msg);
-        assert.equal(entry.version, '1.7.0', msg);
-        assert.ok(!entry.configure, msg);
-        assert.ok(!entry.path, msg);
+        assert.equal(post.name, googleNode.post.name, msg);
+        assert.equal(post.version, '1.7.0', msg);
+        assert.ok(!post.configure, msg);
+        assert.ok(!post.path, msg);
         return expect(entry.cache.libs)
           .to.deep.equal(['lib/libgtest.a', 'lib/libgtest_main.a'], msg);
       });
@@ -81,7 +82,7 @@ describe('tmake', function () {
   it('configure: for: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).configure().then(() => {
-        const fp = path.join(helloNode.environments[0].d.build, 'build.ninja')
+        const fp = path.join(helloNode.post.configurations[0].post.d.build, 'build.ninja')
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
@@ -92,7 +93,7 @@ describe('tmake', function () {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
         const filePath = fs.existsSync(
-          path.join(args.runDir, 'build', helloNode.environments[0].environment.host.architecture, `${helloNode.name}`));
+          path.join(args.runDir, 'build', helloNode.post.configurations[0].post.environment.host.architecture, `${helloNode.post.name}`));
         return expect(filePath).to.equal(true);
       });
     });
@@ -102,14 +103,14 @@ describe('tmake', function () {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).install().then(() => {
         const filePath =
-          fs.existsSync(path.join(args.runDir, 'bin', `${helloNode.name}`));
+          fs.existsSync(path.join(args.runDir, 'bin', `${helloNode.post.name}`));
         return expect(filePath).to.equal(true);
       });
     });
   });
 
   it('test: main', () => {
-    return execAsync(path.join(args.runDir, 'bin', helloNode.name))
+    return execAsync(path.join(args.runDir, 'bin', helloNode.post.name))
       .then((res) => {
         const results = res.split('\n');
         return expect(results[results.length - 2])
@@ -118,7 +119,7 @@ describe('tmake', function () {
   });
 
   it('can clean libbson project', () => {
-    return findAndClean(helloNode.name)
+    return findAndClean(helloNode.post.name)
       .then(res => expect(res).to.not.be.ok);
   });
 });

@@ -10,15 +10,15 @@ describe('project', () => {
   before(() => {
     return parseFileAsync(path.join(args.npmDir, 'test/config/metaProject.yaml'))
       .then((projectFile) => {
-        project = new Project(<TMake.Project.File><any>projectFile);
+        project = new Project(<TMake.Project.Pre><any>projectFile);
       });
   });
 
   it('creates an object of type Project', () => { assert.ok(check(project, Project)); });
-  it('creates folder locations', () => { assert.ok(check(project.d, Object)); });
+  it('creates folder locations', () => { assert.ok(check(project.post.d, Object)); });
 
   it('creates correct paths', () => {
-    assert.equal(project.d.source, path.join(args.runDir, 'source'));
-    assert.equal(project.d.root, args.runDir, 'root dir');
+    assert.equal(project.post.d.source, path.join(args.runDir, 'source'));
+    assert.equal(project.post.d.root, args.runDir, 'root dir');
   });
 });

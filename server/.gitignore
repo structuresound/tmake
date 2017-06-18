@@ -1,4 +1,2 @@
-/trie_modules
-/build
-/bin
-/CMakeLists.txt
+.DS_Store
+/secrets

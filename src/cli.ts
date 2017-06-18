@@ -144,7 +144,7 @@ export function createPackage() {
   return Bluebird.resolve(defaultPackage);
 }
 
-export function tmake(rootConfig: TMake.Project.File,
+export function tmake(rootConfig: TMake.Project.Pre,
   positionalArgs = args._, projectName?: string) {
 
   const Db = new Database();
@@ -156,7 +156,7 @@ export function tmake(rootConfig: TMake.Project.File,
   const command = positionalArgs[0]
   switch (command) {
     case 'rm':
-      return Db.cleanEnvironments(projectName)
+      return Db.cleanConfigurations(projectName)
         .then(() => {
           return Db.removeProject(projectName)
         }).then(() => {
@@ -164,7 +164,7 @@ export function tmake(rootConfig: TMake.Project.File,
         });
     case 'unlink':
       return Db.projectNamed(projectName)
-        .then((dep: TMake.Project.File) => unlink(dep || rootConfig));
+        .then((dep: TMake.Project.Cache.File) => unlink(dep || rootConfig));
     case 'ls':
     case 'list':
       return (() => {
@@ -223,7 +223,7 @@ export function run() {
         .then(
         (res) => {
           if (res) {
-            const projectFile = <TMake.Project.File><any>res;
+            const projectFile = <TMake.Project.Pre><any>res;
             const cmd = args._[0];
             if (!check(cmd, String)) {
               log.quiet(manual());

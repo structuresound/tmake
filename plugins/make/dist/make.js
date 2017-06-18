@@ -31,7 +31,7 @@ var Make = (function (_super) {
     Make.prototype.buildCommand = function () {
         return [
             this.options.prefix,
-            'make -j' + this.environment.host.cpu.num,
+            'make -j' + tmake_core_1.Runtime.j(),
             tmake_core_1.jsonToFlags(this.options.arguments, { prefix: '' }).join(' '),
         ].join(' ');
     };
