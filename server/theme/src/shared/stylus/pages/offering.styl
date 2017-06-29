@@ -1,0 +1,136 @@
+@require '../vars.styl'
+
+#offering
+  i.fa.fa-play-circle
+    color $gray-lighter
+    opacity 0.7
+    cursor pointer
+
+  input[type=number]
+    display inline-block
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button
+      -webkit-appearance none
+      margin 0
+
+#offering, #fund-page
+  #offering-header
+    #graph-cover-image-video
+      min-height 0px !important
+    #cover-image-and-video
+      margin-left -15px !important
+      margin-right -15px !important
+      padding-left -15px !important
+      padding-right -15px !important
+    #title-row
+      h2
+        margin-bottom 0px
+  #creator-panel
+    .row, .icons
+      margin-top 15px
+    .icons
+      text-align center
+
+  .offering-bio
+    text-align justify
+    padding 0% 3%
+
+  .profile-image-mini
+    max-width 5rem
+    margin 0.5rem
+
+  #graph-cover-image-video
+    min-height 500px
+
+  #orders-graph, #cover-image-and-video, #orders-graph-svg-container, #orders-graph-component
+    min-height inherit
+
+  #not-ready > p
+    padding-top 1em
+    padding-bottom 1em
+
+  #lower-content
+    .no-l-r-pad
+      padding-left 0px
+      padding-right 0px
+    hr
+      margin-top 0px
+      margin-bottom 0px
+    h3
+      margin-top 0px
+
+  #prospectus
+    margin-top 0.5em
+
+  i.fa.fa-play-circle
+    position absolute
+    top 50%
+    left 50%
+    margin-top -45px
+    margin-left -45px
+    font-size 90px
+
+  // #originative-fund
+  //   .form-group
+  //     margin-bottom 0px
+  //
+  //     .help-block
+  //       margin-bottom 5px
+  //
+  //   label
+  //     margin-bottom 10px
+  //     > h5
+  //       margin-top 0px
+
+  #offering-contract-details.container-fluid
+    padding-top 1em
+    padding-bottom 0px
+
+  #offering-contract-details h4
+    margin-top 0.2em
+    margin-bottom 0.1em
+
+  #offering-contract-details h5
+    margin-top 0.4em
+    margin-bottom 0.3em
+
+  #offering-contract-details h5
+    padding-bottom 1em
+
+  #pre-order-alert
+    margin-top 1em
+
+  form#order-form
+    input[name='shares']
+      width 4em
+      margin 0.5em
+      display inline-block
+
+  #prospectus-section
+    text-align center
+
+  #investors-section
+    text-align center
+
+    #investors-list
+      @media only screen and (max-width:$screen-sm)
+        text-align center
+      @media only screen and (min-width:$screen-sm)
+        text-align left
+
+      .profile-image
+        max-width 4.5rem
+        margin 0.2rem
+
+  img.img-circle.fit.profile-image
+    max-width 20rem
+
+#posts
+  img
+    display block
+    max-width 100% !important
+  .post
+    display block
+  .clearfix
+    clear both

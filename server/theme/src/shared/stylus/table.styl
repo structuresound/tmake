@@ -1,0 +1,107 @@
+@require "./vars.styl"
+
+flexToPct(a, b)
+  a / b * 100%
+
+$xs
+  for w in 1..12
+    .col-xs-{w}
+      flex w w flexToPct(w,12)
+      -webkit-flex w w flexToPct(w,12)
+$sm
+  for w in 1..12
+    .col-sm-{w}
+      flex w w flexToPct(w,12)
+      -webkit-flex w w flexToPct(w,12)
+$md
+  for w in 1..12
+    .col-md-{w}
+      flex w w auto
+      -webkit-flex w w auto
+$lg
+  for w in 1..12
+    .col-lg-{w}
+      flex w w auto
+      -webkit-flex w w auto
+
+$tableRow
+  min-height 24px
+  margin-left 0px
+  margin-right 0px
+  margin-top 0px
+  margin-bottom 0px
+  p, h4, h5, h6
+    margin-top 0px
+    margin-bottom 0px
+  img
+    width 100%
+
+table
+  &.table.table-striped
+    display table
+    width 100%
+    padding 0
+
+.flex-container, .table-striped, .table-clear
+  display flex
+  align-items center
+  justify-content flex-start
+  flex-wrap wrap
+  -webkit-flex-wrap wrap
+  flex-direction row
+  -webkit-flex-direction row
+  .row
+    flex 12 12 100%
+    div[class^="col-sm"], div[class^="col-md"], div[class^="col-lg"]
+      flex 12 12 100%
+    @extend $xs
+
+@media (min-width:$screen-sm-min)
+  .flex-container, .table-striped, .table-clear
+    .row
+      @extend $sm
+
+@media (min-width:$screen-md-min)
+  .flex-container, .table-striped, .table-clear
+      @extend $md
+
+@media (min-width:$screen-lg-min)
+  .flex-container, .table-striped, .table-clear
+    .row
+      @extend $lg
+
+@media (max-width:$screen-xs-max)
+  .flex-container, .table-striped, .table-clear, .table-striped-header, .table-clear-header
+    .row
+      div[class^="col-"]
+        img, .btn
+          padding-left -15px
+          padding-right -15px
+        img
+          padding-top -10px
+
+$table
+  > .row, > .row:not(:last-child)
+    @extend $tableRow
+    padding-top 10px
+    padding-bottom 10px
+
+$header
+  margin-top 20px
+  @extend $table
+  > .row, > .row:not(:last-child)
+    padding-bottom 2px
+  > hr
+    margin-top 0px
+    margin-bottom 0px
+
+.table-striped-header, .table-clear-header
+  @extend $header
+.table-striped, .table-clear
+  @extend $table
+
+.table-striped
+  > tbody
+    > tr
+      > td
+        padding 12px !important

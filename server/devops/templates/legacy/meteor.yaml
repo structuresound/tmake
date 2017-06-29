@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: nginx-http
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: nginx-https
+    protocol: TCP
+    name: https
+  selector:
+    app: web
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: meteor
+  labels:
+    app: web
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 20%
+  minReadySeconds: 30
+  template:
+    metadata:
+      name: web
+      labels:
+        app: web
+    spec:
+      volumes:
+        - name: "env"
+          secret:
+            secretName: "meteor.env"
+        - name: "acme"
+          secret:
+            secretName: "acme"
+      containers:
+        - name: meteor
+          image: 738600938019.dkr.ecr.us-east-1.amazonaws.com/chroma/fund:v1.0.22
+          env:
+            - name: PORT
+              value: "3000"
+            - name: ROOT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: meteor.env
+                  key: root.url
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: meteor.env
+                  key: MONGO_URL
+            - name: MONGO_OPLOG_URL
+              valueFrom:
+                secretKeyRef:
+                  name: meteor.env
+                  key: MONGO_OPLOG_URL
+            - name: MAIL_URL
+              valueFrom:
+                secretKeyRef:
+                  name: meteor.env
+                  key: mail.url
+            - name: METEOR_SETTINGS
+              valueFrom:
+                secretKeyRef:
+                  name: meteor.env
+                  key: meteor.settings
+          ports:
+          - name: meteor
+            containerPort: 3000
+        - name: nginx
+          image: 738600938019.dkr.ecr.us-east-1.amazonaws.com/chroma/nginx:v1.0.6
+          ports:
+            - name: nginx-http
+              containerPort: 80
+            - name: nginx-https
+              containerPort: 443
+          volumeMounts:
+            - mountPath: "/etc/nginx/"
+              name: "env"
+            - mountPath: "/usr/local/etc/nginx/ssl"
+              name: "env"
+            - mountPath: "/.well-known/acme-challenge"
+              name: "acme"

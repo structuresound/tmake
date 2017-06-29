@@ -1,0 +1,13 @@
+#!/bin/bash
+APP=$1
+if [ $APP ]
+then
+pm2 restart devops/local/process.yaml --only $APP
+else
+echo restarting nginx may require root pass
+sudo nginx -c $(pwd)/devops/local/nginx.conf -s quit
+sleep 1
+## nginx
+sh devops/local/before/nginx.sh
+pm2 restart devops/local/process.yaml
+fi

@@ -1,0 +1,18 @@
+version: '2'
+services:
+  web:
+    container_name: 'tmake_server'
+    image: 1e1f/tmake:server
+    ports:
+      - "80:8080"
+    volumes:
+      - .:/usr/src/app
+    links:
+      - mongo
+  mongo:
+    container_name: 'tmake_db'
+    image: chromapdx/mongo-rocks
+    volumes:
+      - ./:/data
+    ports:
+      - "27017:27017"

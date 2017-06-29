@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+spec:
+  template:
+    metadata:
+      name: vault-init
+    spec:
+      containers:
+        - name: vault
+          image: vault:0.7.0
+          command:
+            - vault
+            - server
+            - -config=/vault/config/
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          resources:
+            requests:
+              cpu: 300m
+              memory: 1000Mi
+            limits:
+              cpu: 300m
+              memory: 1500Mi
+          ports:
+          - containerPort: 9000
+            name: readiness
+          volumeMounts:
+            - name: "tls"
+              mountPath: /etc/tls
+            - name: "config"
+              mountPath: /vault/config
+        - name: vault-init
+          image: 738600938019.dkr.ecr.us-east-1.amazonaws.com/chroma/vault-init:1.0.4
+          imagePullPolicy: Always
+          env:
+          - name: VAULT_INIT_SETTINGS
+            valueFrom:
+              secretKeyRef:
+                name: vault-init
+                key: settings.json
+      restartPolicy: Never
+      volumes:
+        - name: tls
+          secret:
+            secretName: consul
+        - name: config
+          secret:
+            secretName: vault  
+        - name: vault-init
+          secret:
+            secretName: vault-init

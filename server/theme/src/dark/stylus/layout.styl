@@ -1,0 +1,214 @@
+@require "./shared/vars.styl"
+
+html
+  position relative
+  min-height 100%
+
+.container.page, .container-fluid.page
+  padding-top sectionTop
+  padding-bottom sectionBottom
+
+@media screen and (min-width: $screen-sm)
+  .lg-spacer, .spacer
+    padding-top 30px
+  .form-spacer
+    padding-top 15px
+  .spacer-xl
+    padding-top 60px
+
+@media screen and (max-width: $screen-sm)
+  .spacer, .form-spacer, .xs-spacer
+    padding-top 15px
+  .spacer-xl
+    padding-top 30px
+.fit
+  width 100%
+
+.fit-height
+  height 100%
+
+.row.banner
+  margin-bottom 1em
+  height 30em
+
+.row-centered
+  text-align center !important
+
+.col-centered
+  display inline-block !important
+  float none !important
+  text-align left !important
+  margin-right -4px !important
+
+.page-header ul.small
+  padding-top 1em
+  -webkit-padding-start 0px
+
+.modal
+  text-align center
+
+.modal-dialog
+  display inline-block
+  text-align left
+  vertical-align middle
+
+.modal-dialog.splash
+  width 100%
+  overflow-y hidden
+
+.highcharts-container
+  width 100%
+  max-width 100%
+  overflow hidden
+
+.modal-dialog.signup
+  width 70%
+  overflow-y hidden
+
+.modal-content.splash
+  -webkit-background-size cover
+  background-size 100%
+
+.modal-content.signup
+  -webkit-background-size cover
+
+.page-header
+  margin-top 0px
+
+.panel-heading, .panel-footer
+  .page-header
+    margin 0px 0px 0px 0px
+    border none
+
+  .container-fluid
+    position absolute
+    bottom 10%
+
+.modal-content.splash,
+.modal-content.signup
+  border-bottom 0px
+
+.contract-box
+  padding 30px 15px 15px 15px
+
+.CodeMirror
+  min-height 60vh
+
+.CodeMirror-auto
+  min-height 60vh
+  height auto
+
+@media only screen and (min-width:$screen-sm)
+  .v-center
+    display flex
+    align-items center
+  .v-end
+    display flex
+    align-items flex-end
+
+    h4
+      margin-bottom 0px
+
+  .d-pull-right
+    float right
+  .d-pull-right:after
+    clear right
+
+  .sm-only
+    display none !important
+
+@media screen and (max-width: $screen-xs)
+  .m-fit
+    width 100%
+    min-width 100%
+
+  .lg-only
+    display none
+
+@media screen and (max-width: $screen-xs)
+  h1
+    text-align center
+  h1,h2,h3,h4,h5
+    &.page-header
+      text-align center
+  [class*="col-"].form-box
+    padding-left 0px !important
+    padding-right 0px !important
+
+@media screen and (max-width: $screen-sm)
+  .lg-only
+    display none !important
+
+@media only screen and (max-width:$screen-sm)
+  // override for less space on H2 sections
+  .page-header
+    margin-top 15px !important
+
+  // automatically open the account box when the navbar is collapsed
+  .disabled
+    .dropdown-menu
+      display block !important
+      position static !important
+      margin-top 0 !important
+      position static !important
+      width 100% !important
+      border none !important
+      box-shadow none !important
+
+    a.dropdown-toggle .caret
+      display none !important
+
+@media screen and (min-width: $screen-sm)
+  .modal:before
+    display inline-block
+    vertical-align middle
+    content " "
+    height 100%
+
+a#home-link img
+  border-radius 50%
+  border-width 2px
+  max-height 50px
+
+canvas
+  position absolute
+  z-index 1
+  pointer-events none
+
+.dropdown-menu > li > a.btn
+  padding 6px 12px
+
+.progress.progress-chroma
+  height 5px !important
+  margin-bottom 0px
+
+.row:not(:last-child)
+  margin-bottom 15px
+
+@media screen and (max-width: $screen-sm)
+  .row:not(:last-child)
+    margin-bottom 2em
+  i.fa
+    padding-bottom 0.3em
+
+@media screen and (max-width: $screen-sm)
+  .sm-fit
+    width 100%
+
+.no-bottom-margin
+  margin-bottom 0 !important
+
+.container
+  &.no-padding
+    padding-top 0px
+    padding-bottom 0px
+
+.flex-center
+  display flex
+  align-items center
+  justify-content center
+
+.vcenter
+  display inline-block
+  vertical-align middle
+  float none

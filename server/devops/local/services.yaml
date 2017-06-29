@@ -1,0 +1,25 @@
+#nginx being run by daemon
+apps:
+- name: front-server
+  cwd: front
+  script: tmp/server.js
+  args: --preserve-symlinks
+  watch: tmp
+  restart_delay: 30000
+  env:
+    PORT: 3000
+    NAMESPACE_SETTINGS_PATH: ../secrets/local/namespace/settings.yaml
+    SETTINGS_PATH: ../secrets/local/front/settings.yaml
+- name: front-webpack
+  cwd: front
+  script: bin/watch.js
+  args: --preserve-symlinks
+  restart_delay: 30000
+  env:
+    PORT: 3001
+- name: theme
+  cwd: theme
+  script: build.js
+  restart_delay: 30000
+  env:
+    PORT: 3002

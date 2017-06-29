@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "outDir": "dist",
+		"allowJs": false,
+		"jsx": "react",
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"preserveConstEnums": true,
+		"experimentalDecorators": true,
+		"removeComments": true,
+		"sourceMap": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

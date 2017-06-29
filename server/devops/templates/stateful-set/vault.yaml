@@ -1,0 +1,94 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: vault
+spec:
+  serviceName: vault
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+        - name: vault
+          image: chromapdx/vault:1.0.4
+          command:
+            - "/bin/sh"
+            - "-c"
+            - |
+              export ROOT_URL=GRUNT_URL
+              export VAULT_REDIRECT_ADDR="https://vault.$ROOT_URL"
+              export CLUSTER_DNS="$(NAMESPACE).svc.cluster.local"
+              export VAULT_CLUSTER_ADDR="https://$CLUSTER_DNS:8200"
+              export VAULT_CONFIG_PATH="/vault/config/vault.hcl"
+              node /app/build/server.js
+              #echo starting vault @ $VAULT_CLUSTER_ADDR loadbalancer @ $VAULT_REDIRECT_ADDR
+              #vault server -config=/vault/config/
+          env:
+          - name: NAMESPACE
+            value: GRUNT_NAMESPACE
+          - name: ENDPOINT
+            value: http://127.0.0.1:9000
+          - name: GITHUB_ORG
+            value: chromapdx
+          - name: GITHUB_TEAM
+            value: Owners
+          - name: GITHUB_USER
+            valueFrom:
+              secretKeyRef:
+                name: vault
+                key: GITHUB_USER
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          ports:
+          - containerPort: 443
+            name: ha-forwarding
+          - containerPort: 9000
+            name: readiness
+          - containerPort: 8200
+            name: vault
+          - containerPort: 8125
+            name: telemetry
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/leader
+              port: 9000
+            initialDelaySeconds: 30
+            timeoutSeconds: 1
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+            - name: config
+              mountPath: /vault/config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: tls
+          secret:
+            secretName: consul
+        - name: config
+          secret:
+            secretName: vault
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        annotations:
+          volume.alpha.kubernetes.io/storage-class: standard
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 5Gi

@@ -1,3 +1,7 @@
+$environment:
+  BSON_BYTE_ORDER:
+    LE: 1234
+    BE: 4321
 git:
   repository: mongodb/libbson
   tag: 1.3.4
@@ -48,13 +52,9 @@ configure:
         BSON_HAVE_DECIMAL128: 0
         win:
           BSON_OS: 2
-        "mac, linux":
+        mac, linux:
           BSON_HAVE_TIMESPEC: 1
-        BSON_BYTE_ORDER:
-          macro: ${target.endianness}
-          map:
-            LE: 1234
-            BE: 4321
+        BSON_BYTE_ORDER: ${BSON_BYTE_ORDER.${target.endianness}}
       directive:
         prepost: "@"
       ext: "h"

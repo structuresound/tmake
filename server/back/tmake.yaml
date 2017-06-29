@@ -1,0 +1,19 @@
+name: tmake_server
+outputType: executable
+configure:
+  for: ninja
+  mac, linux:
+    for: cmake
+    linkerFlags:
+      ldl: true
+build:
+  with: ninja
+  mac, linux:
+    with: cmake
+    linkerFlags:
+      ldl: true
+require:
+  mongocxx:
+    link: ../examples/mongocxx
+  served: 
+    link: ../examples/served

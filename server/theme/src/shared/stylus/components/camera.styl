@@ -1,0 +1,18 @@
+@require '../vars.styl'
+
+.camera-popup
+  .btn-link
+    color $gray-dark
+
+  &[data-collection="driversLicenseImages"][data-schema-key="imageId"]
+    .modal-title
+      .default
+        display none
+      .css-content-hook:before
+        content "May I see your ID?"
+  &[data-collection="profileImages"][data-schema-key="profile.imageId"]
+    .modal-title
+      .default
+        display none
+      .css-content-hook:before
+        content "Smile and say 'Cheese!'"

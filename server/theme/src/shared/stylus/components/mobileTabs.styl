@@ -1,0 +1,50 @@
+@require '../vars.styl'
+
+#mobile-tabs
+  ul
+    position fixed
+    bottom 10vh
+  li
+    &#account-mobile-tab .wrapper
+      min-width 6em
+
+      #loggedInName
+        white-space nowrap
+        overflow hidden
+        text-overflow ellipsis
+
+    &.active a, a:hover
+      &.mobileInvestButton
+        color cf-magenta
+      &.mobileRaiseButton
+        color cf-orange
+      &.mobileJoinButton, &.mobilePortfolioButton
+        color cf-green
+      &.mobileLoginButton, &.mobileLoggedInDropdownButton
+        color cf-cyan
+
+    > a:focus, > a, > a:link, > a:hover
+      background-color chroma-header-bg
+
+  @media screen and (max-width: $screen-sm )
+    li
+      text-align center
+      margin-left 0px
+      margin-right 0px
+      padding-left 0px
+      padding-right 0px
+      width 24.9%
+      > a:focus, > a, > a:link, > a:hover
+        padding 10px 0px 10px 0px
+        border 0 1px 0 0 #eee solid
+        > img
+          max-height 16px
+          &.empty
+            opacity 0 !important
+        > p
+          margin 0
+          text-transform uppercase
+          &.joinBox
+            margin 0px 10px 0px 10px !important
+            padding 10px 0px 10px 0px !important
+            border 1px #eee solid

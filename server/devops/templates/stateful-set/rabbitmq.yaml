@@ -1,0 +1,75 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rabbitmq
+  serviceName: rmq-cluster
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: rabbitmq
+          secret:
+            secretName: rabbitmq
+      containers:
+      - name: rabbitmq
+        image: GRUNT_RABBITMQ_IMAGE
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: 96Mi
+            cpu: 25m
+          limits:
+            memory: 128Mi
+            cpu: 125m
+        terminationMessagePath: /dev/termination-log
+        ports:
+        - containerPort: 5672
+          name: queue-port
+          protocol: TCP
+        - containerPort: 15672
+          name: management-port
+          protocol: TCP
+        - containerPort: 4369
+          name: cluster-port
+          protocol: TCP
+        - containerPort: 25672
+          name: dist-port
+          protocol: TCP
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: RABBITMQ_DEFAULT_USER
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: RABBITMQ_DEFAULT_PASS
+        - name: RABBITMQ_ERLANG_COOKIE
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: RABBITMQ_ERLANG_COOKIE
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(NODE_NAME).rmq-cluster
+        

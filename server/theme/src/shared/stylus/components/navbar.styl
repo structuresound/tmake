@@ -1,0 +1,24 @@
+@require "./shared/vars.styl"
+
+nav.navbar
+  text-transform uppercase
+
+  button.btn.btn-outline
+    text-transform uppercase
+    min-width: 128px;
+    background-image none
+    background-color transparent
+    color $gray-lighter
+    border 1px solid $gray-lighter !important
+    padding-top 4px
+    padding-bottom 4px
+    font-weight bold
+  
+
+// Override Bootstrap 24px
+@media (min-width: 768px)
+  .navbar-nav
+    > li.image
+      > a
+        padding-top 16px
+        padding-bottom 16px

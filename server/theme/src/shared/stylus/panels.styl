@@ -1,0 +1,51 @@
+@require "./vars.styl"
+
+.panel
+  border none !important
+
+  > .panel-heading
+    background-color chroma-header-bg !important
+    border-top 0px
+    border-left 0px
+    border-right 0px
+    border-bottom 8px
+
+  .panel-overlay-chroma
+    color $gray-lighter
+    visibility hidden
+    opacity 0
+    transition all 0.5s ease-in-out
+
+  .panel-body:hover .panel-overlay-chroma
+    visibility visible
+    opacity 1
+    -moz-transform translateX(-100%)
+    -o-transform translateX(-100%)
+    -webkit-transform translateX(-100%)
+    transform translateX(-100%)
+
+  &.panel-danger
+    > .panel-heading
+      border-image linear-gradient(to right,  alpha(cf-red, 0.5), alpha(cf-magenta, 0.5)) 5 stretch !important
+    .panel-overlay-chroma
+      background linear-gradient(to right,  alpha(cf-red, 0.5), alpha(cf-magenta, 0.5))
+
+  &.panel-warning
+    > .panel-heading
+      border-image linear-gradient(to right,  alpha(cf-yellow, 0.5), alpha(cf-orange, 0.5)) 5 stretch !important
+    .panel-overlay-chroma
+      background linear-gradient(to right,  alpha(cf-orange, 0.0), alpha(cf-orange, 0.1),  alpha(cf-orange, 0.5), alpha(cf-orange, 0.8))
+
+  &.panel-info
+    > .panel-heading
+      border-image linear-gradient(to right,  alpha(cf-blue, 0.5), alpha(cf-cyan, 0.5)) 5 stretch !important
+    .panel-overlay-chroma
+      background linear-gradient(to right,  alpha(cf-blue, 0.0), alpha(cf-blue, 0.1), alpha(cf-blue, 0.5), alpha(cf-cyan, 0.8))
+
+  .panel-footer
+    background-color chroma-footer-bg
+
+.panel.admin
+  background-color desaturate($brand-danger, 75%)
+  > .panel-heading
+    background-color desaturate($brand-danger, 75%)

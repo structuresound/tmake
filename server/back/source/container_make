@@ -1,0 +1,122 @@
+#!/bin/bash
+
+#------------------------------------------------------------------------------
+# Helpers
+#
+err() {
+    echo -e >&2 ERROR: $@\\n
+}
+
+die() {
+    err $@
+    exit 1
+}
+
+has() {
+    # eg. has command update
+    local kind=$1
+    local name=$2
+
+    type -t $kind:$name | grep -q function
+}
+
+#------------------------------------------------------------------------------
+# Option processing
+#
+while [[ $# != 0 ]]; do
+    case $1 in
+
+        --)
+            break
+            ;;
+
+        --args)
+            ARG_ARGS="$2"
+            shift 2
+            ;;
+
+        --config)
+            ARG_CONFIG="$2"
+            shift 2
+            ;;
+
+        --image)
+            ARG_IMAGE="$2"
+            shift 2
+            ;;
+
+        -*)
+            err Unknown option \"$1\"
+            command:help
+            exit
+            ;;
+
+        *)
+            break
+            ;;
+
+    esac
+done
+
+# The precedence for options is:
+# 1. command-line arguments
+# 2. environment variables
+# 3. defaults
+
+# Source the config file if it exists
+DEFAULT_CONFIG=~/.tmake
+FINAL_CONFIG=${ARG_CONFIG-${TMAKE_CONFIG-$DEFAULT_CONFIG}}
+
+[[ -f "$FINAL_CONFIG" ]] && source "$FINAL_CONFIG"
+
+# Set the docker image
+DEFAULT_IMAGE=1e1f/tmake
+FINAL_IMAGE=${ARG_IMAGE-${TMAKE_IMAGE-$DEFAULT_IMAGE}}
+
+# Set the docker run extra args (if any)
+FINAL_ARGS=${ARG_ARGS-${TMAKE_ARGS}}
+
+# If we are not running via boot2docker
+if [ -z $DOCKER_HOST ]; then
+    USER_IDS="-e TMAKE_UID=$( id -u ) -e TMAKE_GID=$( id -g )"
+fi
+
+#------------------------------------------------------------------------------
+# Command-line processing
+#
+case $1 in
+
+    --)
+        # Everything after this is the command-line to be executed
+        shift
+        ;;
+
+    *)
+        # If this is a builtin command, execute it, otherwise fall through
+        if has command $1; then
+            command:$1 "${@:2}" # array slice skipping first element
+            exit $?
+        fi
+        ;;
+
+esac
+
+#------------------------------------------------------------------------------
+# Now, finally, run the command in a container
+#
+docker run -i -t --rm \
+    -v $PWD:/build \
+    -v $PWD:/tmake/sysroot/build \
+    $USER_IDS \
+    $FINAL_ARGS \
+    $FINAL_IMAGE \
+    tmake "$@" \
+
+################################################################################
+#   To use tmake via docker, run the following commands to
+#   get this helper script into an executable
+#       docker run 1e1f/tmake > container_make && chmod +x tmake
+#
+#   You may then wish to move tmake to somewhere in your path.
+#       mv tmake /usr/local/bin/tmake
+################################################################################

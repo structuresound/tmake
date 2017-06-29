@@ -1,0 +1,61 @@
+@require "./shared/vars.styl"
+
+cf-well-bg-gradient = linear-gradient(to bottom, rgba(175, 175, 175, .6),  rgba(150, 150, 150, .4))
+
+.inverse
+  a, a:link, a:visited
+    color cf-magenta
+    &.button, &.btn
+      color $gray-lighter
+  a:hover
+    color cf-magenta
+    &.button, &.btn
+      color $gray-lighter
+
+  h1,h2,h3,h4,h5
+    color chroma-inverse-h-color !important
+    .small
+      color chroma-inverse-h-color !important
+
+  .panel-default
+    background-color $gray-light
+    .panel-heading, .panel-footer
+      background cf-well-bg-gradient !important
+      color chroma-inverse-p-color !important
+
+  background-color chroma-inverse-bg
+  color chroma-inverse-p-color
+  hr
+    border-color $inverse-text-color
+    border-style solid none
+    border-width 1px 0
+    margin 18px 0
+
+  input.form-control, select.form-control
+    background-color $cf-white
+    color chroma-inverse-p-color !important
+
+  textarea.form-control
+    background-color $gray-lighter
+    color chroma-inverse-p-color !important
+
+  .input-group-addon
+    background-color $gray-lighter
+    color chroma-inverse-p-color !important
+
+  .btn.btn-chroma, .btn.btn-primary
+    background linear-gradient(to right, cf-blue, cf-cyan) !important
+
+  .well
+    background cf-well-bg-gradient !important
+    border none
+
+  .well.bg-gray
+    background cf-well-bg-gradient !important
+
+  button.cancel-link
+    color $gray-dark
+
+  .table-striped
+    .row:nth-child(odd)
+      background-color: $gray-lighter

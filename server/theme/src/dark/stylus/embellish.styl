@@ -1,0 +1,116 @@
+@require "./shared/vars.styl"
+
+select, input, textarea
+  &.form-control
+    border-radius $border-radius-base
+
+.splash-text
+  -webkit-font-smoothing subpixel-antialiased
+
+.jumbotron
+  -webkit-font-smoothing antialiased
+  -moz-osx-font-smoothing grayscale
+
+  button, .btn
+    -webkit-font-smoothing auto
+
+@media screen and (max-width: $screen-sm)
+  nav #login-dropdown-list a.dropdown-toggle
+    pointer-events none
+
+:not(.inverse)
+  .well
+    background linear-gradient(to bottom, rgba(100, 100, 100, .6),  rgba(100, 100, 100, .4))
+    border none
+
+button.cancel-link
+  color $gray-light
+
+h1, h2
+  text-decoration none !important
+
+.modal
+  color $gray-darker
+
+button, input, optgroup, select, textarea
+  color $gray-darker
+
+.input-group-addon
+  background-color $gray-lighter
+  color chroma-inverse-p-color !important
+
+hr
+  color black
+
+.well.well-light
+  background-color $gray-lighter !important
+
+.row.admin
+  background-image cf-cotton-candy-gradient !important
+  color $gray-darker !important
+
+pre.well
+  color $gray-lighter
+
+.legal
+  color $gray-light !important
+
+.markdownPreview span.preview
+  color $gray-darker
+
+.progress-chroma
+  background-image cf-rainbow-gradient !important
+
+  .progress-bar
+    float right !important
+    background-color $gray-darker !important
+
+.btn-Facebook
+  color white
+  background-color #3B5998
+
+.btn-Google
+  color white
+  background-color #D34836
+
+.table-striped, .table-clear
+  > .row.label
+    background transparent !important
+
+$nth-odd
+  background linear-gradient(to bottom, rgba(100, 100, 100, .3),  rgba(50, 50, 50, .1))
+$nth-even
+  background linear-gradient(to bottom, rgba(150, 150, 150, .4),  rgba(100, 100, 100, .1))
+
+#bigTicker
+  @extend $nth-odd
+  min-height 240px
+  .has-success
+    color #00ff00
+#newTradeOrder
+  @extend $nth-odd
+  min-height 240px
+
+.list-group
+  border none
+  text-align center
+  .list-group-item:nth-child(odd)
+    border none
+    @extend $nth-odd
+  .list-group-item:nth-child(even)
+    border none
+    @extend $nth-even
+
+.table-striped
+  > tbody
+    > tr
+      > td
+        border-top none !important
+    > tr:nth-child(odd)
+      @extend $nth-odd
+    > tr:nth-child(even)
+      @extend $nth-even
+  > .row:nth-child(odd)
+    @extend $nth-odd
+  > .row:nth-child(even)
+    @extend $nth-even

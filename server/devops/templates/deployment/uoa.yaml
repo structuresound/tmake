@@ -1,0 +1,45 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: uoa
+  labels:
+    app: uoa
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 20%
+  minReadySeconds: 1
+  template:
+    metadata:
+      name: uoa
+      labels:
+        app: uoa
+    spec:
+      volumes:
+      - name: uoa
+        secret:
+          secretName: uoa
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+      - name: uoa
+        image: GRUNT_UOA_IMAGE
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "125m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        ports:
+        - name: uoa-http
+          containerPort: 3000
+        env:
+        - name: SETTINGS
+          valueFrom:
+            secretKeyRef:
+              name: uoa
+              key: settings.yaml

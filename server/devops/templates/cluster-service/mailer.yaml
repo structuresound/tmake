@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailer
+  labels:
+    app: mailer
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: mailer-http
+    protocol: TCP
+    name: http
+  selector:
+    app: mailer

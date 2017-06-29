@@ -1,0 +1,88 @@
+@require "./shared/mixins.styl"
+
+// official colors, sampled from logo
+cf-purple    = rgb(127, 63,   162)
+cf-magenta   = rgb(255, 0,   133)
+cf-red       = rgb(237, 28,   36)
+cf-orange    = rgb(251, 176, 64)
+cf-yellow    = rgb(255, 222, 23)
+cf-green     = rgb(0, 161, 75)
+cf-turquoise = rgb(0,   176, 188)
+cf-cyan      = rgb(0,   173, 243)
+cf-blue      = rgb(33,   64, 154)
+cf-white     = rgb(255, 255, 255)
+
+cf-warning-gradient = linear-gradient(to right, cf-orange, cf-yellow)
+cf-success-gradient = linear-gradient(to right, cf-green, cf-yellow )
+cf-info-gradient = linear-gradient(to right, cf-orange, cf-green)
+
+cf-dark-teal = rgb(12,8,8)
+cf-gray = rgb(12,8,8)
+
+chroma-bg              = cf-gray
+chroma-header-bg       = cf-dark-teal
+chroma-footer-bg       = cf-dark-teal
+chroma-main-bg         = cf-gray
+chroma-inverse-bg      = rgb(238,238,238)
+chroma-inverse-h-color = rgb(46,51,54)
+chroma-inverse-p-color = rgb(87,92,99)
+
+// redefefined bootstrap vars
+// you can just define them here and the won't be redined below.
+$gray-base    = #000
+$gray-darker  = lighten($gray-base, 13.5%) // #222
+$gray-dark    = lighten($gray-base, 20%)   // #333
+$gray         = lighten($gray-base, 33.5%) // #555
+$gray-light   = lighten($gray-base, 46.7%) // #777
+$gray-lighter = lighten($gray-base, 93.5%) // #eee
+
+$brand-primary = cf-blue
+$brand-success = cf-green
+$brand-info    = cf-cyan
+$brand-warning = cf-yellow
+$brand-danger  = cf-red
+
+$body-bg = chroma-main-bg
+$link-color = $gray-lighter
+
+$border-radius-base = 0px
+$border-radius-small = 0px
+$border-radius-large = 0px
+
+$dropdown-bg = chroma-footer-bg
+$dropdown-link-color = $gray-lighter
+
+$dropdown-link-hover-color = $gray-lighter
+$dropdown-link-hover-bg = transparent
+
+$input-color        = $gray-darker
+$input-border       = transparent
+$input-bg           = $white
+$input-border-focus = $gray-lighter
+
+$well-bg = $gray-light
+
+$navbar-default-bg                = chroma-header-bg
+$navbar-default-brand-color       = $gray-lighter
+$navbar-default-link-color        = $gray-lighter
+$navbar-default-link-hover-color  = $gray-lighter
+$navbar-default-link-active-color = $gray-lighter
+
+$headings-small-color = $gray-lighter
+
+$panel-bg = chroma-main-bg
+$panel-body-padding = 0px
+
+$panel-default-text = $gray-lighter
+$panel-primary-text = $gray-lighter
+$panel-success-text = $gray-lighter
+$panel-info-text    = $gray-lighter
+$panel-warning-text = $gray-lighter
+$panel-danger-text  = $gray-lighter
+
+$panel-default-heading-bg = chroma-main-bg
+$panel-primary-heading-bg = chroma-main-bg
+$panel-success-heading-bg = chroma-main-bg
+$panel-info-heading-bg    = chroma-main-bg
+$panel-warning-heading-bg = chroma-main-bg
+$panel-danger-heading-bg  = chroma-main-bg

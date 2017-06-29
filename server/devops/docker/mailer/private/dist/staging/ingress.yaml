@@ -1,0 +1,120 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    ingress.kubernetes.io/affinity: cookie
+    kubernetes.io/ingress.allow-http: 'false'
+spec:
+  tls:
+    - secretName: tls
+      hosts:
+        - staging.chroma.fund
+        - rabbitmq.staging.chroma.fund
+        - cockroachdb.staging.chroma.fund
+        - mongo.staging.chroma.fund
+  rules:
+    - host: staging.chroma.fund
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: front
+              servicePort: http
+          - path: /theme
+            backend:
+              serviceName: theme
+              servicePort: http
+          - path: /.well-known
+            backend:
+              serviceName: theme
+              servicePort: http
+          - path: /_timesync
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /account
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /admin
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /app
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /cfs
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /fonts
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /forgotPassword
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /join
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /login
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /logout
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /merged-stylesheets.css
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /meteor
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /offerings
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /offering
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /orders
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /order
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /packages
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /resetPassword
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /signup
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /signin
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /sockjs
+            backend:
+              serviceName: meteor
+              servicePort: http
+          - path: /verifyEmail
+            backend:
+              serviceName: meteor
+              servicePort: http

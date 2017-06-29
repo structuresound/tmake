@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  ports:
+  - name: mongo-0
+    port: 27007
+    targetPort: 27007
+  - name: mongo-1
+    port: 27017
+    targetPort: 27017
+  - name: mongo-2
+    port: 27027
+    targetPort: 27027
+  clusterIP: None
+  selector:
+    app: mongo

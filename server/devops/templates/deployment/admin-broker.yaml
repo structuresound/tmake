@@ -1,0 +1,61 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: admin-broker
+  labels:
+    app: admin-broker
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 20%
+  minReadySeconds: 1
+  template:
+    metadata:
+      name: admin-broker
+      labels:
+        app: admin-broker
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      containers:
+        - name: admin-broker
+          image: gcr.io/google_containers/nginx-slim:0.15
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 25m
+            limits:
+              memory: 64Mi
+              cpu: 150m
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+            - name: ssl
+              containerPort: 443
+            - name: cockroach
+              containerPort: 8080
+            - name: consul
+              containerPort: 8443
+            - name: mongo-0
+              containerPort: 27007
+            - name: mongo-1
+              containerPort: 27017
+            - name: mongo-2
+              containerPort: 27027
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+              readOnly: true
+            - name: nginx
+              mountPath: /etc/nginx
+      volumes:
+      - name: nginx
+        secret:
+          secretName: admin-broker
+      - name: tls
+        secret:
+          secretName: tls

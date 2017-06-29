@@ -1,0 +1,110 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: cockroachdb
+spec:
+  serviceName: cockroachdb
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: cockroachdb
+      annotations:
+        scheduler.alpha.kubernetes.io/affinity: >
+          {
+            "podAntiAffinity": {
+              "preferredDuringSchedulingIgnoredDuringExecution": [{
+                "weight": 100,
+                "labelSelector": {
+                  "matchExpressions": [{
+                    "key": "app",
+                    "operator": "In",
+                    "values": ["cockroachdb"]
+                  }]
+                },
+                "topologyKey": "kubernetes.io/hostname"
+              }]
+            }
+          }
+        pod.alpha.kubernetes.io/init-containers: '[{
+          "name": "bootstrap",
+          "image": "cockroachdb/cockroach-k8s-init:0.1",
+          "imagePullPolicy": "Always",
+          "args": [
+            "-on-start=/on-start.sh",
+            "-service=cockroachdb"
+          ],
+          "env": [
+            {
+                "name": "POD_NAMESPACE",
+                "valueFrom": {
+                    "fieldRef": {
+                        "apiVersion": "v1",
+                        "fieldPath": "metadata.namespace"
+                    }
+                }
+              }
+          ],
+          "volumeMounts": [
+              {
+                  "name": "datadir",
+                  "mountPath": "/cockroach/cockroach-data"
+              }
+          ]
+        }]'
+    spec:
+      containers:
+      - name: cockroachdb
+        image: cockroachdb/cockroach
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: 384Mi
+            cpu: 50m
+          limits:
+            memory: 512Mi
+            cpu: 100m
+        ports:
+        - containerPort: 26257
+          name: grpc
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: datadir
+          mountPath: /cockroach/cockroach-data
+        - name: tls
+          mountPath: /etc/tls
+        command:
+          - "/bin/bash"
+          - "-ecx"
+          - |
+            CRARGS=("start" "--certs-dir" "/etc/tls" "--host" "$(hostname -f)" "--http-host" "0.0.0.0")
+            if [ ! "$(hostname)" == "cockroachdb-0" ] || [ -e "/cockroach/cockroach-data/cluster_exists_marker" ]
+            then
+              CRARGS+=("--join" "cockroachdb-0.cockroachdb.GRUNT_NAMESPACE.svc.cluster.local,cockroachdb-1.cockroachdb.GRUNT_NAMESPACE.svc.cluster.local,cockroachdb-2.cockroachdb.GRUNT_NAMESPACE.svc.cluster.local")
+            else
+              echo "init new cluster"
+            fi
+            chmod 700 /etc/tls/*
+            exec /cockroach/cockroach ${CRARGS[*]}
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - name: vault
+        secret:
+          secretName: consul  
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: datadir
+      - name: tls
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+      annotations:
+        volume.alpha.kubernetes.io/storage-class: standard
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: 10Gi

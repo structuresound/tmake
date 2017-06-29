@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    ingress.kubernetes.io/affinity: "cookie"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+  - secretName: tls
+    hosts: GRUNT_REPLACE
+  rules:
+  - host: GRUNT_URL
+    http:
+      paths:
+        GRUNT_REPLACE:
+          front:
+            port: http
+            routes: /
+          theme:
+            port: http
+            routes: theme, .well-known
+          meteor:
+            port: http
+            routes: _timesync, account, admin, app, cfs, fonts, forgotPassword, join, login, logout, merged-stylesheets.css, meteor, offerings, offering, orders, order, packages, portfolio, resetPassword, signup, signin, sockjs, verifyEmail

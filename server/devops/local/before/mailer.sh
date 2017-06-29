@@ -1,0 +1,1 @@
+cd mailer && gulp scripts

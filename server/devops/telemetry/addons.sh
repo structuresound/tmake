@@ -1,0 +1,1 @@
+http://localhost:8001/api/v1/proxy/namespaces/kube-system/services/monitoring-grafana/dashboard/db/namespaces?var-namespace=staging&var-podname=vault-0

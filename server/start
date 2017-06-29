@@ -1,0 +1,38 @@
+#!/bin/bash
+APP=$1
+if [ $APP ]
+then
+  if [ $APP = "nginx" ]
+  then 
+    sudo nginx -c $(pwd)/devops/local/nginx.conf
+  else
+    sh devops/local/before/$APP.sh
+    pm2 start devops/local/stateful.yaml --only $APP
+    pm2 start devops/local/services.yaml --only $APP
+  fi
+else
+## Load Balancing
+echo starting nginx may require root pass
+sudo nginx -c $(pwd)/devops/local/nginx.conf -p $(pwd)
+
+## Stateful
+sh devops/local/before/mongo.sh
+pm2 start devops/local/stateful.yaml
+
+## Prep Services
+sh devops/local/before/front-server.sh
+
+## Launch Remaining Services
+pm2 start devops/local/services.yaml
+echo "
+'cluster' is up . . . do ./stop or ./restart
+
+also recommended:
+
+watch all:
+watch pm2 list
+
+reload nginx:
+sudo nginx -c $(pwd)/devops/local/nginx.conf
+"
+fi

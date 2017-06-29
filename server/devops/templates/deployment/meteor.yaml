@@ -1,0 +1,86 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: meteor
+  labels:
+    app: meteor
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 20%
+  minReadySeconds: 30
+  template:
+    metadata:
+      name: meteor
+      labels:
+        app: meteor
+    spec:
+      imagePullSecrets:
+      - name: ecr-secret
+      volumes:
+      - name: meteor
+        secret:
+          secretName: meteor
+      containers:
+      - name: meteor
+        image: GRUNT_METEOR_IMAGE
+        ports:
+        - name: meteor
+          containerPort: 80
+        resources:
+          requests:
+            memory: 384Mi
+            cpu: 125m
+          limits:
+            memory: 512Mi
+            cpu: 250m
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: meteor
+          initialDelaySeconds: 60
+          timeoutSeconds: 10
+        env:
+        - name: ROOT_URL
+          valueFrom:
+            secretKeyRef:
+              name: meteor
+              key: ROOT_URL
+        - name: MONGO_URL
+          valueFrom:
+            secretKeyRef:
+              name: meteor
+              key: MONGO_URL
+        - name: MONGO_CERT
+          valueFrom:
+            secretKeyRef:
+              name: mongo-tls
+              key: meteor.crt
+        - name: MONGO_CA
+          valueFrom:
+            secretKeyRef:
+              name: mongo-tls
+              key: ca.crt
+        - name: MONGO_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mongo-tls
+              key: meteor.pem
+        - name: MAIL_URL
+          valueFrom:
+            secretKeyRef:
+              name: meteor
+              key: MAIL_URL
+        - name: METEOR_SETTINGS
+          valueFrom:
+            secretKeyRef:
+              name: meteor
+              key: METEOR_SETTINGS
+        - name: NAMESPACE_SETTINGS
+          valueFrom:
+            secretKeyRef:
+              name: namespace
+              key: settings.yaml

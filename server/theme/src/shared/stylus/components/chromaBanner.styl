@@ -1,0 +1,60 @@
+@require '../vars.styl'
+
+$cx = 28vmax
+$cy = $cx
+$cz = $cx
+$sl = $cz / 4
+
+$banner-height-desktop = 200px
+$banner-height-mobile = 140px
+
+#chromaBanner
+  .graphBox
+    position relative
+    overflow hidden
+    background-color chroma-header-bg
+    width 100%
+    height $cy
+    max-height $banner-height-desktop
+    @media only screen and (max-width:$screen-sm)
+      max-height $banner-height-mobile
+      .container, .container-fluid
+        padding-top 10px !important
+        padding-bottom 20px !important
+  .graph-container
+    width: $cx
+    height: $cy
+    top: 12vmax
+    left: 50%
+    position: absolute
+    transform: translateY($cy/-2) translateX($cx/-2)
+    perspective: $cy * 2
+    max-height $banner-height-desktop
+    @media only screen and (max-width:$screen-sm)
+      max-height $banner-height-mobile
+    @media only screen and (min-width:$screen-sm)
+      top 8vmax
+  .graph-title
+    width 100%
+    @media only screen and (max-width:$screen-sm)
+      font-size: 4vmax
+      margin-top 8vmax
+      text-align center
+    @media only screen and (min-width:$screen-sm)
+      font-size: 4vmax
+      margin-top 4vmax
+  .video
+    position: absolute
+    min-height: $banner-height-desktop
+    min-width: 100%
+    @media only screen and (max-width:$screen-sm)
+      min-height $banner-height-mobile
+  .overlay
+    background-image url('/meteor/video-overlay.png')
+    position absolute
+    bottom: 0
+    min-height: $banner-height-desktop
+    @media only screen and (max-width:$screen-sm)
+      min-height $banner-height-mobile
+    min-width: 100%
+    opacity 0.4

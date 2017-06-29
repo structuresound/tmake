@@ -1,0 +1,39 @@
+@require "./shared/vars.styl"
+
+footer
+  background-color chroma-main-bg
+  //border-color $gray-lighter
+  border-color cf-rainbow-gradient 1 stretch !important
+  border-style dotted solid double dashed
+  border-width 1px 0px 0px 0px
+
+  #footer-legal
+    background-color chroma-footer-bg
+  ul
+    list-style-type none
+  hr
+    border-color $gray-light
+    border-style solid none
+    border-width 1px 0px 0px 0px
+  li
+    margin-bottom 1em
+  .spacer
+    padding-top sectionTop !important
+  .row
+    padding-top footerRow
+  .container, .container-fluid
+    padding-top sectionTop
+    padding-bottom sectionTop
+  #footer-links li
+    text-transform uppercase
+
+  @media only screen and (max-width:$screen-sm)
+    input
+      margin-bottom footerRow
+
+  @media screen and (min-width: $screen-sm)
+    #footer-links
+      h3
+        font-size 110%
+      li
+        font-size 90%

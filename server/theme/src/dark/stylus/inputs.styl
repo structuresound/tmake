@@ -1,0 +1,79 @@
+@require "./shared/vars.styl"
+
+input-height-desktop = 33px
+input-height-mobile = 44px
+
+.btn
+  background-image linear-gradient(to right, $gray, $gray-light)
+  color $gray-lighter
+  border none
+
+  &.btn-chroma, &.btn-primary, &.btn-default, &.btn-warning, &.btn-danger, &.btn-success, &.js-select-file, &.js-camera-file
+    border none !important
+    background-repeat repeat-x !important
+
+  &.btn-chroma, &.btn-primary, &.js-select-file, &.js-camera-file
+    background-image linear-gradient(to right, cf-gray, cf-orange) !important
+    color $gray-lighter
+
+  &.btn-default
+    background-image linear-gradient(to right, $gray-darker, $gray-light)
+    color $gray-lighter
+
+  &.btn-danger
+    background-image cf-cotton-candy-gradient !important
+
+  &.btn-warning
+    background-image cf-warning-gradient !important
+
+  &.btn-success
+    background-image cf-success-gradient !important
+
+  &.btn-warning, &.btn-success
+    color cf-gray
+    color $inverse-text-color !important
+
+  &.field-accessory
+    margin-top 25px
+    padding-left 15px
+    padding-right 15px
+    max-height input-height-desktop
+    height input-height-desktop
+
+.label-warning
+  background-image cf-warning-gradient !important
+  color cf-gray
+.label-success
+  background-image cf-success-gradient !important
+  color cf-gray
+.label-danger
+  background-image cf-cotton-candy-gradient !important
+
+@media only screen and (min-width:$screen-sm)
+  input, input.form-control, select.form-control
+    max-height input-height-desktop
+    height input-height-desktop
+
+@media screen and (max-width: $screen-sm)
+  a, button
+    &.button.btn, &.btn
+      padding 12px 12px
+
+  input.form-control, select.form-control
+    max-height input-height-mobile
+    height input-height-mobile
+
+.checkbox
+  label
+    display block
+    padding-left 15px
+    text-indent -15px
+  input
+    width 13px
+    height 13px
+    padding  0
+    margin 0
+    vertical-align bottom
+    position relative
+    top -1px
+    *overflow hidden

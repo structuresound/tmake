@@ -1,0 +1,45 @@
+###
+# Test Environment
+###
+
+echo "installing, requirements this may take a while"
+echo "please also be ready to enter your password"
+
+# optional minikube driver
+brew install docker-machine-driver-xhyve
+
+# minikube
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.17.1/minikube-darwin-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+
+###
+# Development Dependencies
+###
+
+# homebrew:
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+brew update
+brew install homebrew/nginx/nginx-full --with-stream
+brew install node yarn mongo graphicsmagick
+
+# kubernetes requirements
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.18.0/minikube-darwin-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+brew install vault jq consul cfssl cfssljson awscli kubectl
+
+# node globals:
+npm i -g gulp grunt pm2 shelljs fs-extended fs-extra
+
+# meteor
+curl https://install.meteor.com/ | sh
+
+# rabbitMQ
+RABBIT_VERSION=3.6.9
+curl https://www.rabbitmq.com/releases/rabbitmq-server/v${RABBIT_VERSION}/rabbitmq-server-mac-standalone-${RABBIT_VERSION}.tar.xz | tar xvz
+mv rabbitmq_server-${RABBIT_VERSION} rabbitmq
+
+# cockroach
+COCKROACH_VERSION=latest.darwin-10.9-amd64
+curl "https://binaries.cockroachdb.com/cockroach-$COCKROACH_VERSION.tgz" | tar xvz
+mkdir -p cockroach
+mv "cockroach-$COCKROACH_VERSION/cockroach" cockroach/cockroach
+cp cockroach/cockroach /usr/local/bin/cockroach
+rm -R "cockroach-$COCKROACH_VERSION"

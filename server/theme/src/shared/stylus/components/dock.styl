@@ -1,0 +1,49 @@
+@require '../vars.styl'
+
+#dock-layer, #automation-layer
+  position fixed !important
+  position absolute
+  left 5vw
+  z-index 9999999996
+  width 90vw
+  max-height 66vh
+  .well
+    opacity 0.8
+  .container-fluid
+    padding 15px
+  .nav
+    li
+      > a:hover, > a:focus
+        &.sendRoute
+          background #eee
+          color #333
+        background-color none
+        background none
+  h5
+    margin-bottom 0
+  .dock-card
+    display inline-block
+    padding 15px
+    img
+      margin-bottom 10px
+      margin-top 0px
+      max-height 5vh
+      max-width 5vh
+  .superLog
+    min-height 50vh
+    height 100%
+    background-color rgba(0,0,0,.3) !important
+    color #eee
+
+.superLog
+  textarea
+    min-height 50vh
+
+#dock-layer
+  bottom 5vh
+
+#automation-layer
+  top 5vh
+
+.dock-bg, .automation-bg
+  background-color rgba(0,0,0,.6) !important

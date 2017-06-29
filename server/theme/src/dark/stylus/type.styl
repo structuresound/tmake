@@ -1,0 +1,157 @@
+@require "./shared/vars.styl"
+
+@font-face
+  font-family 'brandon'
+  src url('../static/Brandon_reg.otf') format("opentype")
+
+@font-face
+  font-family 'gotham'
+  src url('../static/Gotham-Bold.ttf') format("truetype")
+
+h1, h2, h3, h4, h5, h6
+  font-family 'gotham'
+  text-transform uppercase
+  letter-spacing 0.2rem
+  orphans 2
+  widows 2
+  &.page-header .small
+    text-transform none
+    font-family 'Raleway', sans-serif
+    margin-top 0.5em
+
+#coins-page, #coin-page
+  li
+    word-break break-all
+
+.no-text-transform
+  text-transform none !important
+
+label
+  font-weight inherit !important
+
+button, a.btn
+  text-transform uppercase
+
+.creator-profile
+  font-size 1.2rem
+  text-align left
+
+  h1, h2, h3, h4, h5, h6
+    text-align center
+
+#index-page, #footer
+  #splash
+    max-height 66vh
+    overflow hidden
+  .btn
+    text-transform uppercase
+
+.btn.btn-chroma, .btn.btn-primary, .label-primary, .js-select-file, .js-camera-file
+  color $gray-lighter
+
+#finance
+  p
+    font-size 110%
+    font-family 'brandon'
+    orphans 2
+    widows 2
+
+#bigTicker
+  h1
+    font-size 4vw
+
+.page-header:not(.chroma)
+  border none !important
+
+.page-header, hr
+  &.chroma
+    border-top 0
+    border-left 0
+    border-right 0
+    border-bottom 3px
+
+    &.danger
+      border-image cf-cotton-candy-gradient 3 stretch !important
+
+    &.info
+      border-image cf-info-gradient 3 stretch !important
+
+    &.success
+      border-image cf-success-gradient 3 stretch !important
+
+.small
+  font-size 1vmax
+
+.legal
+  font-size 12px
+  text-align justify
+
+  .highlight
+    color white
+
+a.cancel-link
+  text-decoration underline
+
+.h-stack
+  h4, h5, h6
+    text-align center
+  &:last-child
+    padding-bottom 1em
+
+@media screen and (max-width: $screen-xs)
+  .xs-center
+    text-align center
+  .xs-left
+    text-align left
+  .xs-right
+    text-align right
+
+
+@media screen and (min-width: $screen-xs) and (max-width: $screen-sm)
+  .sm-center
+    text-align center
+  .sm-left
+    text-align left
+  .sm-right
+    text-align right
+
+@media screen and (min-width: $screen-sm) and (max-width: $screen-md)
+  .md-center
+    text-align center
+  .md-left
+    text-align left
+  .md-right
+    text-align right
+
+.splash-title
+  text-align center
+
+@media screen and (max-width: $screen-sm)
+  .panel-overlay-chroma
+    h4
+      font-size 10vw
+    h5
+      font-size 8vw
+
+@media screen and (min-width: $screen-sm) and (max-width: $screen-md)
+  .panel-overlay-chroma
+    h4
+      font-size 2vw
+    h5
+      font-size 1.5vw
+
+@media screen and (min-width: $screen-md)
+  .panel-overlay-chroma
+    h4
+      font-size 3vw
+    h5
+      font-size 2vw
+
+.order-asset-string
+  text-transform capitalize
+
+.font-size-large
+  font-size $font-size-large
+
+.font-size-small
+  font-size $font-size-small

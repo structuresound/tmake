@@ -1,0 +1,17 @@
+#!/bin/bash
+APP=$1
+if [ $APP ]
+then
+  if [ $APP = "nginx" ]
+  then 
+    sudo nginx -c $(pwd)/devops/local/nginx.conf -s quit
+  else
+    pm2 delete devops/local/stateful.yaml --only $APP
+    pm2 delete devops/local/services.yaml --only $APP
+  fi
+else
+echo stopping nginx may require root pass
+sudo nginx -c $(pwd)/devops/local/nginx.conf -s quit
+sudo pm2 delete devops/local/services.yaml
+sudo pm2 delete devops/local/stateful.yaml
+fi

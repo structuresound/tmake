@@ -1,0 +1,26 @@
+{
+  "name": "vault-init",
+  "version": "1.0.4",
+  "description": "secret service",
+  "main": "init.js",
+  "scripts": {},
+  "author": "Leif Shackelford <structuresound@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "minimist": "^1.2.0",
+    "node-vault": "^0.5.6"
+  },
+  "devDependencies": {},
+  "vaultSettings": {
+    "vault": {
+      "apiVersion": "v1",
+      "endpoint": "http://0.0.0.0:9000",
+      "token": "1234"
+    },
+    "github": {
+      "team": "Owners",
+      "org": "chromapdx"
+    }
+  }
+}

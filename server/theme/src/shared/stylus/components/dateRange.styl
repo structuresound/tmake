@@ -1,0 +1,64 @@
+@require '../vars.styl'
+
+.daterangepicker.dropdown-menu
+  background-color chroma-footer-bg
+  border-radius: $border-radius-base
+
+  .ranges li
+    background: cf-gray
+    border none
+    //border: 1px solid #f5f5f5;
+    color: #eee
+    border-radius: $border-radius-base
+
+  .ranges li.active, .ranges li:hover
+    background-repeat repeat-x !important
+    border none !important
+    background-image linear-gradient(to right, cf-blue, cf-cyan)
+
+  .calendar.left
+    .calendar-table, .input-mini, input.input-mini, .daterangepicker_input
+      border none
+      background linear-gradient(to left, chroma-footer-bg, cf-gray, cf-gray, cf-gray, cf-gray)
+  .calendar.right
+    .calendar-table, .input-mini, input.input-mini, .daterangepicker_input
+      border none
+      background linear-gradient(to right, chroma-footer-bg, cf-gray, cf-gray, cf-gray, cf-gray)
+
+  .calendar-table
+    background-color chroma-footer-bg
+    border-radius: $border-radius-base
+
+  td.off, td.off.in-range, td.off.start-date, td.off.end-date
+    color: chroma-footer-bg
+    background-color rgba(0,0,0,0)
+
+  .input-mini, input.input-mini, .daterangepicker_input
+    color #eee
+    border none
+    text-align center
+
+  td.available:hover, th.available:hover
+    background: $gray
+
+  td.in-range
+    background: alpha($gray-lighter, .2)
+    border-radius: $border-radius-base
+
+  td.start-date
+    border-radius: 4px 0 0 4px;
+
+  td.end-date
+    border-radius: 0 4px 4px 0;
+
+  td.start-date.end-date
+    border-radius: $border-radius-base
+
+  td.active, td.active:hover
+    background-color: #357ebd;
+    //border-color: #3071a9;
+    color: #fff;
+
+  td.week, th.week
+    font-size: 80%;
+    color: #ccc;

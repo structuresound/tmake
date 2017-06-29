@@ -1,0 +1,23 @@
+@require '../vars.styl'
+
+#account-page
+  .col-sm-3
+    text-align center
+
+  #preview
+    padding 3rem 0rem 2rem 0rem !important
+    .col-sm-3
+      text-align center
+
+  @media only screen and (max-width:$screen-sm)
+    .row.alert
+      .col-sm-3:first-child i.fa
+        margin-bottom 11px
+
+      .col-sm-3:last-child i.fa
+        margin-top 11px
+
+  @media only screen and (min-width:$screen-sm)
+    form .img-thumbnail
+      max-height 7em
+      width auto

@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "es6",
+		"allowJs": false,
+		"jsx": "react",
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"preserveConstEnums": true,
+		"experimentalDecorators": true,
+		"removeComments": true,
+		"sourceMap": true
+	},
+	"include": [
+		"src"
+	],
+	"exclude": [
+		"dist",
+		"tmp",
+		"node_modules",
+		".vscode"
+	],
+	"awesomeTypescriptLoaderOptions": {
+		"forkChecker": true,
+		"useWebpackText": true
+	}
+}

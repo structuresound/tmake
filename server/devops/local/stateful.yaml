@@ -1,0 +1,16 @@
+#nginx being run by daemon
+apps:
+- name: mongo
+  script: mongod
+  args: --dbpath data/mongo --port=5000
+  interpreter: none
+  restart_delay: 5000
+  env:
+    PORT: 5000
+- name: rabbitmq
+  script: rabbitmq/sbin/rabbitmq-server
+  interpreter: /bin/sh
+  restart_delay: 30000
+  env:
+    RABBITMQ_NODENAME: rabbit@localhost
+    RABBITMQ_NODE_PORT: 4000
