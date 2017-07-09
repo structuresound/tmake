@@ -30,6 +30,7 @@ function Base(props: TMake.Editor.Data & TMake.Editor.Events) {
     smartIndent: 2,
     indentUnit: 2,
     indentWithTabs: false,
+    // viewportMargin: 'infinity',
     extraKeys: {
       Tab(cm: any) {
         if (cm.somethingSelected()) {
@@ -57,7 +58,7 @@ function Base(props: TMake.Editor.Data & TMake.Editor.Events) {
             <ul>
               <li>support multiple configurations of a project in one config file</li>
               <li>import files and inherit the environment before parsing to allow for huge, maintainable dependency graphs</li>
-              <li>lack of imperative logic requires configurations to be fully<b>declarative</b></li>
+              <li>lack of imperative logic requires configurations to be <b>declarative</b></li>
             </ul>
             <p>not a programming language</p>
             <ul>
@@ -66,14 +67,25 @@ function Base(props: TMake.Editor.Data & TMake.Editor.Events) {
             </ul>
             <p>a quick explanation of some <b>keywords</b></p>
             <ul>
-              <li>functions start with $, built-ins include <b>$stack, $heap, $select, and $each</b></li>
-              <li>use string interpolation <b>{'${'}dot.notation{'}'}</b> heap and stack are both JSON objects</li>
-              <li>selectors start with a '-'. for example <b>-production </b> is provided inline with <br/><b>$select: production: true</b></li>
-              <li>selectors work like css, which means that values after a keyword are removed if:
+              <li>statements ending with {'<'} pass their branch into a function. the built in or meta functions include:
+                <ul>
+                  <li><b>select</b> enable/disable selectors for the next branch</li>
+                  <li><b>$</b> put the next branch on the stack for later reference</li>
+                  <li><b>map</b> returns a branch based on two other branches
+                    <ul>
+                      <li>from: return branches, each one may supply a context to the mapper</li>
+                      <li>to: each key in 'from' will become the result of mapping this branch using that context</li>
+                    </ul>
+                  </li>
+                  <li><b>each</b> like map, but doesn't return a branch</li>
+                </ul>
+              </li>
+              <li>use string interpolation in a key or value by using <b>{'$'}keyPath</b> or <b>{'${'}keyPath{'}'}</b>. May reference any keyPath higher up the trie, or vars put on the stack earlier with the <b>{'$<'}</b> function</li>
+              <li>selectors start with <b>=</b>. for example <b>=production </b> is provided inline with <br /><b>select{'<'}: production: true</b></li>
+              <li>selectors don't use precedence, instead they are simply a list of conditional statements
               <ul>
-                  <li>the keyword (beginning with a -) is not matched</li>
-                  <li>if another higher priority (number of matched keywords) value exists in the same branch</li>
-                  <li>all object operations are additive, so only the values with the same key are overwritten</li>
+                  <li>if a selected branch contains a scalar value it overwrites previous branch</li>
+                  <li>if a selected branch contains an object value it merges into the previous branch, by adding its keys</li>
                 </ul>
               </li>
             </ul>
@@ -102,7 +114,7 @@ function Base(props: TMake.Editor.Data & TMake.Editor.Events) {
 
 const connected = connect(({ editor }) => {
   return { ...editor }
-}, events)(Base);
+}, events)(Base as any);
 
 export {
   connected as Editor

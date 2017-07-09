@@ -31,20 +31,22 @@ export function Playground(props: TMake.React.PageProps) {
 
   return (
     <Layout {...{ mq, s3url, manifest, i18n, loginTokenPresent }} >
-      <Grid>
-        <Row>
-          <Col sm={12}>
-            <h2 className="text-center page-header chroma info">Try Moss</h2>
-          </Col>
-        </Row>
-        <Row>
-          <Col sm={12}>
-            <p>Moss can be run as a command line tool, or embedded as a library. When used as a library one supplies the environment as json, which is represent here as another yaml file</p>
-          </Col>
-        </Row>
-        <Editor />
-      </Grid>
-      <Spacer height={2} />
+      <div id="mossPlayground">
+        <Grid>
+          <Row>
+            <Col sm={12}>
+              <h2 className="text-center page-header chroma info">Try Moss</h2>
+            </Col>
+          </Row>
+          <Row>
+            <Col sm={12}>
+              <p>Moss can be run as a command line tool, or embedded as a library. When used as a library one supplies the environment as json, which is represent here as another yaml file</p>
+            </Col>
+          </Row>
+          <Editor />
+        </Grid>
+        <Spacer height={2} />
+      </div>
     </Layout >
   )
 }
@@ -108,7 +110,7 @@ function Base(props: TMake.Editor.Data & TMake.Editor.Events) {
 
 const connected = connect(({ editor }) => {
   return { ...editor }
-}, events)(Base);
+}, events)(Base as any);
 
 export {
   connected as Editor

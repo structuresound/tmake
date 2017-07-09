@@ -18,12 +18,12 @@ try {
 	console.log(e.message);
 	settings = {
 		private: {
-			express: { domain: 'localhost', https: false, port: 3000 },
+			express: { domain: '10.200.10.1', https: false, port: 3000 },
 		},
 		webpack: {
 			dev: {
 				server: {
-					domain: 'localhost',
+					domain: '10.200.10.1',
 					port: 3001,
 					headers: {
 						"Access-Control-Allow-Origin": "*",

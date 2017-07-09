@@ -63,7 +63,7 @@ declare module "react-responsive" {
     namespace MediaQuery {
     }
 
-    class MediaQuery extends React.Component<TMake.MediaQueryProps, any> { }
+    class MediaQuery extends React.Component<TMake.MediaQueryProps, any> {}
     export = MediaQuery;
 
 }

@@ -24,9 +24,19 @@ _.each services, (service, key) ->
   docker.hub[key] = "tmake/#{key}:#{service.version}"
   docker.aws[key] = "#{ecr}/tmake/#{key}:#{service.version}"
 
-urls = (namespace) -> 'triemake.com'
+urls = (namespace) ->
+  switch namespace
+    when 'www' then 'chroma.fund'
+    when 'impactu' then 'impactu.fund'
+    when 'aucanna' then 'aucanna.fund'
+    else "#{namespace}.chroma.fund"
 
-hosts = (namespace) -> ['www.triemake.com', 'triemake.com']
+hosts = (namespace) ->
+  switch namespace
+    when 'www' then ['www.chroma.fund', 'chroma.fund']
+    when 'impactu' then ['www.impactu.fund', 'impactu.fund']
+    when 'aucanna' then ['www.aucanna.fund', 'aucanna.fund']
+    else ["#{namespace}.chroma.fund"]
 
 String::replaceAll = (search, replacement) ->
   target = this
@@ -207,7 +217,7 @@ copyYamlTemplate = (kubeObject, namespace, fileName) ->
 writeIngress = (namespace, url, names) ->
   getIngressTemplate = (namespace) ->
     switch namespace
-      when 'www', 'tmake' then 'nakedDomain'
+      when 'www', 'impactu' then 'nakedDomain'
       else namespace
   try
     template = yaml.load fs.readFileSync(path.join(__dirname, "templates/ingress/#{getIngressTemplate(namespace)}.yaml"), 'utf8')
@@ -240,7 +250,7 @@ module.exports = (grunt) ->
           filter: 'exclude',
           tasks: ['availabletasks', 'default', 'tasks']
   
-  grunt.registerTask 'k8s-ecr-secret', 'create ecr login credentials for minikube', ->
+  grunt.registerTask 'ecr-secret', 'create ecr login credentials for minikube', ->
     namespace = grunt.option('namespace') || process.env.NAMESPACE || 'minikube'
     email = 'leif@chroma.io'
     # user = 'AWS'
@@ -254,17 +264,18 @@ module.exports = (grunt) ->
     cmd = "kubectl --namespace=#{namespace} create secret docker-registry #{secretName} --docker-username=#{registryCredentials.user} --docker-password=#{registryCredentials.pass} --docker-server=#{ecr} --docker-email=#{email}"
     sh.exec(cmd);
 
-  getServices = (namespace) -> 
-    ['front', 'ingress-controller', 'namespace', 'theme',  'mailer', 'rabbitmq']
-    # ['front', 'ingress-controller', 'mongo', 'namespace', 'theme', 'mailer', 'rabbitmq']
+  getServices = (namespace) ->
+    switch namespace
+      when 'impactu' then ['wordpress', 'meteor', 'ingress-controller', 'wordpress-mysql', 'mongo', 'namespace', 'theme', 'mailer', 'rabbitmq']
+      when 'aucanna' then ['meteor', 'ingress-controller', 'mongo', 'namespace', 'theme', 'mailer', 'rabbitmq']
+      else ['front', 'meteor', 'ingress-controller', 'mongo', 'namespace', 'theme', 'mailer', 'rabbitmq']
 
   getSubdomains = (namespace) ->
     switch namespace
-      when 'www', 'impactu' then ['', 'www', "rabbitmq", "cockroachdb", "mongo"]
-      else [namespace, "rabbitmq.#{namespace}", "cockroachdb.#{namespace}", "mongo.#{namespace}"]
+      when 'www', 'impactu' then ['', 'www']
+      else [namespace]
 
-
-  grunt.registerTask 'k8s-render', 'render templates for minikube OR production by using flag --namespace=YOUR_NAMESPACE', ->
+  grunt.registerTask 'render', 'render templates for minikube OR production by using flag --namespace=YOUR_NAMESPACE', ->
     namespace = grunt.option('namespace') || process.env.NAMESPACE || 'minikube'
     nuke = grunt.option('nuke')
     dockerEnv = if namespace == 'minikube' then 'hub' else 'aws'
@@ -322,7 +333,7 @@ module.exports = (grunt) ->
 
   grunt.registerTask 'build', 'both distribute + docker steps', ['distribute', 'docker']
 
-  grunt.registerTask 'install', 'build, containerize, update versions, push, deploy', ['build', 'push', 'k8s-render','k8s-apply']
+  grunt.registerTask 'install', 'build, containerize, update versions, push, deploy', ['build', 'push', 'render','apply']
 
   grunt.registerTask 'push', 'push docker image to registry (hub or aws)', ->
     registry = grunt.option('registry') || 'aws'
@@ -339,7 +350,7 @@ module.exports = (grunt) ->
     else
       console.log('no service found for', serviceName)
 
-  grunt.registerTask 'k8s-apply', 'start services on minikube or kubernetes cluster', ->
+  grunt.registerTask 'apply', 'start services on minikube or kubernetes cluster', ->
     namespace = grunt.option('namespace') || process.env.NAMESPACE || 'default'
     base = "private/dist/#{namespace}"
     service = grunt.option('only') || ''
@@ -383,11 +394,11 @@ module.exports = (grunt) ->
       deployments.forEach (file) ->
         sh.exec("#{cmd} #{base}/#{file}");
 
-  grunt.registerTask 'k8s-configure', 'configure running services', ->
+  grunt.registerTask 'configure', 'configure running services', ->
     namespace = grunt.option('namespace') || 'default'
     fs.readdirSync('config').forEach (v) -> sh.exec("NAMESPACE=#{namespace} sh config/#{v}");
 
-  grunt.registerTask 'k8s-delete', 'start services on minikube or kubernetes cluster', ->
+  grunt.registerTask 'delete', 'start services on minikube or kubernetes cluster', ->
     namespace = grunt.option('namespace') || process.env.NAMESPACE || 'default'
     base = "private/dist/#{namespace}"
     service = grunt.option('only') || ''

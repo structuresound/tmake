@@ -41,7 +41,7 @@ if (process.env.NODE_ENV == "production") {
             webpack: {
                 dev: {
                     server: {
-                        domain: 'localhost',
+                        domain: '10.200.10.1',
                         port: process.env.PORT,
                         headers: {
                             "Access-Control-Allow-Origin": "*",

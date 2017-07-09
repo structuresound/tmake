@@ -58,7 +58,7 @@
     "tslint": "^4.3.1",
     "tslint-microsoft-contrib": "^4.0.0",
     "typed-json-transform": "^0.16.3",
-    "typescript": "^2.3.4"
+    "typescript": "2.2.1"
   },
   "dependencies": {
     "chalk": "^1.1.1",

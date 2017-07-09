@@ -1078,7 +1078,7 @@ if (process.env.NODE_ENV === "production") {
 } else {
     settings.manifest.bundle['bundle.js'] = '/front/bundle.js';
     settings.manifest.bundle['bundle.css'] = '/front/bundle.css';
-    themeUrl = 'http://localhost:3002/theme.json';
+    themeUrl = 'http://10.200.10.1:3002/theme.json';
 }
 if (!settings.manifest.theme) settings.manifest.theme = {};
 var runtimeSettings = settings_1.initialize(settings, true);

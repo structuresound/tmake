@@ -26,7 +26,7 @@ export function Default(props: TMake.React.LayoutProps) {
     )
 }
 
-export function Fullscreen(props: TMake.React.LayoutProps) {
+export function Fullscreen(props: TMake.React.LayoutProps): any {
     return (
         <div>
             <Navbar {...props} />

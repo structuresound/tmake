@@ -36,7 +36,7 @@ export function Home(props: TMake.React.PageProps) {
             </Grid>
           </div>
         </section>
-        <section id="section-connect" ref={c => (sectionConnect = c)} className="section" style={aligner.fullscreen as any}>
+        <section id="section-connect" ref={(c: any) => (sectionConnect = c)} className="section" style={aligner.fullscreen as any}>
           <Grid>
             <Row>
               <Col sm={12}>
@@ -81,4 +81,4 @@ export function Home(props: TMake.React.PageProps) {
   )
 }
 
-connect()(Home);
+connect()(Home as any);

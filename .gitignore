@@ -7,3 +7,7 @@ coverage
 .vscode
 .tmake
 /home
+/dist
+/secrets
+/tests
+/tests_cache

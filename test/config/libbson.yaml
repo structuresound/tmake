@@ -27,15 +27,14 @@ configure:
         BSON_NEEDS_SET_OUTPUT_FORMAT: 0
         BSON_EXTRA_ALIGN: 1
         BSON_HAVE_DECIMAL128: 0
-        win:
+        -win:
           BSON_OS: 2
-        mac, linux:
+        -mac, linux:
           BSON_HAVE_TIMESPEC: 1
-        BSON_BYTE_ORDER:
-          macro: ${target.endianness}
-          map:
-            LE: 1234
-            BE: 4321
+        $:
+          LE: 1234
+          BE: 4321
+        BSON_BYTE_ORDER: ${${target.endianness}}
       directive:
         prepost: "@"
       ext: "h"
@@ -66,16 +65,16 @@ build:
   - src/yajl/**.c
   cFlags:
     DBSON_COMPILATION: true
-    O3: true
+    O: 3
     std: c++11
     g: true
     Wall: true
     Wextra: true
     Wno-unused-parameter: true
     Wno-missing-field-initializers: true
-    linux:
+    -linux:
       pthread: true
-    mac:
+    -mac:
       stdlib: libc++
   outputFile: libbson-1.0.a
 path:

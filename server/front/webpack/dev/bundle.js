@@ -26,7 +26,7 @@ var client = {
             'react-hot-loader/patch',
             // activate HMR for React
 
-            'webpack-dev-server/client?front/sockjs-node',
+            'webpack-dev-server/client?/front/sockjs-node',
             // bundle the client for webpack-dev-server
             // and connect to the provided endpoint
 

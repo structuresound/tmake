@@ -3,51 +3,67 @@ import { load } from 'js-moss';
 import { types } from './types';
 
 const environmentFile =
-  `$select:
-  mac: true
-  linux: false
+  `select<:
+  host-mac: true
+  host-linux: false
   production: true
   debug: false
-$heap:
-  target:
-    endianness: LE
-  host:
-    ninja:
-      version:
-        -mac: 1.5.7
-        -linux: 1.4.0
+  ios: true
+  mac: false
 `
 
 const configFile =
-  `$select:
+  `select<:
   useCustomLibrary:
-    -mac: true
-    -linux: false
-$heap:
+    =: false
+    =ios: true
+$<:
   host:
-    -mac:
-      compiler: clang
-    -linux:
-      compiler: gcc
+    ninja:
+        version:
+          =host-mac: 1.5.7
+          =host-linux: 1.4
+    compiler:
+      =host-mac: clang
+      =host-linux: gcc
+  graphicsLib:
+    =*: opengl
+    =win: directx
+  build>:
+    ninja:
+      cc: $host.compiler
+      fetch: http://ninja-v\${host.ninja.version}.tar.gz
+    defines:
+      $<:
+        LE: 4321
+        BE: 1234
+      TARGET_ENDIANNESS: \${$endianness}
+    cFlags:
+      =production:
+        wAll: true
+        O: 3
+      =debug:
+        O: 0
+    link:
+      $graphicsLib: $graphicsLib
 build:
-  ninja:
-    $stack:
-      version: \${host.ninja.version}
-    fetch: http://ninja-v\${version}.tar.gz
-    cc: \${host.compiler}
-  defines:
-    $stack:
-      LE: 4321
-    TARGET_ENDIANNESS: \${\${target.endianness}}
-  cFlags:
-    -production:
-      wAll: true
-      o: 3
-    -debug:
-      o: 0
+  map<:
+    from:
+      =mac, linux:
+        device:
+          arch: x64
+          endianness: LE
+      =ios !linux:
+        device:
+          arch: arm
+          endianness: BE
+        simulator:
+          arch: x64
+          endianness: LE
+    to: $build
 require:
   requiredLibrary: tmake/requiredLibrary
-  -useCustomLibrary:
+  =useCustomLibrary:
     customLibrary: tmake/customLibrary
 `
 

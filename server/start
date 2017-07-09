@@ -1,26 +1,26 @@
 #!/bin/bash
 APP=$1
+export VAULT_ADDR=http://127.0.0.1:5010
+
+node devops/local/render.js
 if [ $APP ]
 then
-  if [ $APP = "nginx" ]
-  then 
-    sudo nginx -c $(pwd)/devops/local/nginx.conf
-  else
-    sh devops/local/before/$APP.sh
-    pm2 start devops/local/stateful.yaml --only $APP
-    pm2 start devops/local/services.yaml --only $APP
-  fi
+  sh devops/local/before/$APP.sh
+  pm2 start devops/local/stateful.yaml --only $APP
+  pm2 start devops/local/services.yaml --only $APP
 else
-## Load Balancing
-echo starting nginx may require root pass
-sudo nginx -c $(pwd)/devops/local/nginx.conf -p $(pwd)
+sh devops/local/before/ingress.sh
+## Meta
+mkdir -p data/vault
+pm2 start devops/local/stateful.yaml --only vault
 
 ## Stateful
-sh devops/local/before/mongo.sh
 pm2 start devops/local/stateful.yaml
 
 ## Prep Services
 sh devops/local/before/front-server.sh
+# sh devops/local/before/uoa.sh
+sh devops/local/before/mailer.sh
 
 ## Launch Remaining Services
 pm2 start devops/local/services.yaml
@@ -32,7 +32,8 @@ also recommended:
 watch all:
 watch pm2 list
 
-reload nginx:
-sudo nginx -c $(pwd)/devops/local/nginx.conf
+connect to SQL
+
+cockroach sql --certs-dir=secrets/local/uoa/tls --host=cockroachdb-0.local --port=5100
 "
 fi

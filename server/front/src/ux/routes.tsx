@@ -27,19 +27,19 @@ export function routes() {
 	}
 }
 
-function route(Component: any, additionalProps: any) {
+function route(Component: any, additionalProps: any): any {
 	return function component(props: any) {
 		return <Component {...{ ...props, ...additionalProps }} />
 	}
 }
 
-function bounceToServerRouter(props: any) {
+function bounceToServerRouter(props: any): any {
 	// console.log('redirect', props);
 	(window as any).location = props.location.pathname
 	return <div />
 }
 
-export function createApp(history: any) {
+export function createApp(history: any): any {
 	const Page = createPage(settings);
 
 	return function App(upstream: any) {
@@ -55,6 +55,8 @@ export function createApp(history: any) {
 							<Route path="/contact" component={route(Contact, props)} />
 							<Route path="/tos" component={route(Tos, props)} />
 							<Route path="/privacy" component={route(Privacy, props)} />
+
+							<Route exact path="/moss" component={route(Playground, props)} />
 							<Route path="/moss/playground" component={route(Playground, props)} />
 
 							<Route path="/account" component={bounceToServerRouter} />

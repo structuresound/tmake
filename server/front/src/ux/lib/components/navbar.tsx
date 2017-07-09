@@ -105,7 +105,7 @@ function NavbarComponent(upstream: TMake.React.Navbar) {
 
 const connectedNavbar = connect(({ account }) => {
   return { account };
-})(NavbarComponent);
+})(NavbarComponent as any);
 
 export {
   connectedNavbar as Navbar

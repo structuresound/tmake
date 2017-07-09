@@ -1,0 +1,29 @@
+apps:
+- name: ingress
+  cwd: devops/local/ingress
+  script: docker
+  args: run --rm -p 80:80 -p 443:443 -v ${pwd}/devops/local/ingress:/etc/nginx gcr.io/google_containers/nginx-slim:0.17 
+  restart_delay: 30000
+- name: front-server
+  cwd: front
+  script: tmp/server.js
+  args: --preserve-symlinks
+  watch: tmp
+  restart_delay: 30000
+  env:
+    PORT: 3000
+    NAMESPACE_SETTINGS_PATH: ../secrets/local/namespace/settings.yaml
+    SETTINGS_PATH: ../secrets/local/front/settings.yaml
+- name: front-webpack
+  cwd: front
+  script: bin/watch.js
+  args: --preserve-symlinks
+  restart_delay: 30000
+  env:
+    PORT: 3001
+- name: theme
+  cwd: theme
+  script: build.js
+  restart_delay: 30000
+  env:
+    PORT: 3002

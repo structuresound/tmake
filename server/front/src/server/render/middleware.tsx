@@ -18,6 +18,7 @@ const routes = Object.keys(getRoutes());
 
 export function render(req: express.Request, res: express.Response) {
     const history = createMemoryHistory();
+    history.push(req.url);
     const store = createStore({}, history);
     const { cookies, url } = req;
     store.dispatch({ type: types.request.create });

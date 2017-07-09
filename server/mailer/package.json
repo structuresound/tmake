@@ -1,6 +1,6 @@
 {
   "name": "mailer",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "rabbitmq consumer, email sender",
   "main": "index.js",
   "scripts": {
@@ -25,8 +25,8 @@
     "js-yaml": "^3.7.0",
     "node-mailer": "^0.1.1",
     "oy-vey": "^0.8.0",
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1"
   },
   "devDependencies": {
     "@types/amqplib": "^0.5.1",
@@ -53,6 +53,6 @@
     "gulp-typescript": "^3.1.6",
     "mocha": "^3.1.2",
     "ts-node": "^1.6.1",
-    "typescript": "^2.2.0"
+    "typescript": "^2.3.4"
   }
 }

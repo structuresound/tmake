@@ -1,5 +1,9 @@
-#nginx being run by daemon
 apps:
+- name: ingress
+  cwd: devops/local/ingress
+  script: docker
+  args: run --rm -p 80:80 -p 443:443 -v /Users/leif/node/tmake/server/devops/local/ingress:/etc/nginx gcr.io/google_containers/nginx-slim:0.17 
+  restart_delay: 30000
 - name: front-server
   cwd: front
   script: tmp/server.js
