@@ -4,49 +4,28 @@ import { types } from './types';
 
 const environmentFile =
   `select<:
-  host-mac: true
-  host-linux: false
-  production: true
-  debug: false
-  ios: true
-  mac: false
-`
-
-const configFile =
-  `select<:
-  useCustomLibrary:
-    =: false
-    =ios: true
+  host-mac: 1
+  host-linux: 0
+  production: 1
+  debug: 0
+  ios: 0
+  win: 1
+  mac: 1
 $<:
   host:
     ninja:
         version:
           =host-mac: 1.5.7
-          =host-linux: 1.4
+          =host-linux: 1.5.3
     compiler:
       =host-mac: clang
       =host-linux: gcc
   graphicsLib:
     =*: opengl
     =win: directx
-  build>:
-    ninja:
-      cc: $host.compiler
-      fetch: http://ninja-v\${host.ninja.version}.tar.gz
-    defines:
-      $<:
-        LE: 4321
-        BE: 1234
-      TARGET_ENDIANNESS: \${$endianness}
-    cFlags:
-      =production:
-        wAll: true
-        O: 3
-      =debug:
-        O: 0
-    link:
-      $graphicsLib: $graphicsLib
-build:
+`
+
+const configFile = `build:
   map<:
     from:
       =mac, linux:
@@ -60,11 +39,23 @@ build:
         simulator:
           arch: x64
           endianness: LE
-    to: $build
-require:
-  requiredLibrary: tmake/requiredLibrary
-  =useCustomLibrary:
-    customLibrary: tmake/customLibrary
+    to:
+      ninja:
+        cc: $host.compiler
+        fetch: http://ninja-v\${host.ninja.version}.tar.gz
+      defines>:
+        $<:
+          LE: 4321
+          BE: 1234
+        TARGET_ENDIANNESS: \${$endianness}
+      cFlags:
+        =production:
+          wAll: true
+          O: 3
+        =debug:
+          O: 0
+      link:
+        $graphicsLib: $graphicsLib
 `
 
 const defaultState: TMake.Editor.Data = {
