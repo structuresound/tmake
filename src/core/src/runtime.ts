@@ -150,15 +150,15 @@ export namespace Runtime {
       const plugFolders = readdirSync(plugRoot);
       plugFolders.forEach((folder) => {
         const plugin = join(plugRoot, folder)
-        console.log('load plugin', plugin);
+        // console.log('load plugin', plugin);
         try {
           registerPlugin(require(plugin).default);
         } catch (error) {
-          console.log("skipping bad plugin @ ", plugin, error);
+          console.warn("skipping bad plugin @ ", plugin, error);
         }
       })
     } catch (error) {
-      console.log("bad or missing plugins folder, using internals only", error);
+      console.warn("bad or missing plugins folder, using internals only", error);
     }
   }
 

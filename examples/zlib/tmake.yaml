@@ -2,8 +2,8 @@
 git:
   repository: madler/zlib
   tag: v1.2.8
-$configure:
-  $replace:
+configure>:
+  replace:
     gzguts:
       matching:
         - "gzguts.h"
@@ -11,11 +11,11 @@ $configure:
         unistd:
         - "\n\n#ifdef _LARGEFILE64_SOURCE"
         - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
-  $ninja:
+  ninja:
     matching:
       - "*.c"
     compilerFlags:
-      ios:
+      +ios:
         miphoneos-version-min: "=6.0"
     cFlags:
       O: 3
@@ -23,6 +23,6 @@ $configure:
       Wwrite-strings: true
       Wpointer-arith: true
       Wconversion: true
-      ios:
+      +ios:
         "fembed-bitcode": true
-$build: ninja    
+build: ninja    

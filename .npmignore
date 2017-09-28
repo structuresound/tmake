@@ -1,9 +1,5 @@
-/.nyc_output
 /.vscode
-/coverage
-/docs
+/docker
 /examples
-/projects
-/server
-/test
-/triebugger
+/src/*/src
+/tests
