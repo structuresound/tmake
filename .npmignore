@@ -1,12 +1,9 @@
 /.nyc_output
 /.vscode
-/cli
-/core
 /coverage
 /docs
 /examples
-/node_modules
-/plugins
+/projects
 /server
 /test
 /triebugger

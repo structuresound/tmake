@@ -1,0 +1,11 @@
+name: metaProject
+generate:
+  ninja:
+    matching:
+    - '**/*.cpp'
+build: ninja
+outputType: executable
+targets:
+  test-arch:
+    platform: meta-platform
+    architecture: test-arch

@@ -7,7 +7,7 @@ node_js:
 - '7'
 before_install:
 - npm config set progress=false
-script: npm run travis
+script: make travis
 after_script:
 - cat ./coverage/lcov.info | ./node_modules/.bin/coveralls
 deploy:

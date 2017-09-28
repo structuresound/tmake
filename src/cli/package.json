@@ -1,0 +1,50 @@
+{
+    "name": "tmake-cli",
+    "description": "command line interface for tmake",
+    "version": "0.7.0",
+    "homepage": "https://github.com/structuresound/tmake",
+    "author": {
+        "name": "Leif Shackelford",
+        "email": "structuresound@gmail.com"
+    },
+    "engines": {
+        "node": ">= 6.0.0",
+        "npm": ">= 3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/structuresound/tmake.git"
+    },
+    "bugs": {
+        "url": "https://github.com/structuresound/tmake/issues"
+    },
+    "licenses": [{
+        "type": "MIT",
+        "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+    }],
+    "main": "dist/index.js",
+    "types": "interfaces/index.d.ts",
+    "scripts": {
+        "build": "gulp scripts",
+        "distribute": "yarn && npm link tmake-core && npm run build"
+    },
+    "devDependencies": {
+        "@types/nedb": "^1.8.3"
+    },
+    "peerDependencies": {
+        "tmake-core": "^0.7.0",
+        "tmake-plugin-cmake": "^0.6.0",
+        "tmake-plugin-make": "^0.6.0"
+    },
+    "dependencies": {
+        "bluebird": "^3.5.0",
+        "chalk": "^1.1.1",
+        "cli-spinner": "^0.2.6",
+        "minimist": "^1.2.0",
+        "node-status": "^1.0.0",
+        "progress": "^1.1.8",
+        "progress-stream": "^1.2.0",
+        "which": "^1.2.11",
+        "nedb-promise": "^2.0.0"
+    }
+}

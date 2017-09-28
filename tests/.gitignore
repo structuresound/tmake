@@ -1,0 +1,4 @@
+/.tmake
+/.nyc_output
+/coverage
+/runtime

@@ -1,0 +1,37 @@
+{
+    "name": "tmake-plugin-cmake",
+    "description": "handle CMakeLists.txt with tmake",
+    "version": "0.6.6",
+    "homepage": "https://github.com/structuresound/tmake",
+    "author": {
+        "name": "Leif Shackelford",
+        "email": "structuresound@gmail.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/structuresound/tmake.git"
+    },
+    "bugs": {
+        "url": "https://github.com/structuresound/tmake/issues"
+    },
+    "licenses": [
+        {
+            "type": "MIT",
+            "url": "https://github.com/structuresound/tmake/blob/master/LICENSE-MIT"
+        }
+    ],
+    "main": "dist/index.js",
+    "types": "interfaces/index.d.ts",
+    "scripts": {
+        "build": "yarn && npm link tmake-core && gulp scripts",
+        "distribute": "npm run build"
+    },
+    "peerDependencies": {
+        "tmake-core": "^0.7.0"
+    },
+    "Keywords": [],
+    "devDependencies": {},
+    "dependencies": {
+        "typed-json-transform": "^0.17.1"
+    }
+}

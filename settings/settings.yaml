@@ -1,43 +1,3 @@
-environment:
-  XC_RUN: 'xcrun --sdk ${XC_PLATFORM}'
-  host-mac:
-    DEVELOPER: $(xcode-select -print-path)
-    HOST_PLATFORM: mac
-  host-mac ios:
-    CROSS_SDK: '${XC_DIR}${SDK_VERSION}.sdk'
-    CROSS_TOP: '${DEVELOPER}/Platforms/${XC_DIR}.profile/Developer'
-    FRAMEWORKS: '${CROSS_TOP}/SDKs/${CROSS_SDK}/System/Library/Frameworks/'
-    INCLUDES: '${CROSS_TOP}/SDKs/${CROSS_SDK}/usr/include'
-    IPHONEOS_DEPLOYMENT_VERSION: '6.0'
-    IPHONEOS_PLATFORM: '$(${XC_RUN} --show-sdk-profile-path)'
-    IPHONEOS_SDK: '$(${XC_RUN} --show-sdk-path)'
-    IPHONEOS_SDK_VERSION: '$(${XC_RUN} --show-sdk-version)'
-    SDK_VERSION: '$(${XC_RUN} --show-sdk-version)'
-    XC_DIR: iPhoneOS
-    XC_PLATFORM: iphoneos
-    simulator:
-      XC_DIR: iPhoneSimulator
-      XC_PLATFORM: iphonesimulator
-  host-mac mac:
-    OSX_DEPLOYMENT_VERSION: '10.8'
-    OSX_PLATFORM: '$(${XC_RUN} --show-sdk-profile-path)'
-    OSX_SDK: '$(${XC_RUN} --show-sdk-path)'
-    OSX_SDK_VERSION: '$(${XC_RUN} --show-sdk-version)'
-    PLATFORM: darwin64-x86_64-cc
-    SDK_VERSION: '$(${XC_RUN} --show-sdk-version)'
-    XC_PLATFORM: macosx
-  test-platform:
-    TEST_SDK_VERSION: 'test-platform-1.0'
-plugins:
-  cmake:
-    require: 'tmake-plugin-cmake'
-  make:
-    require: 'tmake-plugin-make'
-  ninja:
-    version: v1.7.1
-  create: builtin
-  replace: builtin
-  shell: builtin
 keywords:
   environment:
     - debug
@@ -89,3 +49,68 @@ keywords:
     - appcode
   deploy:
     - simulator
+plugins:
+  cmake: tmake-plugin-cmake
+  make: tmake-plugin-make
+  create: ''
+  replace: ''
+  shell: ''
+defaults:
+  glob:
+    assets:
+      images: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.tiff', '**/*.ico', '**/*.svg', '**/*.bmp']
+    fonts: ['**/*.ttf', '**/*.otf', '**/*.woff', '**/*.woff2']
+    headers: ['**/*.{h, hh, hpp, hxx, ipp}']
+    sources: ['**/*.cpp', '**/*.cc', '**/*.c', '!test/**', '!tests/**', '!**/*.test.*']
+  host:
+    compiler:
+      c:
+        =host-mac: clang
+        =host-linux: gcc
+        =host-win: msvc
+      cpp: $c
+    tools:
+      ninja:
+        version: 1.7.1
+        url: https://github.com/ninja-build/ninja/releases/download/v${version}/ninja-${host.platform}.zip
+      +host-mac:
+        clang:
+          bin: $(which gcc)
+      +host-linux:
+        gcc:
+          bin: $(which gcc)
+  target>:
+    flags:
+      compiler:
+        =clang:
+          =mac:
+            arch: x86_64
+          =ios:
+            arch: arm64
+            isysroot: ${CROSS_TOP}/SDKs/${CROSS_SDK}
+            miphoneos-version-min: \=${SDK_VERSION}
+            simulator:
+              mios-simulator-version-min: \=6.1
+              isysroot: ${CROSS_TOP}/SDKs/${CROSS_SDK}
+      cxx:
+        O: 2
+        +mac: 
+          std: c++11
+          stdlib: libc++
+        +linux:
+          std: c++0x
+          pthread: true
+      linker:
+        =linux:
+          lstdc++: true
+          lpthread: true
+        =mac:
+          lc++: true
+      frameworks:
+        =mac: 
+          CoreFoundation: true
+      make:
+        configure:
+          enable-static: true
+          disable-shared: true
+          with-pic: true

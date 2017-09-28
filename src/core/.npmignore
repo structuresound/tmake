@@ -1,0 +1,9 @@
+/.nyc_output
+/src
+/docker
+/meteor
+/server
+/nexe
+/tests
+/coverage
+node_modules

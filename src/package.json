@@ -1,0 +1,8 @@
+{
+    "name": "tmake-common",
+    "devDependencies": {
+        "typescript": "^2.5.2",
+        "gulp": "^3.9.1",
+        "gulp-typescript": "^3.2.2"
+    }
+}

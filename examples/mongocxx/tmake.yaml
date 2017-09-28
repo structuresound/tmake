@@ -21,7 +21,7 @@ configure:
   create:
     mongocxx/config/export:
       path: src/mongocxx/config/export.hpp
-      string: |-
+      string: |
         #ifndef MONGOCXX_API_H
           #define MONGOCXX_API_H
           #define MONGOCXX_API
@@ -29,7 +29,7 @@ configure:
         #endif
     bsoncxx/config/export:
       path: src/bsoncxx/config/export.hpp
-      string: |-
+      string: |
         #ifndef BSONCXX_API_H
           #define BSONCXX_API_H
           #define BSONCXX_API
@@ -67,14 +67,10 @@ configure:
       - src/bsoncxx/config/config.hpp.in
       - src/bsoncxx/config/private/config.hh.in
       inputs:
-        "#cmakedefine BSONCXX_POLY_USE_STD_EXPERIMENTAL": "//#define BSONCXX_POLY_USE_STD_EXPERIMENTAL
-          0"
-        "#cmakedefine BSONCXX_POLY_USE_MNMLSTC": "//#define BSONCXX_POLY_USE_MNMLSTC
-          0"
-        "#cmakedefine BSONCXX_POLY_USE_SYSTEM_MNMLSTC": "//#define BSONCXX_POLY_USE_SYSTEM_MNMLSTC
-          0"
-        "#cmakedefine BSONCXX_POLY_USE_BOOST": "#define BSONCXX_POLY_USE_BOOST
-          1"
+        "#cmakedefine BSONCXX_POLY_USE_STD_EXPERIMENTAL": "//#define BSONCXX_POLY_USE_STD_EXPERIMENTAL 0"
+        "#cmakedefine BSONCXX_POLY_USE_MNMLSTC": "//#define BSONCXX_POLY_USE_MNMLSTC 0"
+        "#cmakedefine BSONCXX_POLY_USE_SYSTEM_MNMLSTC": "//#define BSONCXX_POLY_USE_SYSTEM_MNMLSTC 0"
+        "#cmakedefine BSONCXX_POLY_USE_BOOST": "#define BSONCXX_POLY_USE_BOOST 1"
         "@BSONCXX_INLINE_NAMESPACE@": v3_0_3
     namespaceIncludes:
       matching:

@@ -1,0 +1,62 @@
+{
+    "name": "tmake-tests",
+    "bin": "bin/tmake.js",
+    "scripts": {
+        "before": "yarn && npm link tmake-core && npm link tmake-cli",
+        "test": "NODE_ENV=test mocha --reporter spec --compilers ts:ts-node/register src/*.ts",
+        "cover": "NODE_ENV=test nyc --report-dir coverage npm t"
+    },
+    "nyc": {
+        "include": [
+            "src/*.ts"
+        ],
+        "exclude": [
+            "node_modules"
+        ],
+        "extension": [
+            ".ts"
+        ],
+        "require": [
+            "ts-node/register"
+        ],
+        "reporter": [
+            "json",
+            "html",
+            "lcov"
+        ],
+        "all": true
+    },
+    "devDependencies": {
+        "@ssense/tslint-config": "^4.0.0",
+        "@types/bluebird": "^3.0.37",
+        "@types/chai": "^3.4.34",
+        "@types/chalk": "^0.4.31",
+        "@types/js-yaml": "^3.5.29",
+        "@types/lodash": "^4.14.52",
+        "@types/mocha": "^2.2.43",
+        "@types/node": "^7.0.18",
+        "@types/shelljs": "^0.6.0",
+        "chai": "^3.5.0",
+        "coveralls": "^2.11.15",
+        "grunt": "^1.0.1",
+        "gulp": "^3.9.1",
+        "gulp-typescript": "^3.1.6",
+        "mocha": "^3.5.3",
+        "nyc": "^11.2.1",
+        "ts-node": "^3.3.0",
+        "tslint": "^4.3.1",
+        "tslint-microsoft-contrib": "^4.0.0",
+        "typescript": "^2.5.2"
+    },
+    "peerDependencies": {
+        "tmake-cli": "^0.7.0",
+        "tmake-core": "^0.7.0",
+        "tmake-plugin-cmake": "^0.7.0"
+    },
+    "dependencies": {
+        "bluebird": "^3.5.0",
+        "js-moss": "^0.7.1",
+        "nedb-promise": "^2.0.1",
+        "typed-json-transform": "^0.17.1"
+    }
+}
