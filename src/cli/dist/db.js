@@ -77,7 +77,7 @@ var ClientDb = /** @class */ (function (_super) {
         var cacheDir = path_1.join(tmake_core_1.args.runDir, tmake_core_1.args.cachePath);
         var dbPaths = {
             projects: path_1.join(cacheDir, 'projects.db'),
-            configurations: path_1.join(cacheDir, 'environments.db'),
+            configurations: path_1.join(cacheDir, 'configurations.db'),
             errors: path_1.join(cacheDir, 'errors.db')
         };
         var testMode = ((process.env.NODE_ENV === 'test') || process.env.LOADED_MOCHA_OPTS);

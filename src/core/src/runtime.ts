@@ -147,6 +147,7 @@ export namespace Runtime {
   export function loadPlugins() {
     try {
       const plugRoot = `${args.homeDir}/plugins/node_modules`;
+      mkdir('-p', plugRoot);
       const plugFolders = readdirSync(plugRoot);
       plugFolders.forEach((folder) => {
         const plugin = join(plugRoot, folder)

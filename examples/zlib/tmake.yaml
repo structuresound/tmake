@@ -2,15 +2,7 @@
 git:
   repository: madler/zlib
   tag: v1.2.8
-configure>:
-  replace:
-    gzguts:
-      matching:
-        - "gzguts.h"
-      inputs:
-        unistd:
-        - "\n\n#ifdef _LARGEFILE64_SOURCE"
-        - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
+generate>:
   ninja:
     matching:
       - "*.c"
@@ -25,4 +17,13 @@ configure>:
       Wconversion: true
       +ios:
         "fembed-bitcode": true
+configure>:
+  replace:
+    gzguts:
+      matching:
+        - "gzguts.h"
+      inputs:
+        unistd:
+        - "\n\n#ifdef _LARGEFILE64_SOURCE"
+        - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
 build: ninja    

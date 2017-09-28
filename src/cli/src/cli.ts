@@ -9,7 +9,7 @@ import { check, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
 import { Project, log, execute, list, unlink, push, Runtime, args, TMakeError } from 'tmake-core';
 
-import { Database } from './db';
+import { ClientDb } from './db';
 import { example } from './example';
 
 import {
@@ -146,7 +146,7 @@ export function createPackage() {
 export function tmake(rootConfig: TMake.Project.Raw,
   positionalArgs = args._, projectName?: string) {
 
-  const Db = new Database();
+  const Db = new ClientDb();
   Runtime.init(Db);
 
   if (!projectName) {

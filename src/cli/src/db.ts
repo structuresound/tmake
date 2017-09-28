@@ -70,7 +70,7 @@ export class ClientDb extends Database {
 
     const dbPaths = {
       projects: join(cacheDir, 'projects.db'),
-      configurations: join(cacheDir, 'environments.db'),
+      configurations: join(cacheDir, 'configurations.db'),
       errors: join(cacheDir, 'errors.db')
     }
 

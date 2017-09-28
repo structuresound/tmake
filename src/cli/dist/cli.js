@@ -134,7 +134,7 @@ function createPackage() {
 exports.createPackage = createPackage;
 function tmake(rootConfig, positionalArgs, projectName) {
     if (positionalArgs === void 0) { positionalArgs = tmake_core_1.args._; }
-    var Db = new db_1.Database();
+    var Db = new db_1.ClientDb();
     tmake_core_1.Runtime.init(Db);
     if (!projectName) {
         projectName = positionalArgs[1] || rootConfig.name || tmake_core_1.Project.resolveName(rootConfig);
