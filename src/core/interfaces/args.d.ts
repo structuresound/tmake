@@ -23,8 +23,6 @@ declare namespace TMake {
         test?: boolean;
         _?: string[];
         environment?: any;
-
-
     }
 }
 

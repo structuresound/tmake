@@ -79,7 +79,7 @@ function bin(configuration: Configuration) {
 }
 
 function assets(configuration: Configuration): PromiseLike<any> {
-  const { glob } = defaults;
+  const { glob } = configuration.parsed.target;
 
   if (configuration.parsed.d.install.assets) {
     return Bluebird.map(configuration.parsed.d.install.assets, (ft: TMake.Install.Options) => {
@@ -104,7 +104,7 @@ function libs(configuration: Configuration): PromiseLike<any> {
   if (contains(['static', 'dynamic'], configuration.parsed.outputType)) {
     return Bluebird.map(configuration.parsed.d.install.libraries, (ft: TMake.Install.Options) => {
       let patterns = ft.matching || ['**/*.a'];
-      if (configuration.parsed.outputType === 'dynamic') {
+      if (defaults.product.output.type === 'dynamic') {
         patterns = ft.matching || ['**/*.dylib', '**/*.so', '**/*.dll'];
       }
       log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
@@ -137,11 +137,11 @@ function libs(configuration: Configuration): PromiseLike<any> {
 }
 
 export function installHeaders(project: TMake.Project): PromiseLike<any> {
-  const { glob } = defaults;
+  const { glob } = project.parsed.target;
 
   if (contains([
     'static', 'dynamic'
-  ], project.parsed.outputType)) {
+  ], defaults.product.output.type)) {
     return Bluebird.each(project.parsed.d.install.headers, (ft: TMake.Install.Options) => {
       const patterns = ft.matching || glob.headers;
       if (args.verbose) {

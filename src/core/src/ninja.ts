@@ -13,7 +13,7 @@ import { Plugin } from './plugin';
 import { defaults } from './runtime';
 
 function build(configuration: TMake.Configuration.Parsed) {
-  return Tools.fetch(configuration.host.tools).then((toolpaths: any) => {
+  return Tools.fetch(defaults.host.tools).then((toolpaths: any) => {
     const directory = configuration.d.project;
     let command = '';
     if (configuration.target.docker) {
@@ -50,10 +50,10 @@ export class Ninja extends Compiler {
 
   // configureCommand(toolpaths: any) { return '' }
   buildCommand(toolpaths?: string) {
-    return this.configuration.parsed.host.tools.ninja.bin;
+    return defaults.host.tools.ninja.bin;
   }
   fetch() {
-    return Tools.fetch(this.options.toolchain || this.configuration.parsed.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools.fetch(this.options.toolchain || defaults.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate() {
     return this.configure();
@@ -109,7 +109,7 @@ export class Ninja extends Compiler {
           log.verbose('    ', 'link:', this.libs);
         }
         const name = this.configuration.project.parsed.name;
-        switch (this.configuration.parsed.outputType) {
+        switch (defaults.product.output.type) {
           case 'static':
           default:
             if (name.indexOf('lib') === -1) {

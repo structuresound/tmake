@@ -72,7 +72,7 @@ function loadCache(a: Configuration, b: TMake.Configuration.Cache.File) {
     }
 }
 
-function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, projectDirs: TMake.Project.Dirs): TMake.Configuration.Dirs {
+function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, architecture: string, projectDirs: TMake.Project.Dirs): TMake.Configuration.Dirs {
     const d = <TMake.Configuration.Dirs>clone(projectDirs);
 
     d.build = join(d.root, pathOptions.build);
@@ -85,29 +85,19 @@ function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, projectDirs
             return {
                 matching: ft.matching,
                 from: join(d.root, ft.from),
+                to: join(d.home, (ft.to || 'bin'), architecture)
             };
         }),
         libraries: map(arrayify(pathOptions.install.libraries), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
                 from: join(d.root, ft.from),
-                to: join(d.home, (ft.to || 'lib'))
+                to: join(d.home, (ft.to || 'lib'), architecture)
             };
         })
     }
-    if (pathOptions.install.assets) {
-        d.install.assets = map(arrayify(pathOptions.install.assets),
-            (ft: TMake.Install.Options) => {
-                return {
-                    matching: ft.matching,
-                    from: join(d.root, ft.from),
-                    to: join(args.runDir, ft.to)
-                };
-            });
-    }
     return d;
 }
-
 
 function getConfigurationPaths(_paths: TMake.Configuration.Dirs, architecture: string, outputType: string) {
     const paths = combine({
@@ -156,24 +146,19 @@ function objectify<T>(input: T) {
 }
 
 export class Configuration {
-    raw: TMake.Platform;
     parsed: TMake.Configuration.Parsed;
     cache: TMake.Configuration.Cache;
     plugins: { [index: string]: TMake.Plugin }
     project: TMake.Project;
 
-    constructor(raw: TMake.Platform, state: Moss.State, project: TMake.Project) {
+    constructor(config: TMake.Configuration.Parsed, project: TMake.Project) {
+        this.parsed = config;
         this.project = project;
         this.plugins = {};
-
-        const combined = { ...clone(project.parsed), target: raw };
-        const moss = next({ data: {}, state }, combined);
-
-        this.parsed = moss.data;
-        delete this.parsed['targets'];
-        const path = this.parsed.p;
-        const p = getConfigurationPaths(<any>path, this.parsed.target.architecture, this.parsed.outputType);
-        const d = getConfigurationDirs(p, this.parsed.d);
+        const path = project.parsed.p;
+        if (!this.parsed.target.architecture) console.log(this.parsed);
+        const p = getConfigurationPaths(<any>path, this.parsed.target.architecture, defaults.product.output.type);
+        const d = getConfigurationDirs(p, this.parsed.target.architecture, this.parsed.d);
         extend(this.parsed, {
             path: path,
             p,
@@ -184,7 +169,6 @@ export class Configuration {
     }
     hash(): string {
         return jsonStableHash({
-            environment: this.parsed.environment,
             meta: _.pick(this.project, ['name', 'version']),
             build: _.pick(this.parsed, ['generate', 'build', 'configure'])
         });

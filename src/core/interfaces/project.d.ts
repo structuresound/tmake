@@ -32,10 +32,34 @@ declare namespace TMake {
     flags?: TMake.Plugin.Compiler.Flags
   }
 
-  namespace Yaml {
+  namespace Source {
+    interface Meta {
+      // metadata
+      name?: string;
+      override?: OLHM<Project.Raw>;
+      require?: OLHM<Project.Raw>;
+      cache?: any;
+      link?: string;
+      git?: Git.Config;
+      archive?: string;
+      tree?: string;
+      version?: string;
+      tag?: string;
+      user?: string;
+      dir?: string
+    }
+
+    interface TargetOptions {
+      glob?: Defaults.Glob
+      sdk?: any
+      flags?: any
+    }
+
     interface Configuration {
-      environment?: any;
+      options?: { [index: string]: boolean }
+      outputType?: string;
       path?: Configuration.Dirs;
+      target?: TargetOptions
     }
 
     interface Phases {
@@ -44,14 +68,8 @@ declare namespace TMake {
       configure?: Phase;
     }
 
-    interface Toolchain {
-      host?: HostPlatform;
-      target?: TargetPlatform;
+    interface Project extends Meta, Configuration, Phases {
 
-      outputType?: string;
-    }
-
-    interface File extends Configuration, Phases, Toolchain {
     }
   }
 
@@ -85,34 +103,16 @@ declare namespace TMake {
       localCache: string;
     }
 
-    interface Meta {
-      // metadata
-      name?: string;
-      override?: OLHM<Project.Raw>;
-      require?: OLHM<Project.Raw>;
-      cache?: any;
-      link?: string;
-      git?: Git.Config;
-      archive?: string;
-      tree?: string;
-      version?: string;
-      tag?: string;
-      user?: string;
-      dir?: string
-    }
-
-    interface Raw extends Meta, Yaml.File {
-      host?: TMake.Platform
-      targets?: OLHM<TMake.Platform>
+    interface Raw extends Source.Project {
       hash?: string
     }
 
-    interface Parsed extends Meta, Yaml.File {
-      configurations: TMake.Configuration[];
-      git: TMake.Git
-      libs: string[];
-      d: TMake.Project.Dirs;
-      p: TMake.Project.Dirs;
+    interface Parsed extends Raw {
+      git?: TMake.Git
+      libs?: string[];
+      d?: TMake.Project.Dirs;
+      p?: TMake.Project.Dirs;
+      configurations?: TMake.Configuration[];
     }
 
     interface Cache {

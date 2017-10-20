@@ -5,12 +5,14 @@ import * as colors from 'chalk';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
-import { check, contains, extend } from 'typed-json-transform';
+import { check, clone, contains, extend } from 'typed-json-transform';
 import { realpathSync } from 'fs';
-import { Project, log, execute, list, unlink, push, Runtime, args, TMakeError } from 'tmake-core';
+import { Project, log, execute, list, unlink, push, args, Runtime, TMakeError } from 'tmake-core';
 
 import { ClientDb } from './db';
 import { example } from './example';
+
+import * as minimist from 'minimist';
 
 import {
   src, dest, nuke,
@@ -143,16 +145,19 @@ export function createPackage() {
   return Bluebird.resolve(defaultPackage);
 }
 
-export function tmake(rootConfig: TMake.Project.Raw,
-  positionalArgs = args._, projectName?: string) {
 
+export function tmake(cla: any, rootConfig: TMake.Project.Raw, projectName?: string) {
   const Db = new ClientDb();
-  Runtime.init(Db);
+  const commands = cla._;
+
+  delete cla._;
+  Runtime.init(cla, Db);
 
   if (!projectName) {
-    projectName = positionalArgs[1] || rootConfig.name || Project.resolveName(rootConfig);
+    projectName = rootConfig.name || Project.resolveName(rootConfig);
   }
-  const command = positionalArgs[0]
+
+  const command = commands[0];
   switch (command) {
     case 'rm':
       return Db.cleanConfigurations(projectName)
@@ -167,10 +172,10 @@ export function tmake(rootConfig: TMake.Project.Raw,
     case 'ls':
     case 'list':
       return (() => {
-        if (positionalArgs[1] === 'local') {
-          return list('user', { name: positionalArgs[2] })
-        } else if (positionalArgs[1]) {
-          return list('cache', { $or: [{ name: positionalArgs[1] }, { project: positionalArgs[1] }] })
+        if (commands[1] === 'local') {
+          return list('user', { name: commands[2] })
+        } else if (commands[1]) {
+          return list('cache', { $or: [{ name: commands[1] }, { project: commands[1] }] })
         }
         return list('cache', {});
       })().then(nodes => log.log(nodes));
@@ -185,7 +190,7 @@ export function tmake(rootConfig: TMake.Project.Raw,
         Runtime.loadPlugins();
         return execute(rootConfig, command, projectName);
       }
-      throw new Error(`unknown command ${positionalArgs[0]}`);
+      throw new Error(`unknown command ${commands[0]}`);
   }
 }
 
@@ -201,15 +206,18 @@ export function initRepo(): any {
 }
 
 export function run() {
+  const cla = <TMake.Args>minimist(process.argv.slice(2));
+  const commands = cla._;
   let defaultCommand = false;
-  if (args._[0] == null) {
-    args._[0] = 'all';
+
+  if (commands[0] == null) {
+    commands[0] = 'all';
     defaultCommand = true;
   }
   if (args.version) {
     return version();
   }
-  switch (args._[0]) {
+  switch (commands[0]) {
     case 'version':
       return version();
     case 'help':
@@ -223,11 +231,11 @@ export function run() {
         (res) => {
           if (res) {
             const projectFile = <TMake.Project.Raw><any>res;
-            const cmd = args._[0];
+            const cmd = commands[0];
             if (!check(cmd, String)) {
               log.quiet(manual());
             }
-            switch (args._[0]) {
+            switch (commands[0]) {
               case 'example':
               case 'init':
                 log.error(
@@ -241,17 +249,17 @@ export function run() {
                 log.quiet(`rm -R bin build ${args.cachePath}`);
                 return;
               default:
-                if (!check(args._[1], parseOptions(cmd).type)) {
+                if (!check(commands[1], parseOptions(cmd).type)) {
                   log.quiet(usage(cmd));
                 }
                 if (defaultCommand) {
-                  const projectName = args._[1] || projectFile.name;
+                  const projectName = commands[1] || projectFile.name;
                   log.log(`tmake all ${projectFile.name}`)
                 }
-                return tmake(projectFile);
+                return tmake(cla, projectFile);
             }
           }
-          switch (args._[0]) {
+          switch (commands[0]) {
             case 'init':
               return initRepo();
             case 'example':
@@ -269,11 +277,12 @@ export function run() {
               if (args.verbose) {
                 if (check(e, Error)) {
                   log.log('logging node error:');
+                  log.log(e.message);
                   log.error(e.stack);
                 }
               }
               else {
-                log.error(e);
+                log.error(e.message);
               }
             }
             log.log('exit with code:', (e as any).code || 1);

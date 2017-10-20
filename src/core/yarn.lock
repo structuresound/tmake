@@ -1038,14 +1038,14 @@ jodid25519@^1.0.0:
   dependencies:
     jsbn "~0.1.0"
 
-js-moss@^0.7.1:
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/js-moss/-/js-moss-0.7.1.tgz#d52680f051b56d8d81ca04879310e487bf8d33e8"
+js-moss@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/js-moss/-/js-moss-0.9.0.tgz#bdc90ba1bc006368b965fd91e1835d4be93dfaf9"
   dependencies:
     "@types/shelljs" "^0.6.0"
     js-yaml "^3.6.1"
     mathjs "^3.14.2"
-    typed-json-transform "^0.16.9"
+    typed-json-transform "^0.18.1"
 
 js-yaml@3.6.1, js-yaml@^3.6.1:
   version "3.6.1"
@@ -2011,9 +2011,9 @@ typed-function@0.10.5:
   version "0.10.5"
   resolved "https://registry.yarnpkg.com/typed-function/-/typed-function-0.10.5.tgz#2e0f18abd065219fab694a446a65c6d1981832c0"
 
-typed-json-transform@^0.16.9:
-  version "0.16.9"
-  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.16.9.tgz#aaf7fc5b0f6959787daf311ede663898c76bf9eb"
+typed-json-transform@^0.18.1:
+  version "0.18.1"
+  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.18.1.tgz#6a835989b42a7b4615cfe1a8324aebe3a036a10d"
 
 uid-number@^0.0.6:
   version "0.0.6"

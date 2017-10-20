@@ -2,14 +2,11 @@
 git:
   repository: madler/zlib
   tag: v1.2.8
-generate>:
-  ninja:
-    matching:
-      - "*.c"
-    compilerFlags:
-      +ios:
-        miphoneos-version-min: "=6.0"
-    cFlags:
+glob:
+  sources: ["*.c"]
+target>:
+  flags:
+    cpp:
       O: 3
       Wall: true
       Wwrite-strings: true
@@ -17,6 +14,7 @@ generate>:
       Wconversion: true
       +ios:
         "fembed-bitcode": true
+generate: ninja
 configure>:
   replace:
     gzguts:
@@ -26,4 +24,9 @@ configure>:
         unistd:
         - "\n\n#ifdef _LARGEFILE64_SOURCE"
         - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
-build: ninja    
+build: ninja
+path:
+  install:
+    headers:
+      - from: ''
+outputType: static

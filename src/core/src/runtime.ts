@@ -1,23 +1,31 @@
 import * as _ from 'lodash';
 import { readdirSync } from 'fs';
-import * as minimist from 'minimist';
 import { mkdir } from 'shelljs'
 import { join } from 'path';
 import { Project } from './project';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Ninja } from './ninja';
-import { extend, clone, contains, plain, stringify, cascade, okmap, map, flatten } from 'typed-json-transform';
+import { extend, clone, contains, plain, stringify, cascade, okmap, map, flatten, union } from 'typed-json-transform';
 import { parseFileSync } from './file';
 import * as os from 'os';
-import { setOptions } from 'js-moss';
 import { exec } from './shell';
-import { next } from 'js-moss';
+import { next, setOptions } from 'js-moss';
+import { Tools } from './tools';
+import { stringHash } from './hash';
 
-export const args = <TMake.Args>minimist(process.argv.slice(2));
+export { next } from 'js-moss';
+
+const interpolateCache = {};
 
 setOptions({
-  shell: (string) => exec(string, { silent: true })
+  shell: (string) => {
+    const hash = stringHash(string);
+    if (!interpolateCache[hash]) {
+      interpolateCache[hash] = exec(string, { silent: true });
+    }
+    return interpolateCache[hash];
+  }
 });
 
 function homeDir() {
@@ -27,6 +35,8 @@ function homeDir() {
 }
 
 const npmDir = join(__dirname, '../../..');
+
+export const args: TMake.Args = {};
 
 if (process.env.NODE_ENV == 'test') {
   args.v = true;
@@ -64,14 +74,6 @@ if (!args.program) {
 if (!args.homeDir) {
   args.homeDir = `${homeDir()}/.tmake`;
 }
-if (args.v) {
-  if (!args.verbose) {
-    args.verbose = args.v;
-  }
-}
-if (args.f) {
-  args.force = 'all';
-}
 
 if (process.env.TMAKE_ARGS) {
   extend(args, Args.decode(process.env.TMAKE_ARGS));
@@ -108,7 +110,7 @@ const additionalArchKeywords = {
 
 export function parseSelectors(dict: any, prefix: string) {
   const _selectors: string[] = [];
-  const selectables = _.pick(dict, ['platform', 'compiler', 'architecture']);
+  const selectables = _.pick(dict, ['platform', 'architecture']);
   for (const key of Object.keys(selectables)) {
     _selectors.push(`${prefix || ''}${selectables[key]}`);
   }
@@ -116,9 +118,16 @@ export function parseSelectors(dict: any, prefix: string) {
 }
 
 const _defaults: TMake.Defaults = <any>{};
+const _targets: TMake.Targets = <any>{};
 const _settings: TMake.Settings = <any>{};
 const _keywords: string[] = [];
 const _selectors: string[] = [];
+const _environment: string[] = [];
+
+interface MossOptions {
+  stack?: TMake.Defaults
+  selectors?: { [index: string]: boolean }
+}
 
 export namespace Runtime {
   const AUTO_ENDIANNESS = os.endianness();
@@ -127,16 +136,27 @@ export namespace Runtime {
   const AUTO_CPU = os.cpus();
 
   export const pluginMap: { [index: string]: typeof Plugin } = {};
-
-  export function moss(config: TMake.Yaml.File, additionalSelectors?: any) {
-    const selectors = okmap(_keywords, (keyword) => {
+  export function moss(config: TMake.Source.Project, options: MossOptions = {}) {
+    const defaultSelectors = okmap(_keywords, (keyword) => {
       return { [keyword]: <any>contains(_selectors, keyword) };
     });
-    const state = {
-      auto: {},
-      selectors: { ...selectors, ...additionalSelectors }
-    }
-    return next({ data: {}, state }, config);
+
+    const additionalSelectors = options.selectors || {};
+    const additionalKeywords = Object.keys(additionalSelectors);
+
+    const specificSelectors = okmap(additionalKeywords, (keyword) => {
+      return { [keyword]: <any>contains(_selectors, keyword) || additionalSelectors[keyword] };
+    });
+
+    const selectors = { ...defaultSelectors, ...specificSelectors };
+    const layer = {
+      data: {}, state: {
+        auto: options.stack || {},
+        stack: {},
+        selectors
+      }
+    };
+    return next(layer, config);
   }
 
   export function j() { return _defaults.host.cpu.num; }
@@ -185,8 +205,10 @@ export namespace Runtime {
     return pluginMap[name];
   }
 
-  function initDefaults() {
-    const { defaults, keywords } = _settings;
+  function initDefaults(cla: { [index: string]: string }) {
+    console.log('load defaults');
+
+    const { keywords } = _settings;
 
     const host = {
       architecture: AUTO_ARCHITECTURE,
@@ -195,42 +217,82 @@ export namespace Runtime {
       cpu: { num: AUTO_CPU.length, speed: AUTO_CPU[0].speed }
     };
 
-    defaults.host = {
-      ...host, ...defaults.host
+    try {
+      const defaultsPath = join(args.settingsDir, 'defaults.yaml');
+      const defaults = parseFileSync(defaultsPath);
+
+      if (!Object.keys(defaults).length) {
+        throw new Error(`missing defaults @ ${defaultsPath}`);
+      }
+
+      defaults.host = {
+        ...host, ...defaults.host
+      }
+
+      const hostKeywords = map(keywords.host, (key) => { return `host-${key}`; });
+      const defaultHost = (defaults.host && defaults.host.platform) || AUTO_PLATFORM;
+
+      _keywords.push(...hostKeywords);
+      _keywords.push(...[].concat(keywords.target)
+        .concat(keywords.architecture)
+        .concat(keywords.compiler)
+        .concat(keywords.sdk)
+        .concat(keywords.ide)
+        .concat(keywords.deploy));
+
+      const selectors = [
+        parseSelectors(defaults.host, 'host-')
+      ]
+      _selectors.push(...flatten(selectors));
+
+      _.each(cla, (v: string, key: string) => {
+        if (contains(_keywords, key)) {
+          _selectors.push(key);
+        } else {
+          args[key] = v || true;
+        }
+      });
+
+      if (args.v) {
+        if (!args.verbose) {
+          args.verbose = args.v;
+        }
+      }
+      if (args.f) {
+        args.force = 'all';
+      }
+
+      console.log('raw defaults', defaults);
+      const parsedDefaults: TMake.Defaults = moss(clone(defaults)).data;
+      const tools = parsedDefaults.host.tools;
+
+      for (const name of Object.keys(tools)) {
+        const tool = tools[name];
+        if (tool.name == null) {
+          tool.name = name;
+        }
+        if (tool.bin == null) {
+          tool.bin = name;
+          tool.bin = Tools.pathForTool(tool);
+        }
+      }
+
+      const localProductPath = join(args.runDir, 'product.yaml');
+      try {
+        const localProduct: TMake.Product = parseFileSync(localProductPath);
+        extend(parsedDefaults, { product: moss(<any>localProduct, { stack: parsedDefaults }).data });
+      }
+      catch {
+      }
+
+      extend(_defaults, parsedDefaults);
     }
-
-    const hostKeywords = map(keywords.host, (key) => { return `host-${key}`; });
-    const defaultHost = (defaults.host && defaults.host.platform) || AUTO_PLATFORM;
-
-    _keywords.push(...hostKeywords);
-    _keywords.push(...[].concat(keywords.target)
-      .concat(keywords.architecture)
-      .concat(keywords.compiler)
-      .concat(keywords.sdk)
-      .concat(keywords.ide)
-      .concat(keywords.deploy));
-
-    const selectors = [
-      parseSelectors(defaults.host, 'host-'),
-      Object.keys(_.pick(args, _keywords)),
-      [args.compiler]
-    ]
-    _selectors.push(...flatten(selectors));
-
-    const parsed = moss(defaults).data;
-
-    parsed.target = {
-      ...{
-        architecture: AUTO_ARCHITECTURE,
-        endianness: AUTO_ENDIANNESS,
-        platform: AUTO_PLATFORM
-      }, ...parsed.target
+    catch (e) {
+      console.warn(`error parsing defaults: ${e.message} ${e.stack}`);
     }
-
-    extend(_defaults, parsed);
   }
 
-  export function init(database: TMake.Database.Interface) {
+  export function init(cla: { [index: string]: any }, database: TMake.Database.Interface) {
     if (database) {
       Db = database;
     }
@@ -243,14 +305,16 @@ export namespace Runtime {
           throw new Error(`missing settings @ ${settingsPath}`);
         }
 
-        initDefaults();
+        initDefaults(cla);
+        // initTargets();
       }
       catch (e) {
         console.warn(`error parsing settings: ${e.message} ${e.stack}`);
       }
+      console.log('register plugins');
       registerPlugin(Ninja);
     }
   }
 }
 
-export { _selectors as selectors, _keywords as keywords, _defaults as defaults };
+export { _selectors as selectors, _keywords as keywords, _defaults as defaults, _targets as targets };

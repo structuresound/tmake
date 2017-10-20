@@ -13,8 +13,8 @@ export function resolve(git: Git) {
 export class Git implements TMake.Git.Config {
   repository: string;
   organization: string;
-  branch: string;
-  tag: string;
+  branch?: string;
+  tag?: string;
   archive?: string;
   url?: string;
   constructor(config: TMake.Git.Config | string) {

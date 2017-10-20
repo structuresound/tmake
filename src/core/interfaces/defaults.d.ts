@@ -14,12 +14,22 @@ declare namespace TMake {
         }
     }
 
+    interface Targets {
+        [index: string]: TMake.TargetPlatform
+    }
+
+    interface Product {
+        output: {
+            type: string
+            combine: boolean
+        }
+        targets: Targets
+        build: Targets
+    }
+
     interface Defaults {
         host: TMake.HostPlatform
-        tools: TMake.Tools
-        flags: TMake.Plugin.Compiler.Flags
-        target: TMake.TargetPlatform
-        glob: Defaults.Glob
+        project: TMake.Source.Project
+        product: TMake.Product
     }
 }
-

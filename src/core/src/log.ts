@@ -54,6 +54,10 @@ export class Log {
       console.log(colors.green(yamlify(...args)));
     }
   }
+  exit(...args: any[]) {
+    console.log(yamlify(args));
+    process.exit();
+  }
   error(...args: any[]) { console.log(colors.red(yamlify(...args))); }
   throw(...args: any[]) {
     throw new Error(yamlify(...args));

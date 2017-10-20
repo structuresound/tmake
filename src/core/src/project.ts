@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
-import * as path from 'path';
-import { check, valueForKeyPath, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, OLHM, select, map } from 'typed-json-transform';
+import { join } from 'path';
+import { check, valueForKeyPath, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, OLHM, select, map } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './runtime';
@@ -13,8 +13,7 @@ import { Property as CacheProperty } from './cache';
 import { Configuration } from './configuration';
 import { errors } from './errors';
 import { semverRegex } from './lib';
-import { Runtime, defaults } from './runtime';
-import { Tools } from './tools';
+import { Runtime, defaults, next } from './runtime';
 
 export const metaDataKeys = ['name', 'user', 'path'];
 export const sourceKeys = ['git', 'archive', 'version'];
@@ -25,11 +24,13 @@ export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(sourceKey
 
 export const ephemeralKeys = ['dir', 'd', 'p'];
 
-function getProjectDirs(project: TMake.Project.Parsed, parent: TMake.Project.Parsed): TMake.Project.Dirs {
+function getProjectDirs(_project: TMake.Project, parent: TMake.Project.Parsed): TMake.Project.Dirs {
+    const project = _project.parsed;
+
     const pathOptions = project.p;
     const d: TMake.Project.Dirs = <TMake.Project.Dirs>clone(project.d || {});
     if (!d.home) {
-        d.home = path.join(args.runDir, args.cachePath);
+        d.home = join(args.runDir, args.cachePath);
     }
     if (parent) {
         if (!project.name) {
@@ -39,12 +40,12 @@ function getProjectDirs(project: TMake.Project.Parsed, parent: TMake.Project.Par
         if (parent.d.localCache && !d.localCache) {
             d.localCache = parent.d.localCache;
         }
-        d.root = project.dir || path.join(d.localCache || d.home, project.name);
+        d.root = project.dir || join(d.localCache || d.home, project.name);
     } else {
         d.root = args.configDir
     }
     if (project.link) {
-        d.localCache = path.join(project.dir, args.cachePath);
+        d.localCache = join(project.dir, args.cachePath);
     }
     if (pathOptions.includeDirs) {
         d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
@@ -52,39 +53,88 @@ function getProjectDirs(project: TMake.Project.Parsed, parent: TMake.Project.Par
         d.includeDirs = [];
     }
     if (!d.clone) {
-        d.clone = path.join(d.root, pathOptions.clone);
+        d.clone = join(d.root, pathOptions.clone);
     }
-    d.source = path.join(d.clone, pathOptions.source);
-    d.build = path.join(d.root, pathOptions.build);
+    d.source = join(d.clone, pathOptions.source);
+    d.build = join(d.root, pathOptions.build);
     d.install = <TMake.Install>{
         headers: _.map(arrayify(pathOptions.install.headers), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
-                from: path.join(d.root, ft.from),
-                to: path.join(d.home, (ft.to || 'include')),
-                includeFrom: path.join(d.home, (ft.includeFrom || ft.to || 'include'))
+                from: join(d.source, ft.from),
+                to: join(d.home, (ft.to || 'include'), project.name),
+                includeFrom: join(d.home, (ft.includeFrom || ft.to || 'include'))
             };
         })
+    }
+    if (pathOptions.install.assets) {
+        d.install.assets = map(arrayify(pathOptions.install.assets),
+            (ft: TMake.Install.Options) => {
+                return {
+                    matching: ft.matching,
+                    from: join(d.root, ft.from),
+                    to: join(args.runDir, ft.to || 'bin')
+                };
+            });
+    }
+    if (defaults.product.output.combine && Object.keys(defaults.product.targets).length > 1) {
+        d.install.libraries = map(arrayify(pathOptions.install.libraries),
+            (ft: TMake.Install.Options) => {
+                return {
+                    matching: ft.matching,
+                    from: join(d.root, ft.from),
+                    to: join(d.home, ft.to || 'lib')
+                };
+            });
     }
     return d;
 }
 
-function getProjectPaths(paths: TMake.Project.Dirs) {
+function getProjectPaths(project: TMake.Project.Parsed) {
+    const { path } = project;
     const defaultPaths = {
         source: '',
         headers: '',
         build: 'build',
         clone: 'source',
     };
-    const pathOptions = <TMake.Project.Dirs>extend(defaultPaths, paths);
+    const pathOptions = <TMake.Project.Dirs>extend(defaultPaths, path);
     if (pathOptions.install == null) {
         pathOptions.install = {};
     }
     if (pathOptions.install.headers == null) {
         pathOptions.install
-            .headers = [{ from: path.join(pathOptions.clone, 'include') }];
+            .headers = [{ from: join(pathOptions.clone, 'include') }];
+    }
+    if (pathOptions.install.libraries == null) {
+        pathOptions.install
+            .libraries = [{ from: pathOptions.build, to: 'lib' }];
     }
     return pathOptions;
+}
+
+function generateTargets(project: TMake.Project) {
+    const flatTargets: TMake.Platform[] = Runtime.moss(<any>defaults.product.build, {
+        stack: {
+            host: defaults.host,
+            project: project,
+            product: defaults.product
+        }
+    }).data;
+
+    return map(flatTargets, (rawTarget) => {
+        const inherit = clone(project.parsed);
+        inherit.target = combine(inherit.target, rawTarget);
+
+        const config = Runtime.moss(<any>inherit, {
+            selectors: {
+                [rawTarget.platform]: true,
+                [rawTarget.architecture]: true
+            }
+        }).data;
+
+        return <TMake.Configuration>new Configuration(<any>config, project);
+    });
 }
 
 function resolveVersion(conf: TMake.Project.Parsed) {
@@ -121,7 +171,7 @@ function parsePath(s: string) {
     if (startsWith(s, '/')) {
         return s;
     }
-    return path.join(args.runDir, s);
+    return join(args.runDir, s);
 }
 
 function resolveUrl(project: TMake.Project.Parsed): string {
@@ -160,21 +210,19 @@ export class Project {
         if (check(_projectFile, Project)) {
             return <any>_projectFile;
         }
-
         if (check(_projectFile, String)) {
             this.raw = fromGitString(<string><any>_projectFile);
         } else {
             this.raw = <TMake.Project.Raw>clone(_projectFile);
         }
 
+        const projectDefaults = clone(defaults);
+        const projectOverrides = Runtime.moss(clone(this.raw), {
+            selectors: this.raw.options,
+            stack: projectDefaults
+        }).data;
 
-        const layer = Runtime.moss(this.raw);
-        const parsed = layer.data;
-
-        this.parsed = {
-            ...parsed,
-            host: { ...defaults.host, ...parsed.host }
-        };
+        this.parsed = <any>merge(projectDefaults.project, projectOverrides);
 
         if (this.parsed.git) {
             this.parsed.git = new Git(this.raw.git);
@@ -195,23 +243,8 @@ export class Project {
             this.parsed.user = 'local';
         }
 
-        for (const name of Object.keys(this.parsed.host.tools)) {
-            const tool = this.parsed.host.tools[name];
-            if (tool.name == null) {
-                tool.name = name;
-            }
-            if (tool.bin == null) {
-                tool.bin = name;
-                tool.bin = Tools.pathForTool(tool);
-            }
-        }
-
-        this.parsed.p = getProjectPaths(this.parsed.path);
-        this.parsed.d = getProjectDirs(this.parsed, parent ? parent.parsed : undefined);
-
-        if (!this.parsed.outputType) {
-            this.parsed.outputType = 'static';
-        }
+        this.parsed.p = getProjectPaths(this.parsed);
+        this.parsed.d = getProjectDirs(this, parent ? parent.parsed : undefined);
 
         // Overrides
         if (parent) {
@@ -229,27 +262,13 @@ export class Project {
             }
         }
 
-        // Instantiate Target Configurations
-        const targets = this.raw.targets ? OLHM.safe(this.raw.targets) : [defaults.target];
-        this.parsed.configurations = map(targets, (conf) => {
-            const targetSelectors = {
-                [this.parsed.host.compiler.cpp]: true,
-                [this.parsed.host.compiler.c]: true,
-                [conf.platform]: true,
-                [conf.architecture]: true
-            }
-            const targetState = clone(layer.state);
-            targetState.selectors = { ...targetState.selectors, ...targetSelectors };
-
-            return <TMake.Configuration>new Configuration(conf, targetState, this);
-        });
+        this.parsed.configurations = generateTargets(this);
 
         /* CACHE */
         const fetch = new CacheProperty(() => stringHash(this.url()));
         const metaData = new CacheProperty(() => {
             return jsonStableHash({
                 version: this.parsed.version,
-                outputType: this.parsed.outputType,
                 require: this.safeDeps()
             });
         }, { require: fetch });
@@ -262,6 +281,7 @@ export class Project {
             metaData,
             libs
         }
+
     }
 
     force() {

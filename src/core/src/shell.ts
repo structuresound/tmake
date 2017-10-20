@@ -8,10 +8,18 @@ import { args } from './runtime';
 import { Configuration, ConfigurationPlugin } from './configuration';
 import { iterateOLHM } from './iterate';
 import { errors, TMakeError } from './errors';
+import { replaceAll } from './string';
 
 export function exec(command: string, options: TMake.Shell.Exec.Options = {}): string {
-  const out = _exec(command, options) as any;
-  return out.stdout ? out.stdout.replace('\r', '').replace('\n', '') : undefined;
+  let out = _exec(command, options) as any;
+  out = out.stdout || out.stderr;
+  if (out) {
+    if (out.slice(-1) == '\r') out = out.slice(0, out.length - 1);
+    while (out.slice(-1) == '\n') {
+      out = out.slice(0, out.length - 1);
+    }
+  }
+  return out;
 }
 
 export function ensureCommand(command: string) {

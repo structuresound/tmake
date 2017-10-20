@@ -10,6 +10,6 @@ declare namespace TMake {
   }
 
   interface Phase extends Plugins {
-    commands: CmdObj[];
+    commands?: CmdObj[];
   }
 }

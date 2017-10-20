@@ -30,7 +30,7 @@ declare module 'tmake-core/runtime' {
   const defaults: TMake.Defaults;
 
   namespace Runtime {
-    export function init(database: TMake.Database.Interface);
+    export function init(args: { [index: string]: any }, database: TMake.Database.Interface);
     export function loadPlugins();
     export function j(): number;
     export const Db: TMake.Database.Interface;

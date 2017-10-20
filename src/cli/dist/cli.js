@@ -17,6 +17,7 @@ var typed_json_transform_1 = require("typed-json-transform");
 var tmake_core_1 = require("tmake-core");
 var db_1 = require("./db");
 var example_1 = require("./example");
+var minimist = require("minimist");
 var tmake_core_2 = require("tmake-core");
 var name = 'tmake';
 function sortKeysBy(obj, comparator) {
@@ -132,14 +133,15 @@ function createPackage() {
     return Bluebird.resolve(exports.defaultPackage);
 }
 exports.createPackage = createPackage;
-function tmake(rootConfig, positionalArgs, projectName) {
-    if (positionalArgs === void 0) { positionalArgs = tmake_core_1.args._; }
+function tmake(cla, rootConfig, projectName) {
     var Db = new db_1.ClientDb();
-    tmake_core_1.Runtime.init(Db);
+    var commands = cla._;
+    delete cla._;
+    tmake_core_1.Runtime.init(cla, Db);
     if (!projectName) {
-        projectName = positionalArgs[1] || rootConfig.name || tmake_core_1.Project.resolveName(rootConfig);
+        projectName = rootConfig.name || tmake_core_1.Project.resolveName(rootConfig);
     }
-    var command = positionalArgs[0];
+    var command = commands[0];
     switch (command) {
         case 'rm':
             return Db.cleanConfigurations(projectName)
@@ -154,11 +156,11 @@ function tmake(rootConfig, positionalArgs, projectName) {
         case 'ls':
         case 'list':
             return (function () {
-                if (positionalArgs[1] === 'local') {
-                    return tmake_core_1.list('user', { name: positionalArgs[2] });
+                if (commands[1] === 'local') {
+                    return tmake_core_1.list('user', { name: commands[2] });
                 }
-                else if (positionalArgs[1]) {
-                    return tmake_core_1.list('cache', { $or: [{ name: positionalArgs[1] }, { project: positionalArgs[1] }] });
+                else if (commands[1]) {
+                    return tmake_core_1.list('cache', { $or: [{ name: commands[1] }, { project: commands[1] }] });
                 }
                 return tmake_core_1.list('cache', {});
             })().then(function (nodes) { return tmake_core_1.log.log(nodes); });
@@ -173,7 +175,7 @@ function tmake(rootConfig, positionalArgs, projectName) {
                 tmake_core_1.Runtime.loadPlugins();
                 return tmake_core_1.execute(rootConfig, command, projectName);
             }
-            throw new Error("unknown command " + positionalArgs[0]);
+            throw new Error("unknown command " + commands[0]);
     }
 }
 exports.tmake = tmake;
@@ -187,15 +189,17 @@ function initRepo() {
 }
 exports.initRepo = initRepo;
 function run() {
+    var cla = minimist(process.argv.slice(2));
+    var commands = cla._;
     var defaultCommand = false;
-    if (tmake_core_1.args._[0] == null) {
-        tmake_core_1.args._[0] = 'all';
+    if (commands[0] == null) {
+        commands[0] = 'all';
         defaultCommand = true;
     }
     if (tmake_core_1.args.version) {
         return version();
     }
-    switch (tmake_core_1.args._[0]) {
+    switch (commands[0]) {
         case 'version':
             return version();
         case 'help':
@@ -208,11 +212,11 @@ function run() {
                 .then(function (res) {
                 if (res) {
                     var projectFile = res;
-                    var cmd = tmake_core_1.args._[0];
+                    var cmd = commands[0];
                     if (!typed_json_transform_1.check(cmd, String)) {
                         tmake_core_1.log.quiet(manual());
                     }
-                    switch (tmake_core_1.args._[0]) {
+                    switch (commands[0]) {
                         case 'example':
                         case 'init':
                             tmake_core_1.log.error("there's already a " + tmake_core_1.args.program + " project file in this directory");
@@ -225,17 +229,17 @@ function run() {
                             tmake_core_1.log.quiet("rm -R bin build " + tmake_core_1.args.cachePath);
                             return;
                         default:
-                            if (!typed_json_transform_1.check(tmake_core_1.args._[1], parseOptions(cmd).type)) {
+                            if (!typed_json_transform_1.check(commands[1], parseOptions(cmd).type)) {
                                 tmake_core_1.log.quiet(usage(cmd));
                             }
                             if (defaultCommand) {
-                                var projectName = tmake_core_1.args._[1] || projectFile.name;
+                                var projectName = commands[1] || projectFile.name;
                                 tmake_core_1.log.log("tmake all " + projectFile.name);
                             }
-                            return tmake(projectFile);
+                            return tmake(cla, projectFile);
                     }
                 }
-                switch (tmake_core_1.args._[0]) {
+                switch (commands[0]) {
                     case 'init':
                         return initRepo();
                     case 'example':
@@ -254,11 +258,12 @@ function run() {
                         if (tmake_core_1.args.verbose) {
                             if (typed_json_transform_1.check(e, Error)) {
                                 tmake_core_1.log.log('logging node error:');
+                                tmake_core_1.log.log(e.message);
                                 tmake_core_1.log.error(e.stack);
                             }
                         }
                         else {
-                            tmake_core_1.log.error(e);
+                            tmake_core_1.log.error(e.message);
                         }
                     }
                     tmake_core_1.log.log('exit with code:', e.code || 1);

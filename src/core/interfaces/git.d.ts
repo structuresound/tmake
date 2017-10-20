@@ -1,8 +1,8 @@
 declare namespace TMake {
   namespace Git {
     interface Config {
-      repository?: string;
-      organization?: string;
+      repository: string;
+      organization: string;
       branch?: string;
       tag?: string;
       archive?: string;
@@ -13,8 +13,8 @@ declare namespace TMake {
   class Git implements Git.Config {
     repository: string;
     organization: string;
-    branch: string;
-    tag: string;
+    branch?: string;
+    tag?: string;
     archive?: string;
     url?: string;
     constructor(config: Git.Config | string)

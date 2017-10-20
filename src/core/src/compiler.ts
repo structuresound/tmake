@@ -154,8 +154,8 @@ export class Compiler extends Shell {
   compilerFlags() { return jsonToFlags(this.flags.compiler, { join: ' ' }); }
   sources() {
     const { configuration } = this;
-    console.log('glob sources', this.options.matching);
-    const patterns = arrayify(this.options.matching || defaults.glob.sources);
+    const patterns = arrayify(this.options.matching || configuration.parsed.target.glob.sources);
+    console.log('glob sources', patterns);
     return glob(patterns, configuration.parsed.d.source, configuration.project.parsed.d.source);
   }
   libraries(): PromiseLike<any> {

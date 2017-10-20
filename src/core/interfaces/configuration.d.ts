@@ -5,19 +5,17 @@
 
 declare namespace TMake {
   class Configuration {
-    raw: TMake.Platform;
     parsed: Configuration.Parsed;
     cache: Configuration.Cache;
     project: Project;
 
-    constructor(target: TMake.Platform, state: Moss.State, parent: TMake.Project)
+    constructor(target: TargetPlatform, state: Moss.State, parent: TMake.Project)
     hash(): string;
     merge(other: Configuration.Cache.File): void;
     toCache(): TMake.Configuration.Cache.File;
   }
 
   namespace Configuration {
-
     interface Dirs extends Project.Dirs {
       project: string
       build: string
@@ -25,10 +23,11 @@ declare namespace TMake {
       install: Install
     }
 
-    interface Parsed extends Yaml.File {
-      d: Configuration.Dirs;
-      p: Configuration.Dirs;
-      s: string[];
+    interface Parsed extends Source.Project {
+      target: TMake.TargetPlatform & TMake.Source.TargetOptions
+      d: Configuration.Dirs
+      p: Configuration.Dirs
+      s: string[]
     }
 
     namespace Select {
@@ -51,7 +50,6 @@ declare namespace TMake {
         cache: any
       }
     }
-
   }
 
   namespace Plugin {

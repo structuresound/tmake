@@ -1,0 +1,145 @@
+host:
+  compiler:
+    c:
+      =host-mac: clang
+      =host-linux: gcc
+      =host-win: msvc
+    cpp: $c
+  tools:
+    ninja:
+      version: 1.7.1
+      url: https://github.com/ninja-build/ninja/releases/download/v${version}/ninja-${host.platform}.zip
+    +host-mac:
+      clang:
+        bin: $(which gcc)
+    +host-linux:
+      gcc:
+        bin: $(which gcc)
+product>:
+  output:
+    type: static
+    lipo: true
+  platform:
+    =mac: macOS
+    =ios: iOS
+    =android: android
+    =linux: linux
+  architectures:
+    auto:
+      endianness: LE
+      architecture: $host.architecture
+      endianness: $host.endianness
+      platform: $host.platform
+    x64:
+      architecture: arm64
+      endianness: LE
+    arm64:
+      architecture: arm64
+      endianness: LE
+    armv7:
+      architecture: armv7
+      float: hard
+    armv6:
+      architecture: armv7
+      float: hard
+  build:
+    =:
+      platform: $host.platform
+      device: 
+        platform: $architectures.auto
+    =ios:
+      targets:
+        arm64:
+          merge<:
+            source: $architectures.arm64
+            ios:
+              platform: ios
+        simulator:
+          merge<:
+            source: $architectures.auto
+            simulator:
+              platform: ios
+              options:
+                simulator: true
+        +legacy:
+          armv7a: $architectures.armv7
+          armv6: $architectures.armv6
+project>:
+  target:
+    glob:
+      assets:
+        images: ['**/*.{png, jpg, jpeg, tiff, ico, svg, bmp}']
+        fonts: ['**/*.{ttf, otf, woff, woff2}']
+      headers: ['**/*.{h, hh, hpp, hxx, ipp}', '!test*/**']
+      sources: ['**/*.{cpp, cc, c}', '!**/*.test.*', '!test*/**']
+      tests: ['test*/*.{cpp, cc, c}', '**/*.test.*']
+    sdk:
+      =host-mac:
+        $<:
+          allSDKs: $(xcodebuild -showsdks)
+        =mac:
+          device:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /macOS SDKs:/{p=1}' | awk '{print $4}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+        =ios:
+          device:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /iOS SDKs:/{p=1}' | awk '{print $4}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+          simulator:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /iOS Simulator SDKs:/{p=1}' | awk '{print $6}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+        =tv:
+          device:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /iOS SDKs:/{p=1}' | awk '{print $4}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+          simulator:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /iOS Simulator SDKs:/{p=1}' | awk '{print $6}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+            tvOS:
+        =watch:
+          device:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /watchOS SDKs:/{p=1}' | awk '{print $4}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+          simulator:
+            version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /watchOS Simulator SDKs:/{p=1}' | awk '{print $6}')
+            path: $(xcodebuild -version -sdk ${version} Path)
+    flags:
+      clang:
+        =host-mac:
+          compiler: cc
+        +mac:
+          kernel: darwin64
+          arch: x86_64
+          isysroot: ${sdk.device.path}
+        +ios:
+          kernel: darwin64
+          arch: arm64
+          isysroot: ${sdk.device.path}
+          miphoneos-version-min: \=6.1
+          +simulator:
+            mios-simulator-version-min: \=6.1
+            isysroot: ${sdk.simulator.path}
+        +:
+          triple: ${kernel}-${arch}-${compiler}
+      cpp:
+        O: 2
+        +mac, ios: 
+          std: c++11
+          stdlib: libc++
+        +linux:
+          std: c++0x
+          pthread: true
+      linker:
+        =linux:
+          lstdc++: true
+          lpthread: true
+        =mac, ios:
+          lc++: true
+      frameworks:
+        =mac, ios: 
+          CoreFoundation: true
+      make:
+        configure:
+          enable-static: true
+          disable-shared: true
+          with-pic: true
