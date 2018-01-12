@@ -37,6 +37,7 @@
         "tmake-plugin-make": "^0.6.0"
     },
     "dependencies": {
+        "js-yaml": "^3.10.0",
         "typed-json-transform": "^0.18.2",
         "bluebird": "^3.5.0",
         "chalk": "^1.1.1",

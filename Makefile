@@ -17,7 +17,7 @@ test: tmake
 	touch tests/.tmake/plugins/package.json
 	cd tests/.tmake/plugins && npm link tmake-plugin-cmake
 	cd tests/.tmake/plugins && npm link tmake-plugin-make
-	cd tests && yarn && npm run before && npm test
+	cd tests && npm run before && npm test
 
 coverage: tmake
 	cd src/core && npm link
