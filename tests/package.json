@@ -57,6 +57,6 @@
         "bluebird": "^3.5.0",
         "js-moss": "^0.7.1",
         "nedb-promise": "^2.0.1",
-        "typed-json-transform": "^0.17.1"
+        "typed-json-transform": "^0.18.2"
     }
 }

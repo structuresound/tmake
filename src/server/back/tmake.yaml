@@ -1,5 +1,4 @@
 name: tmake_server
-outputType: executable
 configure:
   for: ninja
   mac, linux:

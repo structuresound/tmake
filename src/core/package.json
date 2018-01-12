@@ -21,7 +21,7 @@
     "main": "dist/index.js",
     "types": "interfaces/index.d.ts",
     "scripts": {
-        "build": "gulp scripts",
+        "build": "../node_modules/.bin/gulp scripts",
         "distribute": "yarn && npm run build"
     },
     "devDependencies": {

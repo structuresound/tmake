@@ -58,19 +58,18 @@ project(${this.configuration.project.parsed.name} VERSION ${pv})`;
     }
 
     const includeDirectories = () => {
-      switch (this.configuration.parsed.outputType) {
+      switch (this.configuration.parsed.target.output.type) {
         case 'static':
         case 'dynamic':
         case 'executable':
         default:
-          return `
-include_directories(${quotedList(this.options.includeDirs)})`;
-        case 'environment':
-          return `
-# Essential include files to build a environment addon,
-# you should add this line in every CMake.js based project.
-include_directories(\${CMAKE_JS_INC})
-include_directories(${quotedList(this.options.includeDirs)})`;
+          return `include_directories(${quotedList(this.options.includeDirs)})`;
+//         case 'environment':
+//           return `
+// # Essential include files to build a environment addon,
+// # you should add this line in every CMake.js based project.
+// include_directories(\${CMAKE_JS_INC})
+// include_directories(${quotedList(this.options.includeDirs)})`;
       }
     }
 
@@ -90,7 +89,7 @@ set(CMAKE_CXX_FLAGS "\${CMAKE_CXX_FLAGS} ${cxxFlags}")
 set(CMAKE_C_FLAGS "\${CMAKE_C_FLAGS} ${this.cFlags().join(' ')}")`;
     }
     const target = () => {
-      switch (this.configuration.parsed.outputType) {
+      switch (this.configuration.parsed.target.output.type) {
         case 'static':
         default:
           return `\nadd_library(${this.configuration.project.parsed.name} STATIC \${SOURCE_FILES})`;

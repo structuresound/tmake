@@ -137,7 +137,6 @@ export function manual() {
 export const defaultPackage = {
   name: 'newProject',
   version: '0.0.1',
-  outputType: 'executable',
   build: { with: 'cmake' }
 };
 
