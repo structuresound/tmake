@@ -34,7 +34,7 @@ var CMake = /** @class */ (function (_super) {
         var cMakeDefines = typed_json_transform_1.extend({
             LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
         }, defines);
-        var command = "cmake -G Ninja -DCMAKE_MAKE_PROGRAM=" + this.configuration.parsed.host.tools.ninja.bin + " " + this.configuration.parsed.d.project;
+        var command = "cmake -G Ninja -DCMAKE_MAKE_PROGRAM=" + tmake_core_1.defaults.host.tools.ninja.bin + " " + this.configuration.parsed.d.project;
         for (var _i = 0, _a = Object.keys(cMakeDefines); _i < _a.length; _i++) {
             var k = _a[_i];
             var value = cMakeDefines[k];
@@ -48,11 +48,11 @@ var CMake = /** @class */ (function (_super) {
         return command;
     };
     CMake.prototype.buildCommand = function () {
-        return this.configuration.parsed.host.tools.ninja.bin;
+        return tmake_core_1.defaults.host.tools.ninja.bin;
     };
     CMake.prototype.fetch = function () {
         var _this = this;
-        return tmake_core_1.Tools.fetch(this.options.toolchain || this.configuration.parsed.host.tools).then(function (toolpaths) { return _this.toolpaths = toolpaths; });
+        return tmake_core_1.Tools.fetch(this.options.toolchain || tmake_core_1.defaults.host.tools).then(function (toolpaths) { return _this.toolpaths = toolpaths; });
     };
     CMake.prototype.generate = function () {
         var _this = this;

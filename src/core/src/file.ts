@@ -198,7 +198,12 @@ export function parseData(data: string, configPath: string): any {
     case '.json':
       return JSON.parse(data);
     case '.yaml':
+      try {
       return yaml.load(data);
+      } catch (e) {
+        console.log('error parsing yaml file @ ', configPath);
+        throw(e);
+      }
     default:
       throw new Error('unknown config ext');
   }

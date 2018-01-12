@@ -54,26 +54,17 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
 }
 
 function bin(configuration: Configuration) {
-  if (contains(['executable'], configuration.parsed.outputType)) {
-    const base = path.join(args.runDir, 'bin');
-    mkdir('-p', path.join(args.runDir, 'bin'));
+  if (contains(['executable'], configuration.parsed.target.output.type)) {
+    const base = path.join(args.runDir, 'bin', configuration.parsed.target.architecture);
+    mkdir('-p', base);
     const binaries: string[] = [];
     each(configuration.parsed.d.install.binaries, (ft: TMake.Install.Options) => {
       const from = path.join(ft.from, configuration.project.parsed.name);
       const to = path.join(ft.to || base, configuration.project.parsed.name);
-      log.verbose(`[ install bin ] from ${from} to ${to}`);
+      // log.verbose(`[ install bin ] from ${from} to ${to}`);
       mv(from, to);
       binaries.push(to);
     });
-    return Bluebird.resolve();
-    // let cumulativeHash = '';
-    // return Bluebird.each(binaries, (binPath) => {
-    //   log.quiet('hash binary', binPath);
-    //   return fileHash(binPath).then((hash) => {
-    //     cumulativeHash = stringHash(cumulativeHash + hash);
-    //     return Bluebird.resolve();
-    //   });
-    // })
   }
   return Bluebird.resolve();
 }
@@ -101,10 +92,12 @@ function assets(configuration: Configuration): PromiseLike<any> {
 }
 
 function libs(configuration: Configuration): PromiseLike<any> {
-  if (contains(['static', 'dynamic'], configuration.parsed.outputType)) {
+  const { output } = configuration.parsed.target;
+
+  if (contains(['static', 'dynamic'], configuration.parsed.target.output.type)) {
     return Bluebird.map(configuration.parsed.d.install.libraries, (ft: TMake.Install.Options) => {
       let patterns = ft.matching || ['**/*.a'];
-      if (defaults.product.output.type === 'dynamic') {
+      if (output.type === 'dynamic') {
         patterns = ft.matching || ['**/*.dylib', '**/*.so', '**/*.dll'];
       }
       log.verbose(`[ install libs ] from ${ft.from} to ${ft.to}`);
@@ -121,7 +114,7 @@ function libs(configuration: Configuration): PromiseLike<any> {
       }
       const checksums: any = {};
       const libs = flatten(libPaths);
-      configuration.project.cache.libs.set(libs)
+      configuration.project.cache.libs.set(libs);
       each(libs, (lib) => {
         checksums[stringHash(path.basename(lib))] = fileHashSync(path.join(configuration.project.parsed.d.home, lib));
       });
@@ -136,12 +129,22 @@ function libs(configuration: Configuration): PromiseLike<any> {
   return Bluebird.resolve();
 }
 
+
+export function lipo(project: TMake.Project): PromiseLike<any> {
+  const { glob, output } = project.parsed.target;
+  if (!output.lipo){
+    return Bluebird.resolve();
+  }
+  console.log('lipo', project.parsed.libs);
+  return Bluebird.resolve();
+}
+
 export function installHeaders(project: TMake.Project): PromiseLike<any> {
-  const { glob } = project.parsed.target;
+  const { glob, output } = project.parsed.target;
 
   if (contains([
     'static', 'dynamic'
-  ], defaults.product.output.type)) {
+  ], output.type)) {
     return Bluebird.each(project.parsed.d.install.headers, (ft: TMake.Install.Options) => {
       const patterns = ft.matching || glob.headers;
       if (args.verbose) {
@@ -160,7 +163,9 @@ export function installHeaders(project: TMake.Project): PromiseLike<any> {
 }
 
 export function installProject(project: TMake.Project) {
-  return installHeaders(project);
+  return installHeaders(project).then(() => {
+    return lipo(project);
+  });
 }
 
 export function installConfiguration(configuration: Configuration) {

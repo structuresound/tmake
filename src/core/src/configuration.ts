@@ -17,6 +17,7 @@ import { absolutePath, pathArray } from './parse';
 import { Plugin as BasePlugin } from './plugin';
 import { Project } from './project';
 import { args, defaults } from './runtime';
+import { dump } from 'js-yaml';
 import { next } from 'js-moss';
 import { interpolate } from './interpolate';
 
@@ -85,7 +86,7 @@ function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, architectur
             return {
                 matching: ft.matching,
                 from: join(d.root, ft.from),
-                to: join(d.home, (ft.to || 'bin'), architecture)
+                to: join(d.root, (ft.to || 'bin'), architecture)
             };
         }),
         libraries: map(arrayify(pathOptions.install.libraries), (ft: TMake.Install.Options) => {
@@ -108,11 +109,11 @@ function getConfigurationPaths(_paths: TMake.Configuration.Dirs, architecture: s
     paths.build = join(paths.build, architecture);
 
     if (!check(paths.project, String)) {
-        // if (outputType === 'executable') {
-        //     paths.project = paths.build;
-        // } else {
-        paths.project = paths.clone;
-        // }
+        if (outputType === 'executable') {
+            paths.project = paths.build;
+        } else {
+            paths.project = paths.clone;
+        }
     }
     if (!(paths.install.libraries)) {
         paths.install.libraries = [{ from: paths.build }];
@@ -156,8 +157,10 @@ export class Configuration {
         this.project = project;
         this.plugins = {};
         const path = project.parsed.p;
-        if (!this.parsed.target.architecture) console.log(this.parsed);
-        const p = getConfigurationPaths(<any>path, this.parsed.target.architecture, defaults.product.output.type);
+        
+        if (!this.parsed.target.architecture) throw new Error(`no target architecture \n${dump(this.parsed)}`);
+
+        const p = getConfigurationPaths(<any>path, this.parsed.target.architecture, this.parsed.target.output.type);
         const d = getConfigurationDirs(p, this.parsed.target.architecture, this.parsed.d);
         extend(this.parsed, {
             path: path,

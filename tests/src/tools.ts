@@ -3,7 +3,7 @@ import 'mocha';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import { args, stringHash, Project, Tools, Runtime } from 'tmake-core';
+import { args, defaults, stringHash, Project, Tools, Runtime } from 'tmake-core';
 
 import { TestDb } from './db';
 
@@ -25,19 +25,19 @@ describe('tools', function () {
     Runtime.init(new TestDb());
     const project = new Project({ name: 'tools-test' });
     configuration = project.parsed.configurations[0];
-    hostChain = configuration.parsed.host.tools;
+    hostChain = defaults.host.tools;
   });
 
   it('can parse tools correctly', () => {
-    expect(configuration.parsed.host.tools.ninja.name)
+    expect(defaults.host.tools.ninja.name)
       .to
       .equal('ninja');
     expect(hostChain.ninja.bin)
       .to
-      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[configuration.parsed.host.platform], 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[defaults.host.platform], 'ninja'));
     return expect(hostChain.ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${configuration.parsed.host.platform}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${defaults.host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {

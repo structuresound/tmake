@@ -4,13 +4,21 @@ generate:
     matching:
     - '**/*.cpp'
 build: ninja
-outputType: executable
+target:
+  output: 
+    type: executable
 require:
-  googletest:
+  gtest:
     git:
       repository: google/googletest
-      archive: release-1.7.0
+      archive: release-1.8.0
     configure: cmake
     build: cmake
     path:
       project: source
+      install:
+        headers:
+        - from: googletest/include/gtest
+          to: gtest
+        - from: googlemock/include/gmock
+          to: gmock

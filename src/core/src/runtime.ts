@@ -8,7 +8,7 @@ import { Plugin } from './plugin';
 import { Ninja } from './ninja';
 import { extend, clone, contains, plain, stringify, cascade, okmap, map, flatten, union } from 'typed-json-transform';
 import { parseFileSync } from './file';
-import * as os from 'os';
+import * as _os from 'os';
 import { exec } from './shell';
 import { next, setOptions } from 'js-moss';
 import { Tools } from './tools';
@@ -129,11 +129,14 @@ interface MossOptions {
   selectors?: { [index: string]: boolean }
 }
 
+
 export namespace Runtime {
-  const AUTO_ENDIANNESS = os.endianness();
-  const AUTO_PLATFORM = platformNames[os.platform()];
-  const AUTO_ARCHITECTURE = os.arch();
-  const AUTO_CPU = os.cpus();
+  export const os = {
+    endianness: _os.endianness,
+    platform(){return platformNames[_os.platform()]},
+    arch: _os.arch,
+    cpus: _os.cpus
+  }
 
   export const pluginMap: { [index: string]: typeof Plugin } = {};
   export function moss(config: TMake.Source.Project, options: MossOptions = {}) {
@@ -151,7 +154,7 @@ export namespace Runtime {
     const selectors = { ...defaultSelectors, ...specificSelectors };
     const layer = {
       data: {}, state: {
-        auto: options.stack || {},
+        auto: options.stack || _defaults,
         stack: {},
         selectors
       }
@@ -186,13 +189,19 @@ export namespace Runtime {
   export function registerPlugin(plugin: typeof Plugin) {
     const { name } = (<any>plugin);
     let instance: Plugin;
+    let ctx: TMake.Configuration;
     try {
-      const ctx = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.configurations[0];
-      instance = new plugin(ctx);
+      ctx = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.configurations[0];
     }
     catch (e) {
-      console.error(`error creating instance of plugin: ${name} while registering it`);
-      throw (e);
+      console.warn(`error: ${e.message}. while creating plugin context for ${name} plugin`);
+      throw(e);
+    }
+    try {
+      instance = new plugin(ctx);
+    } catch (e){
+      console.warn(`error: ${e.message}. while creating ${name} plugin`);
+      throw(e);
     }
     if (!pluginMap[instance.name]) {
       pluginMap[instance.name] = plugin;
@@ -211,10 +220,10 @@ export namespace Runtime {
     const { keywords } = _settings;
 
     const host = {
-      architecture: AUTO_ARCHITECTURE,
-      endianness: AUTO_ENDIANNESS,
-      platform: AUTO_PLATFORM,
-      cpu: { num: AUTO_CPU.length, speed: AUTO_CPU[0].speed }
+      architecture: os.arch(),
+      endianness: os.endianness(),
+      platform: os.platform(),
+      cpu: { num: os.cpus().length, speed: os.cpus()[0].speed }
     };
 
     try {
@@ -230,7 +239,7 @@ export namespace Runtime {
       }
 
       const hostKeywords = map(keywords.host, (key) => { return `host-${key}`; });
-      const defaultHost = (defaults.host && defaults.host.platform) || AUTO_PLATFORM;
+      const defaultHost = (defaults.host && defaults.host.platform) || os.platform();
 
       _keywords.push(...hostKeywords);
       _keywords.push(...[].concat(keywords.target)
@@ -262,7 +271,7 @@ export namespace Runtime {
         args.force = 'all';
       }
 
-      console.log('raw defaults', defaults);
+      // console.log('raw defaults', defaults);
       const parsedDefaults: TMake.Defaults = moss(clone(defaults)).data;
       const tools = parsedDefaults.host.tools;
 
@@ -292,7 +301,7 @@ export namespace Runtime {
     }
   }
 
-  export function init(cla: { [index: string]: any }, database: TMake.Database.Interface) {
+  export function init(cla: { [index: string]: any }, database?: TMake.Database.Interface) {
     if (database) {
       Db = database;
     }

@@ -3,7 +3,7 @@
 import { join, relative } from 'path';
 import { existsSync } from 'fs';
 import { arrayify, check, map, extend } from 'typed-json-transform';
-import { log, execAsync, execute, startsWith, Tools, Compiler } from 'tmake-core';
+import { log, execAsync, execute, startsWith, Tools, Compiler, defaults } from 'tmake-core';
 
 export function quotedList(array: string[]) {
   return map(array, (el) => {
@@ -26,7 +26,7 @@ export class CMake extends Compiler {
     const cMakeDefines = extend({
       LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
     }, defines);
-    let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${this.configuration.parsed.host.tools.ninja.bin} ${this.configuration.parsed.d.project}`;
+    let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${defaults.host.tools.ninja.bin} ${this.configuration.parsed.d.project}`;
     for (const k of Object.keys(cMakeDefines)) {
       let value = cMakeDefines[k];
       if (check(value, String)) {
@@ -39,10 +39,10 @@ export class CMake extends Compiler {
     return command;
   }
   buildCommand() {
-    return this.configuration.parsed.host.tools.ninja.bin;
+    return defaults.host.tools.ninja.bin;
   }
   fetch() {
-    return Tools.fetch(this.options.toolchain || this.configuration.parsed.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools.fetch(this.options.toolchain || defaults.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate() {
     const header = () => {

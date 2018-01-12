@@ -25,16 +25,28 @@ declare namespace TMake {
   }
 }
 
+interface CPU {
+  speed: number
+}
+
+interface OS {
+  platform(): string,
+  arch(): string,
+  endianness(): string,
+  cpus(): CPU[]
+}
+
 declare module 'tmake-core/runtime' {
   const args: TMake.Args;
   const defaults: TMake.Defaults;
 
   namespace Runtime {
-    export function init(args: { [index: string]: any }, database: TMake.Database.Interface);
+    export function init(args: { [index: string]: any }, database?: TMake.Database.Interface);
     export function loadPlugins();
     export function j(): number;
     export const Db: TMake.Database.Interface;
     export function getPlugin(name: string): typeof TMake.Plugin;
+    export const os: OS
   }
 
   namespace Args {

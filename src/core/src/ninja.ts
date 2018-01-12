@@ -67,7 +67,7 @@ export class Ninja extends Compiler {
       })
       .then((libraries) => {
         artifacts.libraries = libraries;
-        log.add('generate new ninja config');
+        // log.add('generate new ninja config');
         // const relativeToBuild = path.relative(this.configuration.parsed.project.build, this.configuration.parsed.d.build) || '.';
         const relativeToSource = path.relative(this.configuration.parsed.d.build, this.configuration.parsed.d.source) || '.';
         // console.log(`build to build dir = ${relativeToBuild}`);
@@ -77,7 +77,7 @@ export class Ninja extends Compiler {
           return `-I${dir}`;
         }).join(' ');
 
-        console.log('configure ninja plugin', this.options)
+        log.add(`ninja:`, this.options);
         const cc = 'gcc';
 
         const cCommand = `${cc} ${this
@@ -105,11 +105,13 @@ export class Ninja extends Compiler {
 
         let linkCommand = 'ar rv $out $in';
         let libName = this.options.outputFile;
-        if (artifacts.libraries) {
-          log.verbose('    ', 'link:', this.libs);
-        }
-        const name = this.configuration.project.parsed.name;
-        switch (defaults.product.output.type) {
+        artifacts.libraries && log.verbose('    ', 'link:', artifacts.libraries);
+        const {name} = this.configuration.project.parsed;
+        const { target: {
+          output
+        }} = this.configuration.parsed;
+        
+        switch (output.type) {
           case 'static':
           default:
             if (name.indexOf('lib') === -1) {

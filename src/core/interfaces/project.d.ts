@@ -53,11 +53,14 @@ declare namespace TMake {
       glob?: Defaults.Glob
       sdk?: any
       flags?: any
+      output?: {
+        type: "static" | "dynamic" | "executable";
+        lipo?: boolean
+      }
     }
 
     interface Configuration {
       options?: { [index: string]: boolean }
-      outputType?: string;
       path?: Configuration.Dirs;
       target?: TargetOptions
     }
@@ -69,7 +72,6 @@ declare namespace TMake {
     }
 
     interface Project extends Meta, Configuration, Phases {
-
     }
   }
 
@@ -90,7 +92,7 @@ declare namespace TMake {
   }
 
   namespace Project {
-    type OutputType = "static" | "dynamic" | "executable";
+    
 
     interface Dirs {
       root: string;
@@ -98,6 +100,7 @@ declare namespace TMake {
       clone: string;
       source: string;
       build: string;
+      headers: string;
       install: Install;
       includeDirs: string[];
       localCache: string;

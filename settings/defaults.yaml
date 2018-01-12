@@ -16,9 +16,6 @@ host:
       gcc:
         bin: $(which gcc)
 product>:
-  output:
-    type: static
-    lipo: true
   platform:
     =mac: macOS
     =ios: iOS
@@ -26,7 +23,6 @@ product>:
     =linux: linux
   architectures:
     auto:
-      endianness: LE
       architecture: $host.architecture
       endianness: $host.endianness
       platform: $host.platform
@@ -44,28 +40,29 @@ product>:
       float: hard
   build:
     =:
-      platform: $host.platform
-      device: 
-        platform: $architectures.auto
+      $host.platform: $product.architectures.auto
     =ios:
       targets:
         arm64:
           merge<:
-            source: $architectures.arm64
-            ios:
+            source: $product.architectures.arm64
+            arg:
               platform: ios
         simulator:
           merge<:
-            source: $architectures.auto
-            simulator:
+            source: $product.architectures.auto
+            arg:
               platform: ios
               options:
                 simulator: true
         +legacy:
-          armv7a: $architectures.armv7
-          armv6: $architectures.armv6
+          armv7a: $product.architectures.armv7
+          armv6: $product.architectures.armv6
 project>:
   target:
+    output:
+      type: static
+      lipo: false
     glob:
       assets:
         images: ['**/*.{png, jpg, jpeg, tiff, ico, svg, bmp}']
@@ -120,7 +117,7 @@ project>:
             mios-simulator-version-min: \=6.1
             isysroot: ${sdk.simulator.path}
         +:
-          triple: ${kernel}-${arch}-${compiler}
+          triple>: ${kernel}-${arch}-${compiler}
       cpp:
         O: 2
         +mac, ios: 

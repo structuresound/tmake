@@ -130,5 +130,5 @@ see 'warning' at the top, *update* this project is ALMOST useful now, please hol
 _(Nothing yet)_
 
 ## License
-Copyright (c) 2016 1e1f
+Copyright (c) 2018 1e1f
 Licensed under the MIT license.

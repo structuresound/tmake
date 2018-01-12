@@ -19,10 +19,6 @@ declare namespace TMake {
     }
 
     interface Product {
-        output: {
-            type: string
-            combine: boolean
-        }
         targets: Targets
         build: Targets
     }

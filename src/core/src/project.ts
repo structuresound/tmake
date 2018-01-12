@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import { join } from 'path';
-import { check, valueForKeyPath, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, OLHM, select, map } from 'typed-json-transform';
+import { check, valueForKeyPath, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, OLHM, select, map, flatObject } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './runtime';
@@ -17,7 +17,7 @@ import { Runtime, defaults, next } from './runtime';
 
 export const metaDataKeys = ['name', 'user', 'path'];
 export const sourceKeys = ['git', 'archive', 'version'];
-export const toolchainKeys = ['host', 'target', 'outputType'];
+export const toolchainKeys = ['host', 'target'];
 export const pluginKeys = ['generate', 'build', 'configure'];
 export const dependencyKeys = ['require', 'override'];
 export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(sourceKeys).concat(toolchainKeys).concat(pluginKeys);
@@ -61,9 +61,8 @@ function getProjectDirs(_project: TMake.Project, parent: TMake.Project.Parsed): 
         headers: _.map(arrayify(pathOptions.install.headers), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
-                from: join(d.source, ft.from),
-                to: join(d.home, (ft.to || 'include'), project.name),
-                includeFrom: join(d.home, (ft.includeFrom || ft.to || 'include'))
+                from: join(d.clone, ft.from),
+                to: join(d.home, 'include', (ft.to || project.name))
             };
         })
     }
@@ -77,7 +76,7 @@ function getProjectDirs(_project: TMake.Project, parent: TMake.Project.Parsed): 
                 };
             });
     }
-    if (defaults.product.output.combine && Object.keys(defaults.product.targets).length > 1) {
+    if (contains(['static', 'dynamic'], project.target.output.type)){
         d.install.libraries = map(arrayify(pathOptions.install.libraries),
             (ft: TMake.Install.Options) => {
                 return {
@@ -94,7 +93,7 @@ function getProjectPaths(project: TMake.Project.Parsed) {
     const { path } = project;
     const defaultPaths = {
         source: '',
-        headers: '',
+        headers: 'include',
         build: 'build',
         clone: 'source',
     };
@@ -104,7 +103,7 @@ function getProjectPaths(project: TMake.Project.Parsed) {
     }
     if (pathOptions.install.headers == null) {
         pathOptions.install
-            .headers = [{ from: join(pathOptions.clone, 'include') }];
+            .headers = [{ from: pathOptions.headers }];
     }
     if (pathOptions.install.libraries == null) {
         pathOptions.install
@@ -121,18 +120,16 @@ function generateTargets(project: TMake.Project) {
             product: defaults.product
         }
     }).data;
-
     return map(flatTargets, (rawTarget) => {
         const inherit = clone(project.parsed);
         inherit.target = combine(inherit.target, rawTarget);
-
+        
         const config = Runtime.moss(<any>inherit, {
             selectors: {
                 [rawTarget.platform]: true,
                 [rawTarget.architecture]: true
             }
         }).data;
-
         return <TMake.Configuration>new Configuration(<any>config, project);
     });
 }

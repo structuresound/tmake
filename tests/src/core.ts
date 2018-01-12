@@ -27,7 +27,7 @@ describe('tmake-core', function () {
 
   before(() => {
     assert.ok(testDb.projectNamed);
-    Runtime.init(testDb);
+    Runtime.init([], testDb);
     Runtime.loadPlugins();
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
     const helloWorld = parseFileSync(path.join(__dirname, 'config/hello.yaml'));
@@ -52,11 +52,13 @@ describe('tmake-core', function () {
         return new ProjectRunner(googleNode)
           .install()
           .then(() => {
-            const exists = fs.existsSync(path.join(args.runDir, 'trie_modules/lib/libgtest.a'));
-            return expect(exists, 'trie_modules/lib/libgtest.a').to.equal(true);
+            const fp = `trie_modules/lib/${Runtime.os.arch()}/libgtest.a`;
+            const exists = fs.existsSync(path.join(args.runDir, fp));
+            return expect(exists, fp).to.equal(true);
           }).then(() => {
-            const exists = fs.existsSync(path.join(args.runDir, `trie_modules/include/gtest/gtest.h`));
-            return expect(exists, `trie_modules/include/gtest/gtest.h`).to.equal(true);
+            const fp = path.join(args.runDir, `trie_modules/include/gtest/gtest.h`);
+            const exists = fs.existsSync(fp);
+            return expect(exists, fp).to.equal(true);
           });
       });
   });
@@ -68,11 +70,12 @@ describe('tmake-core', function () {
         assert.ok(parsed.name);
         const msg = JSON.stringify(entry);
         assert.equal(parsed.name, googleNode.parsed.name, msg);
-        assert.equal(parsed.version, '1.7.0', msg);
+        assert.equal(parsed.version, '1.8.0', msg);
         assert.ok(!parsed.configure, msg);
         assert.ok(!parsed.path, msg);
-        return expect(entry.cache.libs)
-          .to.deep.equal(['lib/libgtest.a', 'lib/libgtest_main.a'], msg);
+        const hasGTest = contains(entry.cache.libs, `lib/${Runtime.os.arch()}/libgtest.a`);
+        const hasGTestMain = contains(entry.cache.libs, `lib/${Runtime.os.arch()}/libgtest_main.a`);
+        return expect(hasGTest && hasGTestMain).to.deep.equal(true, msg);
       });
   });
 
@@ -80,8 +83,8 @@ describe('tmake-core', function () {
     this.slow(2000);
     return new ProjectRunner(helloNode).fetch().then(() => {
       const fp = path.join(args.runDir, 'source/README.md');
-      const filePath = fs.existsSync(fp);
-      return expect(filePath).to.equal(true, fp);
+      const exists = fs.existsSync(fp);
+      return expect(exists, fp).to.equal(true, fp);
     })
   });
 
@@ -98,9 +101,9 @@ describe('tmake-core', function () {
   it('build: with: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
-        const filePath = fs.existsSync(
-          path.join(args.runDir, 'build', helloNode.parsed.configurations[0].parsed.host.architecture, `${helloNode.parsed.name}`));
-        return expect(filePath).to.equal(true);
+        const fp = path.join(args.runDir, 'build', helloNode.parsed.configurations[0].parsed.target.architecture, `${helloNode.parsed.name}`);
+        const exists = fs.existsSync(fp);
+        return expect(exists, fp).to.equal(true);
       });
     });
   });
@@ -108,15 +111,15 @@ describe('tmake-core', function () {
   it('install: binaries', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).install().then(() => {
-        const filePath =
-          fs.existsSync(path.join(args.runDir, 'bin', `${helloNode.parsed.name}`));
-        return expect(filePath).to.equal(true);
+        const fp = path.join(args.runDir, 'bin', Runtime.os.arch(), `${helloNode.parsed.name}`);
+        const exists = fs.existsSync(fp);
+        return expect(exists, fp).to.equal(true);
       });
     });
   });
 
   it('test: main', () => {
-    return execAsync(path.join(args.runDir, 'bin', helloNode.parsed.name))
+    return execAsync(path.join(args.runDir, 'bin', Runtime.os.arch(), helloNode.parsed.name))
       .then((res) => {
         const results = res.split('\n');
         return expect(results[results.length - 2])
