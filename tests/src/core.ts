@@ -32,15 +32,15 @@ describe('tmake-core', function () {
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
     const helloWorld = parseFileSync(path.join(__dirname, 'config/hello.yaml'));
     const cmake = (<any>Runtime.getPlugin('cmake'));
-    assert.exists(cmake);
+    assert.isOk(cmake);
     assert.equal('CMake', cmake.name);
     return graph(helloWorld)
       .then((res) => {
         googleNode = res[0];
         helloNode = res[res.length - 1];
-        assert.exists(helloNode.parsed);
+        assert.isOk(helloNode.parsed);
         assert.equal(helloNode.parsed.name, 'hello');
-        assert.exists(googleNode.parsed);
+        assert.isOk(googleNode.parsed);
         return expect(googleNode.parsed.name).to.equal('googletest');
       });
   });
