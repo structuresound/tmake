@@ -8,14 +8,16 @@ tmake:
 	cd src/make && npm run distribute && npm link
 	cd src/cli && npm run distribute && npm link
 
-test: tmake
+pre-test: tmake
 	mkdir -p tests/.tmake/plugins
 	touch tests/.tmake/plugins/package.json
 	cd tests/.tmake/plugins && npm link tmake-plugin-cmake
 	cd tests/.tmake/plugins && npm link tmake-plugin-make
+
+test: pre-test
 	cd tests && npm run before && npm test
 
-coverage: tmake
+coverage: pre-test
 	cd tests && npm run before && npm run cover
 
 travis: coverage
