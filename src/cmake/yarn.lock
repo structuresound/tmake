@@ -2,6 +2,6 @@
 # yarn lockfile v1
 
 
-typed-json-transform@^0.17.1:
-  version "0.17.1"
-  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.17.1.tgz#70b1542c7f922080a1d59c87d4c4a0da9db2d9aa"
+typed-json-transform@^0.18.2:
+  version "0.18.2"
+  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.18.2.tgz#41d45b317ae2831bb85eeb76a0d9076ff7e6d342"

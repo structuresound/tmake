@@ -18,7 +18,7 @@ describe('archive', () => {
     return nuke('cache/archives');
   });
   it('unzip', () => {
-    console.log(process.cwd());
+    console.log('cwd:', process.cwd());
     return unarchive('src/archives/hello.zip', '.tmake/archives/tmp', '.tmake/archives/results')
       .then(() => {
         const hello = readFileSync('.tmake/archives/results/hello', 'utf8');

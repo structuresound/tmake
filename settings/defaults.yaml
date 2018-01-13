@@ -102,8 +102,11 @@ project>:
             path: $(xcodebuild -version -sdk ${version} Path)
     flags:
       clang:
-        =host-mac:
-          compiler: cc
+        =:
+          compiler: $host.compiler
+        +linux:
+          arch: $host.architecture
+          kernel: linux
         +mac:
           kernel: darwin64
           arch: x86_64

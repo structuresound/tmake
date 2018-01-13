@@ -1,28 +1,30 @@
 FROM 1e1f/tmake:base
-MAINTAINER chroma <leif@chroma.io>
+MAINTAINER chroma <structuresound@gmail.com>
 
-RUN apt-get install -y runit apt-transport-https
-RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-RUN apt-get update && apt-get install -y yarn
+
+ENV YARN_VERSION 0.21.3
+ADD https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v${YARN_VERSION}.tar.gz /opt/yarn.tar.gz
+RUN yarnDirectory=/opt/yarn && \
+    mkdir -p "$yarnDirectory" && \
+    tar -xzf /opt/yarn.tar.gz -C "$yarnDirectory" && \
+    ln -s "$yarnDirectory/dist/bin/yarn" /usr/local/bin/ && \
+    rm /opt/yarn.tar.gz
 
 RUN npm i -g mocha
 
 COPY docker/image/ /
 COPY package.json /tmake/
-COPY yarn.lock /tmake/
+COPY Makefile /tmake/
+COPY bin/ /tmake/bin/
+COPY settings/ /tmake/settings/
+COPY src/ /tmake/src/
+COPY tests/src /tmake/tests/src
+COPY tests/package.json /tmake/tests/package.json
 
 ENV HOME /tmake
 WORKDIR /tmake
-RUN yarn install --production
 
-COPY bin/ /tmake/bin/
-COPY src/ /tmake/src/
-COPY lib/ /tmake/lib/
-COPY test/ /tmake/test/
-
-RUN NODE_ENV=test mocha --require source-map-support/register test/
+RUN make test
 RUN npm link
 
-WORKDIR /tmake/build
 ENTRYPOINT [ "/tmake/entrypoint.sh" ]

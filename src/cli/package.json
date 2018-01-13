@@ -32,9 +32,7 @@
         "@types/nedb": "^1.8.3"
     },
     "peerDependencies": {
-        "tmake-core": "^0.7.0",
-        "tmake-plugin-cmake": "^0.6.0",
-        "tmake-plugin-make": "^0.6.0"
+        "tmake-core": "^0.7.0"
     },
     "dependencies": {
         "js-yaml": "^3.10.0",

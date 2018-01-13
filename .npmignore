@@ -2,4 +2,5 @@
 /docker
 /examples
 /src/*/src
+/server
 /tests

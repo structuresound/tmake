@@ -3,16 +3,12 @@ dockerBase:
 
 tmake:
 	cd src && yarn
-	cd src/core && npm run distribute
-	cd src/cmake && npm run distribute 
-	cd src/make && npm run distribute
-	cd src/cli && npm run distribute
+	cd src/core && npm run distribute && npm link
+	cd src/cmake && npm run distribute  && npm link
+	cd src/make && npm run distribute && npm link
+	cd src/cli && npm run distribute && npm link
 
 test: tmake
-	cd src/core && npm link
-	cd src/cli && npm link
-	cd src/cmake && npm link
-	cd src/make && npm link
 	mkdir -p tests/.tmake/plugins
 	touch tests/.tmake/plugins/package.json
 	cd tests/.tmake/plugins && npm link tmake-plugin-cmake
@@ -20,13 +16,12 @@ test: tmake
 	cd tests && npm run before && npm test
 
 coverage: tmake
-	cd src/core && npm link
-	cd src/cli && npm link
 	cd tests && npm run before && npm run cover
 
 travis: coverage
 
-docker: tmake
+docker: clean
+	rm -Rf tests/.tmake
 	docker build -t 1e1f/tmake .
 
 docker-clean:
@@ -41,7 +36,10 @@ run:
 	cd server && docker compose up
 
 clean:
-	rm -R **/node_modules
+	rm -Rf **/node_modules
+	rm -Rf **/**/node_modules
+	rm -Rf **/**/**/node_modules
+	rm -Rf server/data
 
 install:
 	docker push 1e1f/tmake:base

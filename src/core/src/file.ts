@@ -260,11 +260,14 @@ export function moveArchive(tempDir: string, toDir: string, toPath: string) {
     try {
       sh.mv(resolvePath, resolvedToPAth);
     } catch (e) { }
+  } else {
+    sh.mkdir('-p', toDir);
+    files.forEach((file) => {
+      const resolvePath = `${tempDir}/${file}`;
+      const newPath = path.join(toDir, file);
+      try {
+      sh.mv(resolvePath, newPath);
+      } catch (e){}
+    });
   }
-  sh.mkdir('-p', toDir);
-  return files.forEach((file) => {
-    const resolvePath = `${tempDir}/${file}`;
-    const newPath = path.join(toDir, file);
-    return sh.mv(resolvePath, newPath);
-  });
 };
