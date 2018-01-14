@@ -1,32 +1,37 @@
 import * as path from 'path';
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import { mkdir } from 'shelljs';
+import {mkdir} from 'shelljs';
 import ninja_build_gen = require('ninja-build-gen');
-import { arrayify } from 'typed-json-transform';
-import { readFileSync } from 'fs';
-import { log } from './log';
-import { Tools } from './tools';
-import { execAsync } from './shell';
-import { Compiler } from './compiler';
-import { Plugin } from './plugin';
-import { defaults } from './runtime';
+import {arrayify} from 'typed-json-transform';
+import {readFileSync, writeFileSync, createWriteStream} from 'fs';
+import {log} from './log';
+import {Tools} from './tools';
+import {execAsync} from './shell';
+import {Compiler} from './compiler';
+import {Plugin} from './plugin';
+import {defaults} from './runtime';
 
-function build(configuration: TMake.Configuration.Parsed) {
-  return Tools.fetch(defaults.host.tools).then((toolpaths: any) => {
-    const directory = configuration.d.project;
-    let command = '';
-    if (configuration.target.docker) {
-      command = `dockcross ninja - C${directory}`;
-    } else {
-      command = `${toolpaths.ninja} -C ${directory}`;
-    }
-    log.verbose(command);
-    return execAsync(command, { cwd: configuration.d.build, short: 'ninja' });
-  });
+function build(configuration : TMake.Configuration.Parsed) {
+  return Tools
+    .fetch(defaults.host.tools)
+    .then((toolpaths : any) => {
+      const directory = configuration.d.project;
+      let command = '';
+      if (configuration.target.docker) {
+        command = `dockcross ninja - C${directory}`;
+      } else {
+        command = `${toolpaths.ninja} -C ${directory}`;
+      }
+      log.verbose(command);
+      return execAsync(command, {
+        cwd: configuration.d.build,
+        short: 'ninja'
+      });
+    });
 }
 
-function getRule(ext: string) {
+function getRule(ext : string) {
   switch (ext) {
     case '.cpp':
     case '.cc':
@@ -38,10 +43,11 @@ function getRule(ext: string) {
   }
 }
 
-export class Ninja extends Compiler {
-  options: TMake.Plugin.Ninja.Options;
 
-  constructor(configuration: TMake.Configuration, options) {
+export class Ninja extends Compiler {
+  options : TMake.Plugin.Ninja.Options;
+
+  constructor(configuration : TMake.Configuration, options) {
     super(configuration, options);
     this.name = 'ninja';
     this.projectFileName = '';
@@ -53,26 +59,34 @@ export class Ninja extends Compiler {
     return defaults.host.tools.ninja.bin;
   }
   fetch() {
-    return Tools.fetch(this.options.toolchain || defaults.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools
+      .fetch(this.options.toolchain || defaults.host.tools)
+      .then((toolpaths) => this.toolpaths = toolpaths);
   }
   generate() {
     return this.configure();
   }
-  configure(): PromiseLike<any> {
-    let artifacts: { libraries?: string[], sources?: string[] } = {};
-    return this.sources()
+  configure() : PromiseLike < any > {
+    let artifacts: {
+      libraries?: string[],
+      sources?: string[]
+    } = {};
+    return this
+      .sources()
       .then((sources) => {
         artifacts.sources = sources;
         return this.libraries();
       })
       .then((libraries) => {
         artifacts.libraries = libraries;
-        // log.add('generate new ninja config');
-        // const relativeToBuild = path.relative(this.configuration.parsed.project.build, this.configuration.parsed.d.build) || '.';
+        // log.add('generate new ninja config'); const relativeToBuild =
+        // path.relative(this.configuration.parsed.project.build,
+        // this.configuration.parsed.d.build) || '.';
         const relativeToSource = path.relative(this.configuration.parsed.d.build, this.configuration.parsed.d.source) || '.';
         // console.log(`build to build dir = ${relativeToBuild}`);
         const ninjaConfig = ninja_build_gen(defaults.host.tools.ninja.version);
-        log.verbose('note: this should scan dependencies for their possibly intermediate header install dirs');
+        log.verbose('note: this should scan dependencies for their possibly intermediate header insta' +
+            'll dirs');
         const includeString = `-I ${this.configuration.parsed.d.root}/trie_modules/include` + _.map(this.options.includeDirs, (dir) => {
           return `-I${dir}`;
         }).join(' ');
@@ -83,13 +97,13 @@ export class Ninja extends Compiler {
         const cCommand = `${cc} ${this
           .compilerFlags()
           .join(' ')} -MMD -MF $out.d ${this
-            .cFlags()
-            .join(' ')} -c $in -o $out ${includeString}`;
+          .cFlags()
+          .join(' ')} -c $in -o $out ${includeString}`;
         const cppCommand = `${cc} ${this
           .compilerFlags()
           .join(' ')} -MMD -MF $out.d ${this
-            .cppFlags()
-            .join(' ')} -c $in -o $out ${includeString}`;
+          .cppFlags()
+          .join(' ')} -c $in -o $out ${includeString}`;
 
         ninjaConfig
           .rule('c')
@@ -107,10 +121,10 @@ export class Ninja extends Compiler {
         let libName = this.options.outputFile;
         artifacts.libraries && log.verbose('    ', 'link:', artifacts.libraries);
         const {name} = this.configuration.project.parsed;
-        const { target: {
-          output
-        }} = this.configuration.parsed;
-        
+        const {target: {
+            output
+          }} = this.configuration.parsed;
+
         switch (output.type) {
           case 'static':
           default:
@@ -127,8 +141,17 @@ export class Ninja extends Compiler {
             if (!libName) {
               libName = name;
             }
-            const libs = artifacts.libraries ? ' ' + artifacts.libraries.reverse().join(' ') : ''
-            const flags = this.linkerFlags() ? ' ' + this.linkerFlags().join(' ') : '';
+            const libs = artifacts.libraries
+              ? ' ' + artifacts
+                .libraries
+                .reverse()
+                .join(' ')
+              : ''
+            const flags = this.linkerFlags()
+              ? ' ' + this
+                .linkerFlags()
+                .join(' ')
+              : '';
             linkCommand = `${cc} -o $out $in${libs}${flags}`;
             break;
         }
@@ -161,10 +184,23 @@ export class Ninja extends Compiler {
 
         const fp = this.buildFilePath();
         mkdir('-p', path.dirname(fp));
-        ninjaConfig.save(fp);
-        log.add(`  + ${fp}`);
-        return Bluebird.resolve(readFileSync(fp, 'utf8'));
-      })
+        const stream = createWriteStream(fp);
+
+        stream.write("####\n");
+        stream.write("## trieMake\n");
+        stream.write(`## project: ${this.configuration.project.parsed.name}\n`);
+        stream.write(`## target: ${this.configuration.parsed.target.architecture}\n`);
+        stream.write(`####\n\n`);
+
+        ninjaConfig.saveToStream(stream);
+
+        return new Bluebird((res) => {
+          log.add(`  + ${fp}`);
+          stream.on('close', res);
+          stream.end();
+        });
+
+      });
   }
 }
 

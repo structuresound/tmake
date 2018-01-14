@@ -215,8 +215,6 @@ export namespace Runtime {
   }
 
   function initDefaults(cla: { [index: string]: string }) {
-    console.log('load defaults');
-
     const { keywords } = _settings;
 
     const host = {
@@ -320,7 +318,6 @@ export namespace Runtime {
       catch (e) {
         console.warn(`error parsing settings: ${e.message} ${e.stack}`);
       }
-      console.log('register plugins');
       registerPlugin(Ninja);
     }
   }

@@ -21,6 +21,7 @@ import { errors, TMakeError } from './errors';
 import { Shell } from './shell';
 
 import test from './test';
+import { Configuration } from './index';
 
 function isSingleCommand(phase: string) {
   return contains(['parse', 'graph', 'clean'], phase);
@@ -31,7 +32,7 @@ function singleCommand(project: TMake.Project, phase: string, selectedDeps: TMak
     case 'clean':
       return graph(project.raw)
         .then((deps: TMake.Project[]) => {
-          return <any>Bluebird.each(deps, (node) => {
+          return <any>Bluebird.each(deps, (node: TMake.Project) => {
             return processDep(node, phase);
           });
         });
@@ -98,7 +99,7 @@ export function execute(conf: TMake.Project.Raw, phase: string, subProject?: str
       if (!args.quiet) {
         log.add(_.map(selectedDeps, d => d.parsed.name).join(' >> '));
       }
-      return <any>Bluebird.each(selectedDeps, (node) => {
+      return <any>Bluebird.each(selectedDeps, (node: TMake.Project) => {
         return processDep(node, phase);
       });
     })
@@ -185,7 +186,7 @@ export class ProjectRunner {
 
       }
     });
-    return Bluebird.each(this.project.parsed.configurations, (configuration) => {
+    return Bluebird.each(this.project.parsed.configurations, (configuration: TMake.Configuration) => {
       const hash = configuration.hash();
       log.dev('nuke', configuration.parsed.d.build)
       file.nuke(configuration.parsed.d.build);

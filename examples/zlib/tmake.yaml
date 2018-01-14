@@ -2,8 +2,6 @@
 git:
   repository: madler/zlib
   tag: v1.2.8
-glob:
-  sources: ["*.c"]
 target>:
   flags:
     cpp:
@@ -14,7 +12,10 @@ target>:
       Wconversion: true
       +ios:
         "fembed-bitcode": true
-generate: ninja
+generate:
+  ninja:
+    matching:
+    - "*.c"
 configure>:
   replace:
     gzguts:
@@ -29,4 +30,3 @@ path:
   install:
     headers:
       - from: ''
-outputType: static

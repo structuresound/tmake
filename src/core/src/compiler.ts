@@ -35,28 +35,32 @@ export function jsonToFrameworks(object: any) {
   return flags;
 }
 
+function getFlag(val, key, globals: TMake.Plugin.Compiler.Flags.MapOptions){
+  let { prefix } = globals;
+  let { join } = globals;
+  let rhs = val || '';
+  if (startsWith(key, prefix)) {
+    prefix = ''
+  }
+  if ((typeof rhs === 'string')) {
+    if (startsWith(rhs, ' ')) {
+      join = '';
+    }
+    if (startsWith(rhs, '=')) {
+      join = '';
+    }
+  }
+  if (typeof rhs === 'boolean') {
+    rhs = '';
+    join = '';
+  }
+  return `${prefix}${key}${join}${rhs}`;
+}
+
 function _jsonToFlags(object: any, globals: TMake.Plugin.Compiler.Flags.MapOptions) {
   const flags: string[] = [];
   each(object, (val: any, key: string) => {
-    let { prefix } = globals;
-    let { join } = globals;
-    let rhs = val || '';
-    if (startsWith(key, prefix)) {
-      prefix = ''
-    }
-    if ((typeof rhs === 'string')) {
-      if (startsWith(rhs, ' ')) {
-        join = '';
-      }
-      if (startsWith(rhs, '=')) {
-        join = '';
-      }
-    }
-    if (typeof rhs === 'boolean') {
-      rhs = '';
-      join = '';
-    }
-    flags.push(`${prefix}${key}${join}${rhs}`);
+    flags.push(getFlag(val, key, globals));
   });
   return flags;
 }
@@ -65,6 +69,36 @@ export function jsonToFlags(object: any, options?: TMake.Plugin.Compiler.Flags.M
   const defaults = { prefix: '-', join: '=' };
   extend(defaults, options);
   return _jsonToFlags(object, defaults);
+}
+
+const clangArch = {
+  x64: 'x86_64',
+  arm64: 'aarch64',
+  x86: 'i386'
+}
+
+function getCompilerFlag(val, key, compiler){
+  switch (compiler){
+    case 'clang':
+      switch(key){
+        case 'arch': return `-arch=${clangArch[val]}`;
+        default: return getFlag(val, key, { prefix: '-', join: ' ' });
+      }
+    case 'gcc':
+      switch(key){
+        case 'arch': return getFlag(val, key, { prefix: '-m', join: '=' });
+        default: return getFlag(val, key, { prefix: '-', join: '=' });
+      }
+    default: return getFlag(val, key, { prefix: '-', join: '=' });
+  }
+}
+
+export function jsonToCompilerFlags(object: any, compiler: string) {
+  const flags: string[] = [];
+  each(object, (val: any, key: string) => {
+    flags.push(getCompilerFlag(val,key, compiler));
+  });
+  return flags;
 }
 
 export function jsonToCFlags(object: any) {
@@ -114,7 +148,7 @@ function resolveFlags(configuration: TMake.Configuration, options: TMake.Plugin.
   const cFlags = options.cFlags || options.cppFlags || {};
   const cppFlags = options.cppFlags || options.cFlags || {};
   const linkerFlags = options.linkerFlags || {};
-  const compilerFlags = options.flags || {};
+  const compilerFlags = options.compilerFlags || {};
   const frameworks = options.frameworks || {};
 
   const defaultFlags = configuration.parsed.target.flags;
@@ -151,7 +185,7 @@ export class Compiler extends Shell {
   cFlags() { return jsonToCFlags(this.flags.c); }
   cppFlags() { return jsonToCFlags(this.flags.cpp); }
   linkerFlags() { return jsonToFlags(this.flags.linker); }
-  compilerFlags() { return jsonToFlags(this.flags.compiler, { join: ' ' }); }
+  compilerFlags() { return jsonToCompilerFlags(this.flags.compiler, defaults.host.compiler); }
   sources() {
     const { configuration } = this;
     const patterns = arrayify(this.options.matching || configuration.parsed.target.glob.sources);

@@ -200,15 +200,11 @@ export class Configuration {
     }
     runPhaseWithPlugin({ phase, pluginName }: { phase: string, pluginName: string }): PromiseLike<any> {
         if (this.parsed[phase]) {
-            if (!this.plugins[pluginName]) {
-                const PluginConstructor = Runtime.getPlugin(pluginName);
-                const options = combine(this.parsed[phase], this.parsed[phase][pluginName]);
-                delete options[pluginName];
-                const plugin = new PluginConstructor(this, options);
-                log.verbose(`  ${phase}: ${pluginName}`, options);
-                this.plugins[pluginName] = plugin;
-            }
-            return this.plugins[pluginName][phase]();
+            const PluginConstructor = Runtime.getPlugin(pluginName);
+            const options = combine(this.parsed[phase], this.parsed[phase][pluginName]);
+            delete options[pluginName];
+            const plugin = new PluginConstructor(this, options);
+            return plugin[phase]();
         } else {
             return resolve();
         }
@@ -238,9 +234,7 @@ export class ConfigurationPlugin extends BasePlugin {
         const phases: TMake.Plugin.Phase[] = ['fetch', 'generate', 'configure', 'build', 'install'];
         Object.keys(configuration).forEach((phase) => {
             if (contains(phases, phase)) {
-                // temp hack until proper 'stack' is built into tree parser
                 Object.keys(configuration[phase]).forEach((settingKey) => {
-                    // if (settingKey == this.name) extend
                     if (!Runtime.getPlugin(settingKey)) this.options[settingKey] = configuration[phase][settingKey]
                 });
             }

@@ -24,8 +24,9 @@ declare namespace TMake {
     }
 
     interface Defaults {
-        host: TMake.HostPlatform
-        project: TMake.Source.Project
-        product: TMake.Product
+        host?: TMake.HostPlatform
+        project?: TMake.Source.Project
+        product?: TMake.Product
+        target?: TMake.TargetPlatform
     }
 }

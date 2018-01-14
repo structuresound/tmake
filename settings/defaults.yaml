@@ -1,20 +1,20 @@
 host:
   compiler:
-    c:
-      =host-mac: clang
-      =host-linux: gcc
-      =host-win: msvc
-    cpp: $c
+    =host-mac: clang
+    =host-linux: gcc
+    =host-win: msvc
   tools:
     ninja:
       version: 1.7.1
       url: https://github.com/ninja-build/ninja/releases/download/v${version}/ninja-${host.platform}.zip
-    +host-mac:
-      clang:
-        bin: $(which gcc)
-    +host-linux:
-      gcc:
-        bin: $(which gcc)
+    clang:
+      bin: $(which gcc)
+      arches:
+        x64: x86_64
+        arm64: arm
+        armv7: armv7a
+    gcc:
+      bin: $(which gcc)
 product>:
   platform:
     =mac: macOS
@@ -27,7 +27,7 @@ product>:
       endianness: $host.endianness
       platform: $host.platform
     x64:
-      architecture: arm64
+      architecture: x64
       endianness: LE
     arm64:
       architecture: arm64
@@ -42,22 +42,21 @@ product>:
     =:
       $host.platform: $product.architectures.auto
     =ios:
-      targets:
-        arm64:
-          merge<:
-            source: $product.architectures.arm64
-            arg:
-              platform: ios
-        simulator:
-          merge<:
-            source: $product.architectures.auto
-            arg:
-              platform: ios
-              options:
-                simulator: true
-        +legacy:
-          armv7a: $product.architectures.armv7
-          armv6: $product.architectures.armv6
+      arm64:
+        extend<:
+          source: $product.architectures.arm64
+          arg:
+            platform: ios
+      simulator:
+        extend<:
+          source: $product.architectures.auto
+          arg:
+            platform: ios
+            options:
+              simulator: true
+      +legacy:
+        armv7a: $product.architectures.armv7
+        armv6: $product.architectures.armv6
 project>:
   target:
     output:
@@ -101,26 +100,21 @@ project>:
             version: $(echo "${allSDKs}" | awk '/^$/{p=0};p; /watchOS Simulator SDKs:/{p=1}' | awk '{print $6}')
             path: $(xcodebuild -version -sdk ${version} Path)
     flags:
-      clang:
-        =:
-          compiler: $host.compiler
-        +linux:
-          arch: $host.architecture
-          kernel: linux
-        +mac:
-          kernel: darwin64
-          arch: x86_64
-          isysroot: ${sdk.device.path}
-        +ios:
-          kernel: darwin64
-          arch: arm64
-          isysroot: ${sdk.device.path}
-          miphoneos-version-min: \=6.1
-          +simulator:
-            mios-simulator-version-min: \=6.1
-            isysroot: ${sdk.simulator.path}
-        +:
-          triple>: ${kernel}-${arch}-${compiler}
+      compiler:
+        =clang:
+          =linux:
+            target: ${host.tools.clang.arches.${architecture}}-unknown-linux
+          =mac:
+            target: ${host.tools.clang.arches.${architecture}}-apple-darwin
+            isysroot: ${sdk.device.path}
+          =ios:
+            target: ${host.tools.clang.arches.${architecture}}-apple-darwin
+            isysroot: ${sdk.device.path}
+            miphoneos-version-min: \=6.1
+            +simulator:
+              target: x86_64-apple-darwin
+              mios-simulator-version-min: \=6.1
+              isysroot: ${sdk.simulator.path}
       cpp:
         O: 2
         +mac, ios: 
@@ -136,7 +130,7 @@ project>:
         =mac, ios:
           lc++: true
       frameworks:
-        =mac, ios: 
+        =mac, ios:
           CoreFoundation: true
       make:
         configure:

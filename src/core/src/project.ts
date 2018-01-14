@@ -123,9 +123,16 @@ function generateTargets(project: TMake.Project) {
     return map(flatTargets, (rawTarget) => {
         const inherit = clone(project.parsed);
         inherit.target = combine(inherit.target, rawTarget);
-        
         const config = Runtime.moss(<any>inherit, {
+            stack: {
+                host: defaults.host,
+                project: project,
+                product: defaults.product,
+                target: rawTarget
+            },
             selectors: {
+                ...rawTarget.options,
+                [defaults.host.compiler]: true,
                 [rawTarget.platform]: true,
                 [rawTarget.architecture]: true
             }

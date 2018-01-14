@@ -1,5 +1,6 @@
 {
     "name": "tmake",
+    "version": "0.7.0",
     "bin": "bin/tmake.js",
     "preferGlobal": true
 }

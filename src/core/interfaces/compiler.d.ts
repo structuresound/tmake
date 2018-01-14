@@ -24,7 +24,7 @@ declare namespace TMake.Plugin {
       includeDirs?: string[];
       outputFile?: string;
 
-      flags?: OLHM<string>;
+      compilerFlags?: any;
       cFlags?: any;
       cppFlags?: any;
       linkerFlags?: any;

@@ -15,16 +15,12 @@ declare namespace TMake {
     architecture?: string,
     endianness?: string,
     platform?: string,
+    options?: {[index: string]: boolean},
     cpu?: { num: number, speed?: number }
   }
 
-  interface Compilers {
-    c: string
-    cpp: string
-  }
-
   interface HostPlatform extends Platform {
-    compiler?: Compilers
+    compiler?: string
     tools?: TMake.Tools
   }
 

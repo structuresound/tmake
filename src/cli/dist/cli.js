@@ -233,7 +233,7 @@ function run() {
                             }
                             if (defaultCommand) {
                                 var projectName = commands[1] || projectFile.name;
-                                tmake_core_1.log.log("tmake all " + projectFile.name);
+                                // log.log(`tmake all ${projectName}`)
                             }
                             return tmake(cla, projectFile);
                     }
