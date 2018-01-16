@@ -26,13 +26,13 @@ describe('tmake-core', function () {
   const testDb = new ClientDb();
 
   before(() => {
-    assert.ok(testDb.projectNamed);
+    assert.ok(testDb.projectNamed, 'Missing Db');
     Runtime.init([], testDb);
     Runtime.loadPlugins();
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
     const helloWorld = parseFileSync(path.join(__dirname, 'config/hello.yaml'));
     const cmake = (<any>Runtime.getPlugin('cmake'));
-    assert.isOk(cmake);
+    assert.isOk(cmake, 'Missing CMake Plugin');
     assert.equal('CMake', cmake.name);
     return graph(helloWorld)
       .then((res) => {

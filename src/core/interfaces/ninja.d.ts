@@ -8,11 +8,6 @@ declare namespace TMake.Plugin {
   }
   namespace Ninja {
     interface Options extends Compiler.Options {
-      toolchain?: {
-        ninja?: {
-          version?: string;
-        }
-      }
     }
   }
 }

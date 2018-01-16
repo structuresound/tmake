@@ -13,24 +13,25 @@ declare namespace TMake {
   interface Platform {
     docker?: Tools.Docker,
     architecture?: string,
-    endianness?: string,
-    platform?: string,
+    endianness?: 'BE' | 'LE',
+    platform?: 'mac' | 'win' | 'linux' | 'ios' | 'android',
     options?: {[index: string]: boolean},
     cpu?: { num: number, speed?: number }
   }
 
   interface HostPlatform extends Platform {
-    compiler?: string
-    tools?: TMake.Tools
+    compiler?: 'clang' | 'gcc' | 'msvc' | 'ic'
   }
 
   interface TargetPlatform extends Platform {
     flags?: TMake.Plugin.Compiler.Flags
   }
 
+
   namespace Source {
     interface Meta {
       // metadata
+
       name?: string;
       override?: OLHM<Project.Raw>;
       require?: OLHM<Project.Raw>;

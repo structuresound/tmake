@@ -3,13 +3,14 @@
 /// <reference path="cache.d.ts" />
 /// <reference path="tools.d.ts" />
 
+
 declare namespace TMake {
   class Configuration {
     parsed: Configuration.Parsed;
     cache: Configuration.Cache;
     project: Project;
 
-    constructor(target: TargetPlatform, state: Moss.State, parent: TMake.Project)
+    constructor(target: TargetPlatform, state: any, parent: TMake.Project)
     hash(): string;
     merge(other: Configuration.Cache.File): void;
     toCache(): TMake.Configuration.Cache.File;
@@ -56,7 +57,6 @@ declare namespace TMake {
     class Configuration extends TMake.Plugin {
       configuration: TMake.Configuration;
       options: any;
-      toolpaths: any;
       projectFileName: string;
       buildFileName: string;
 

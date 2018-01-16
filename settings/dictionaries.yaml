@@ -1,0 +1,21 @@
+plugin:
+  name:
+    cmake: tmake-plugin-cmake
+    make: tmake-plugin-make
+    create: ''
+    replace: ''
+    shell: ''
+platform:
+  name:
+    linux: linux
+    darwin: mac
+    mac: mac
+    win: win
+    win32: win
+    ios: ios
+    android: android
+clang:
+  arch:
+    x64: x86_64
+    arm64: arm
+    arm: armv7a

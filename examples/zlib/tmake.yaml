@@ -11,20 +11,20 @@ target>:
       Wpointer-arith: true
       Wconversion: true
       +ios:
-        "fembed-bitcode": true
+        fembed-bitcode: true
 generate:
   ninja:
     matching:
-    - "*.c"
-configure>:
+    - '*.c'
+configure:
   replace:
     gzguts:
       matching:
-        - "gzguts.h"
+        - gzguts.h
       inputs:
         unistd:
-        - "\n\n#ifdef _LARGEFILE64_SOURCE"
-        - "\n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
+        - \n\n#ifdef _LARGEFILE64_SOURCE
+        - \n\n#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE
 build: ninja
 path:
   install:

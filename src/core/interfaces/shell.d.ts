@@ -14,11 +14,7 @@ declare namespace TMake {
       interface Options extends Plugin.Options {
         arguments?: SIO;
         prefix?: SIO;
-        toolchain?: {
-          [index: string]: {
-            version?: string;
-          }
-        }
+        toolchain?: TMake.Tool
       }
     }
   }

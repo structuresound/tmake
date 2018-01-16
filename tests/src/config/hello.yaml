@@ -5,7 +5,7 @@ generate:
     - '**/*.cpp'
 build: ninja
 target:
-  output: 
+  output:
     type: executable
 require:
   gtest:

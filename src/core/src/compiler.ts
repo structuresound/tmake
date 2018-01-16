@@ -8,7 +8,7 @@ import { log } from './log';
 import { startsWith } from './string';
 import { Tools } from './tools';
 import { execAsync } from './shell';
-import { defaults, args } from './runtime';
+import { defaults, settings, args } from './runtime';
 import { Configuration } from './configuration';
 import { deps } from './graph';
 import { mkdir } from 'shelljs';
@@ -71,17 +71,11 @@ export function jsonToFlags(object: any, options?: TMake.Plugin.Compiler.Flags.M
   return _jsonToFlags(object, defaults);
 }
 
-const clangArch = {
-  x64: 'x86_64',
-  arm64: 'aarch64',
-  x86: 'i386'
-}
-
 function getCompilerFlag(val, key, compiler){
   switch (compiler){
     case 'clang':
       switch(key){
-        case 'arch': return `-arch=${clangArch[val]}`;
+        case 'arch': return `-arch=${settings.clang.arch[val]}`;
         default: return getFlag(val, key, { prefix: '-', join: ' ' });
       }
     case 'gcc':
@@ -185,7 +179,7 @@ export class Compiler extends Shell {
   cFlags() { return jsonToCFlags(this.flags.c); }
   cppFlags() { return jsonToCFlags(this.flags.cpp); }
   linkerFlags() { return jsonToFlags(this.flags.linker); }
-  compilerFlags() { return jsonToCompilerFlags(this.flags.compiler, defaults.host.compiler); }
+  compilerFlags() { return jsonToCompilerFlags(this.flags.compiler, defaults.environment.host.compiler); }
   sources() {
     const { configuration } = this;
     const patterns = arrayify(this.options.matching || configuration.parsed.target.glob.sources);
@@ -208,7 +202,7 @@ export class Compiler extends Shell {
   }
   fetch() {
     if (this.options.toolchain) {
-      return Tools.fetch(this.options.toolchain).then((toolpaths) => this.toolpaths = toolpaths);
+      return Tools.fetch(this.options.toolchain).then((toolpath) => this.toolpath = toolpath);
     }
     return Bluebird.resolve();
   }
@@ -233,17 +227,17 @@ export class Compiler extends Shell {
     }
     // console.log('dirty, exec', this.configureCommand());
     mkdir('-p', this.configuration.parsed.d.build);
-    return this.fetch().then((toolpaths: any) => {
+    return this.fetch().then((toolpath: string) => {
       return execAsync(this.configureCommand(), { cwd: buildFileDir, silent: !args.quiet }).then(() => {
         buildFileCache.update();
-        this.configuration.cache.update();
+        return this.configuration.cache.update();
       });
     })
   }
   public build(): PromiseLike<any> {
     this.ensureBuildFile();
     return this.fetch().then((toolpaths: any) => {
-      const command = this.buildCommand(this.toolpaths);
+      const command = this.buildCommand(this.toolpath);
       if (command) {
         const wd = dirname(this.buildFilePath());
         log.verbose(command);
@@ -253,7 +247,7 @@ export class Compiler extends Shell {
           short: this.name
         });
       }
-      throw new Error(`no build command for shell plugin ${this.name}`);
+      return Bluebird.reject(new Error(`no build command for shell plugin ${this.name}`));
     });
   }
   public install(): PromiseLike<any> {

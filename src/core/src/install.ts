@@ -8,7 +8,7 @@ import { log } from './log';
 import { args } from './runtime';
 import { mv, mkdir } from 'shelljs';
 import { stringHash, fileHashSync } from './hash';
-import { Runtime, defaults } from './runtime';
+import { Runtime } from './runtime';
 import { replaceAll, startsWith } from './string';
 import { Configuration } from './configuration';
 

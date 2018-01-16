@@ -113,11 +113,12 @@ function getProjectPaths(project: TMake.Project.Parsed) {
 }
 
 function generateTargets(project: TMake.Project) {
-    const flatTargets: TMake.Platform[] = Runtime.moss(<any>defaults.product.build, {
+    const { environment } = defaults;
+
+    const flatTargets: TMake.Platform[] = Runtime.moss(environment.build, {
         stack: {
-            host: defaults.host,
-            project: project,
-            product: defaults.product
+            project,
+            environment
         }
     }).data;
     return map(flatTargets, (rawTarget) => {
@@ -125,14 +126,12 @@ function generateTargets(project: TMake.Project) {
         inherit.target = combine(inherit.target, rawTarget);
         const config = Runtime.moss(<any>inherit, {
             stack: {
-                host: defaults.host,
-                project: project,
-                product: defaults.product,
-                target: rawTarget
+                environment,
+                project
             },
             selectors: {
                 ...rawTarget.options,
-                [defaults.host.compiler]: true,
+                [environment.host.compiler]: true,
                 [rawTarget.platform]: true,
                 [rawTarget.architecture]: true
             }

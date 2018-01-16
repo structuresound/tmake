@@ -13,20 +13,28 @@ export function quotedList(array: string[]) {
 
 export class CMake extends Compiler {
   options: TMake.Plugin.CMake.Options;
+  toolpath: string;
+  cmake: TMake.Tool;
+  ninja: TMake.Tool;
+  ninjaPath: string;
 
   constructor(configuration: TMake.Configuration, options?: TMake.Plugin.CMake.Options) {
     super(configuration, options);
     this.name = 'cmake';
     this.projectFileName = 'CMakeLists.txt';
     this.buildFileName = 'build.ninja';
+    this.cmake = this.options.toolchain || defaults.environment.tools.cmake;
+    this.ninja = this.options.ninja || defaults.environment.tools.ninja;
   }
 
   configureCommand() {
+    const { environment } = defaults;
+
     const defines = this.options.defines || {};
     const cMakeDefines = extend({
       LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
     }, defines);
-    let command = `cmake -G Ninja -DCMAKE_MAKE_PROGRAM=${defaults.host.tools.ninja.bin} ${this.configuration.parsed.d.project}`;
+    let command = `${this.toolpath} -G Ninja -DCMAKE_MAKE_PROGRAM=${this.ninjaPath} ${this.configuration.parsed.d.project}`;
     for (const k of Object.keys(cMakeDefines)) {
       let value = cMakeDefines[k];
       if (check(value, String)) {
@@ -39,10 +47,12 @@ export class CMake extends Compiler {
     return command;
   }
   buildCommand() {
-    return defaults.host.tools.ninja.bin;
+    return this.ninjaPath;
   }
   fetch() {
-    return Tools.fetch(this.options.toolchain || defaults.host.tools).then((toolpaths) => this.toolpaths = toolpaths);
+    return Tools.fetch(this.cmake).then(() => {
+      return Tools.fetch(this.ninja)
+    });
   }
   generate() {
     const header = () => {

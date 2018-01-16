@@ -8,14 +8,11 @@ declare namespace TMake.Plugin {
   }
   namespace CMake {
     interface Options extends TMake.Plugin.Compiler.Options {
-      minimumVersion: string;
-      version: string;
-      defines: string[];
-      toolchain?: {
-        ninja?: {
-          version?: string;
-        }
-      }
+      minimumVersion: string,
+      version: string,
+      defines: string[],
+      toolchain?: Tool,
+      ninja?: Tool
     }
   }
 }

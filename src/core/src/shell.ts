@@ -109,13 +109,13 @@ export class Shell extends ConfigurationPlugin {
     super(configuration, options);
   }
   // OVERRIDE IN PLUGIN SUBCLASS
-  configureCommand(toolpaths?: string): string {
-    return undefined;
+  configureCommand(toolpath?: string): string {
+    return toolpath;
   }
-  buildCommand(toolpaths?: string) {
-    return undefined;
+  buildCommand(toolpath?: string) {
+    return toolpath;
   }
-  installCommand(toolpaths?: string) {
-    return undefined;
+  installCommand(toolpath?: string) {
+    return toolpath;
   }
 }

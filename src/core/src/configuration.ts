@@ -16,7 +16,7 @@ import { mkdir } from 'shelljs';
 import { absolutePath, pathArray } from './parse';
 import { Plugin as BasePlugin } from './plugin';
 import { Project } from './project';
-import { args, defaults } from './runtime';
+import { args } from './runtime';
 import { dump } from 'js-yaml';
 import { next } from 'js-moss';
 import { interpolate } from './interpolate';
@@ -224,7 +224,7 @@ export class Configuration {
 export class ConfigurationPlugin extends BasePlugin {
     configuration: TMake.Configuration;
     options: any;
-    toolpaths: any;
+    toolpath: string;
     projectFileName: string;
     buildFileName: string;
 

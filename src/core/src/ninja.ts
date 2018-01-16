@@ -12,24 +12,6 @@ import {Compiler} from './compiler';
 import {Plugin} from './plugin';
 import {defaults} from './runtime';
 
-function build(configuration : TMake.Configuration.Parsed) {
-  return Tools
-    .fetch(defaults.host.tools)
-    .then((toolpaths : any) => {
-      const directory = configuration.d.project;
-      let command = '';
-      if (configuration.target.docker) {
-        command = `dockcross ninja - C${directory}`;
-      } else {
-        command = `${toolpaths.ninja} -C ${directory}`;
-      }
-      log.verbose(command);
-      return execAsync(command, {
-        cwd: configuration.d.build,
-        short: 'ninja'
-      });
-    });
-}
 
 function getRule(ext : string) {
   switch (ext) {
@@ -43,25 +25,30 @@ function getRule(ext : string) {
   }
 }
 
-
 export class Ninja extends Compiler {
   options : TMake.Plugin.Ninja.Options;
-
-  constructor(configuration : TMake.Configuration, options) {
+  bin: string;
+  toolchain: TMake.Tool;
+  constructor(configuration : TMake.Configuration, options?) {
     super(configuration, options);
     this.name = 'ninja';
     this.projectFileName = '';
     this.buildFileName = 'build.ninja';
+
+    const { environment } = defaults;
+    this.toolchain = (options && options.toolchain) || environment.tools.ninja;
+    this.bin = this.toolchain.bin;
+    this.version = this.toolchain.version;
   }
 
   // configureCommand(toolpaths: any) { return '' }
   buildCommand(toolpaths?: string) {
-    return defaults.host.tools.ninja.bin;
+    return this.bin;
   }
   fetch() {
     return Tools
-      .fetch(this.options.toolchain || defaults.host.tools)
-      .then((toolpaths) => this.toolpaths = toolpaths);
+      .fetch(this.toolchain)
+      .then((toolpath) => this.toolpath = toolpath);
   }
   generate() {
     return this.configure();
@@ -79,12 +66,8 @@ export class Ninja extends Compiler {
       })
       .then((libraries) => {
         artifacts.libraries = libraries;
-        // log.add('generate new ninja config'); const relativeToBuild =
-        // path.relative(this.configuration.parsed.project.build,
-        // this.configuration.parsed.d.build) || '.';
         const relativeToSource = path.relative(this.configuration.parsed.d.build, this.configuration.parsed.d.source) || '.';
-        // console.log(`build to build dir = ${relativeToBuild}`);
-        const ninjaConfig = ninja_build_gen(defaults.host.tools.ninja.version);
+        const ninjaConfig = ninja_build_gen();
         log.verbose('note: this should scan dependencies for their possibly intermediate header insta' +
             'll dirs');
         const includeString = `-I ${this.configuration.parsed.d.root}/trie_modules/include` + _.map(this.options.includeDirs, (dir) => {

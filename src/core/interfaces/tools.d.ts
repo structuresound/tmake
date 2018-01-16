@@ -23,9 +23,9 @@ declare namespace TMake {
   }
 
   interface Tools {
-    [index: string]: Tool
     ninja?: Tool
     clang?: Tool
+    cmake?: Tool
     gcc?: Tool
   }
 }
@@ -35,6 +35,6 @@ declare module 'tmake-core/tools' {
     function tools(toolchain: any): TMake.Tools
     function pathForTool(tool: any): string
     function fetchAndUnarchive(tool: any): PromiseLike<void>
-    function fetch(toolchain: any): PromiseLike<TMake.Tools>
+    function fetch(toolchain: any): PromiseLike<string>
   }
 }
