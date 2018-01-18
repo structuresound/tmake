@@ -25,6 +25,7 @@ declare namespace TMake {
 
     interface Environment extends Product {
         host : TMake.HostPlatform,
+        target?: TMake.TargetPlatform
         tools?: TMake.Tools
     }
 

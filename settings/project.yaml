@@ -43,12 +43,12 @@ target>:
     compiler:
       =clang:
         =linux:
-          target: ${settings.clang.arch.${architecture}}-unknown-linux
+          target: ${settings.clang.arch.${environment.target.architecture}}-unknown-linux
         =mac:
-          target: ${settings.clang.arch.${architecture}}-apple-darwin
+          target: ${settings.clang.arch.${environment.target.architecture}}-apple-darwin
           isysroot: ${sdk.device.path}
         =ios:
-          target: ${settings.clang.arch.${architecture}}-apple-darwin
+          target: ${settings.clang.arch.${environment.target.architecture}}-apple-darwin
           isysroot: ${sdk.device.path}
           miphoneos-version-min: \=6.1
           +simulator:

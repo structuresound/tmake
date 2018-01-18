@@ -6,7 +6,7 @@ import { Project } from './project';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Ninja } from './ninja';
-import { extend, clone, contains, plain, stringify, cascade, okmap, map, flatten, union } from 'typed-json-transform';
+import { extend, clone, merge, contains, plain, stringify, cascade, okmap, map, flatten, union } from 'typed-json-transform';
 import { parseFileSync } from './file';
 import * as _os from 'os';
 import { exec } from './shell';
@@ -147,6 +147,12 @@ export namespace Runtime {
       }
     };
     return next(layer, config);
+  }
+
+  export function inherit(parent: TMake.Source.Project, child: TMake.Source.Project, options: MossOptions){
+    const inherit = Runtime.moss(clone(parent), options).data;
+    const local = Runtime.moss(clone(child), options).data;
+    return merge(inherit, local);
   }
 
   export function j() { return defaults.environment.host.cpu.num; }

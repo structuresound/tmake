@@ -120,10 +120,10 @@ function generateTargets(project: TMake.Project) {
         stack: {environment, settings}
     }).data;
     return map(flatTargets, (rawTarget) => {
-        const inherit = clone(project.parsed);
+        // const inherit = clone(project.parsed);
 
-        // TODO: Formalize the inheritence process with merge operators in MOSS
-        inherit.target = combine(inherit.target, rawTarget);
+        // // TODO: Formalize the inheritence process with merge operators in MOSS
+        // inherit.target = merge(inherit.target, rawTarget);
 
         const selectors = {
             ...project.raw.options,
@@ -132,10 +132,10 @@ function generateTargets(project: TMake.Project) {
             [rawTarget.platform]: true,
             [rawTarget.architecture]: true
         }
-        const config = Runtime.moss(<any>inherit, {
-            stack: {environment, settings},
+        const config = Runtime.inherit(clone(project.parsed), {target: rawTarget}, {
+            stack: { environment: {...environment, target: rawTarget }, settings, },
             selectors
-        }).data;
+        });
         return <TMake.Configuration>new Configuration(<any>config, project);
     });
 }
@@ -223,18 +223,10 @@ export class Project {
 
         const selectors = this.raw.options;
 
-        const inherit = Runtime.moss(clone(defaults.project), {
+        this.parsed = Runtime.inherit(defaults.project, this.raw, {
             selectors,
             stack: {environment, settings}
-        }).data;
-
-        const local = Runtime.moss(clone(this.raw), {
-            selectors,
-            stack: {environment, settings}
-        }).data;
-
-        // TODO: Formalize the inheritence process with merge operators in MOSS
-        this.parsed = combine(inherit, local);
+        });
 
         if (this.parsed.git) {
             this.parsed.git = new Git(this.raw.git);
