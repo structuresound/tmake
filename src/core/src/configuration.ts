@@ -42,7 +42,7 @@ export class Cache extends BaseCache<string> {
         });
     }
     update() {
-        this.configuration.update();
+        return this.configuration.update();
     }
     toJSON() {
         const ret = {};

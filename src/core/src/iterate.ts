@@ -13,7 +13,7 @@ export function iterable(val: any) {
   return [val];
 }
 
-export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>): PromiseLike<void> {
+export function iterateOLHM(obj: any, fn: (any: any) => PromiseLike<any>): PromiseLike<any> {
   const it = OLHM.safe(obj);
   if (!check(it, Array)
   ) {
@@ -31,7 +31,7 @@ export function mapOLHM<T>(obj: OLHM<T>, fn: (object: any) => PromiseLike<T>): P
   return Bluebird.map(it, fn);
 }
 
-export function iterate(obj: any, fn: (cmd: TMake.CmdObj) => Bluebird<any>): PromiseLike<void> {
+export function iterate(obj: any, fn: (cmd: TMake.CmdObj) => Bluebird<any>): PromiseLike<any> {
   const it = iterable(obj);
   if (!check(it, Array)
   ) {

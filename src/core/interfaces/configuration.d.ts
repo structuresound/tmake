@@ -40,7 +40,7 @@ declare namespace TMake {
       assets?: TMake.Cache.Property<string>
       plugin: TMake.Cache.Base<string>
       constructor(configuration)
-      update()
+      update(): PromiseLike<any>
       toJSON()
     }
 

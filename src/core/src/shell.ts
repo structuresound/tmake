@@ -51,7 +51,7 @@ function truncate(s) {
   return s;
 }
 
-export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.Exec.Options = {}) {
+export function execAsync(command: string, { cwd, silent, short }: TMake.Shell.Exec.Options = {}): PromiseLike<string> {
   return new Bluebird<string>((resolve: Function, reject: Function) => {
     let revert;
     if (cwd) {

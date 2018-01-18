@@ -38,8 +38,12 @@ describe('tmake-core', function () {
       .then((res) => {
         googleNode = res[0];
         helloNode = res[res.length - 1];
-        assert.isOk(helloNode.parsed);
-        assert.equal(helloNode.parsed.name, 'hello');
+        const {parsed} = helloNode;
+        assert.isOk(parsed);
+        assert.equal(parsed.name, 'hello');
+        const {target} = parsed;
+        assert.isOk(target, 'Missing target from parsed project');
+        assert.isOk(target.flags, 'Missing flags from parsed target');
         assert.isOk(googleNode.parsed);
         return expect(googleNode.parsed.name).to.equal('googletest');
       });

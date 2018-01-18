@@ -13,10 +13,8 @@ export function quotedList(array: string[]) {
 
 export class CMake extends Compiler {
   options: TMake.Plugin.CMake.Options;
-  toolpath: string;
   cmake: TMake.Tool;
   ninja: TMake.Tool;
-  ninjaPath: string;
 
   constructor(configuration: TMake.Configuration, options?: TMake.Plugin.CMake.Options) {
     super(configuration, options);
@@ -34,7 +32,7 @@ export class CMake extends Compiler {
     const cMakeDefines = extend({
       LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
     }, defines);
-    let command = `${this.toolpath} -G Ninja -DCMAKE_MAKE_PROGRAM=${this.ninjaPath} ${this.configuration.parsed.d.project}`;
+    let command = `${this.cmake.bin} -G Ninja -DCMAKE_MAKE_PROGRAM=${this.ninja.bin} ${this.configuration.parsed.d.project}`;
     for (const k of Object.keys(cMakeDefines)) {
       let value = cMakeDefines[k];
       if (check(value, String)) {
@@ -47,7 +45,7 @@ export class CMake extends Compiler {
     return command;
   }
   buildCommand() {
-    return this.ninjaPath;
+    return this.ninja.bin;
   }
   fetch() {
     return Tools.fetch(this.cmake).then(() => {

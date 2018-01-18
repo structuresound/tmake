@@ -1,4 +1,4 @@
-target:
+target>:
   output:
     type: static
     lipo: false
@@ -43,12 +43,12 @@ target:
     compiler:
       =clang:
         =linux:
-          target: ${clang.arches.${architecture}}-unknown-linux
+          target: ${settings.clang.arch.${architecture}}-unknown-linux
         =mac:
-          target: ${clang.arches.${architecture}}-apple-darwin
+          target: ${settings.clang.arch.${architecture}}-apple-darwin
           isysroot: ${sdk.device.path}
         =ios:
-          target: ${clang.arches.${architecture}}-apple-darwin
+          target: ${settings.clang.arch.${architecture}}-apple-darwin
           isysroot: ${sdk.device.path}
           miphoneos-version-min: \=6.1
           +simulator:

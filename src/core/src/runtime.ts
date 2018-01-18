@@ -109,7 +109,10 @@ export const keywords: string[] = [];
 export const selectors: string[] = [];
 
 interface MossOptions {
-  stack?: TMake.Defaults
+  stack?: {
+    environment?: TMake.Environment,
+    settings?: TMake.Settings
+  }
   selectors?: { [index: string]: boolean }
 }
 
@@ -157,8 +160,7 @@ export namespace Runtime {
       mkdir('-p', plugRoot);
       const plugFolders = readdirSync(plugRoot);
       plugFolders.forEach((folder) => {
-        const plugin = join(plugRoot, folder)
-        // console.log('load plugin', plugin);
+        const plugin = join(plugRoot, folder);
         try {
           registerPlugin(require(plugin).default);
         } catch (error) {
@@ -270,10 +272,6 @@ export namespace Runtime {
       catch {
       }
 
-      const parsedProject: TMake.Project = moss(clone(project), {
-        stack: {...project, environment: parsedEnvironment} as any
-      }).data;
-
       const {tools} = parsedEnvironment;
       
       for (const name of Object.keys(tools)) {
@@ -288,7 +286,7 @@ export namespace Runtime {
       }
 
       defaults.environment = parsedEnvironment;
-      defaults.project = parsedProject;
+      defaults.project = project;
     }
     catch (e) {
       console.warn(`error parsing defaults: ${e.message} ${e.stack}`);

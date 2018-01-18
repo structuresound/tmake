@@ -144,7 +144,6 @@ function resolveFlags(configuration: TMake.Configuration, options: TMake.Plugin.
   const linkerFlags = options.linkerFlags || {};
   const compilerFlags = options.compilerFlags || {};
   const frameworks = options.frameworks || {};
-
   const defaultFlags = configuration.parsed.target.flags;
 
   return {
@@ -200,11 +199,11 @@ export class Compiler extends Shell {
     }
     return Bluebird.resolve()
   }
-  fetch() {
+  fetch(){
     if (this.options.toolchain) {
       return Tools.fetch(this.options.toolchain).then((toolpath) => this.toolpath = toolpath);
     }
-    return Bluebird.resolve();
+    return Bluebird.resolve('');
   }
 
   public configure(): PromiseLike<any> {

@@ -27,8 +27,8 @@ var CMake = /** @class */ (function (_super) {
         _this.name = 'cmake';
         _this.projectFileName = 'CMakeLists.txt';
         _this.buildFileName = 'build.ninja';
-        _this.toolchain = _this.options.toolchain || tmake_core_1.defaults.environment.tools.cmake;
-        _this.ninjaPath = tmake_core_1.defaults.environment.tools.ninja.bin;
+        _this.cmake = _this.options.toolchain || tmake_core_1.defaults.environment.tools.cmake;
+        _this.ninja = _this.options.ninja || tmake_core_1.defaults.environment.tools.ninja;
         return _this;
     }
     CMake.prototype.configureCommand = function () {
@@ -37,7 +37,7 @@ var CMake = /** @class */ (function (_super) {
         var cMakeDefines = typed_json_transform_1.extend({
             LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
         }, defines);
-        var command = this.toolpath + " -G Ninja -DCMAKE_MAKE_PROGRAM=" + this.ninjaPath + " " + this.configuration.parsed.d.project;
+        var command = this.cmake.bin + " -G Ninja -DCMAKE_MAKE_PROGRAM=" + this.ninja.bin + " " + this.configuration.parsed.d.project;
         for (var _i = 0, _a = Object.keys(cMakeDefines); _i < _a.length; _i++) {
             var k = _a[_i];
             var value = cMakeDefines[k];
@@ -51,11 +51,13 @@ var CMake = /** @class */ (function (_super) {
         return command;
     };
     CMake.prototype.buildCommand = function () {
-        return this.ninjaPath;
+        return this.ninja.bin;
     };
     CMake.prototype.fetch = function () {
         var _this = this;
-        return tmake_core_1.Tools.fetch(this.toolchain).then(function (toolpath) { return _this.toolpath = toolpath; });
+        return tmake_core_1.Tools.fetch(this.cmake).then(function () {
+            return tmake_core_1.Tools.fetch(_this.ninja);
+        });
     };
     CMake.prototype.generate = function () {
         var _this = this;

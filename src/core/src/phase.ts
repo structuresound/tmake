@@ -73,7 +73,7 @@ export function configure(configuration: Configuration, isTest?: boolean): Promi
               log.verbose(`replace in files matching ${pattern}`);
               return file.glob(pattern, undefined, configuration.project.parsed.d.source)
                 .then((files: string[]) => {
-                  return Bluebird.each(files, (file) => {
+                  return Bluebird.each(files, (file: string) => {
                     return replaceInFile(file, replEntry, configuration);
                   })
                 })

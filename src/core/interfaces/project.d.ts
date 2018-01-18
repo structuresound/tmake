@@ -11,7 +11,6 @@ declare namespace TMake {
   }
 
   interface Platform {
-    docker?: Tools.Docker,
     architecture?: string,
     endianness?: 'BE' | 'LE',
     platform?: 'mac' | 'win' | 'linux' | 'ios' | 'android',
@@ -59,7 +58,7 @@ declare namespace TMake {
     interface Configuration {
       options?: { [index: string]: boolean }
       path?: Configuration.Dirs;
-      target?: TargetOptions
+      target?: TMake.TargetPlatform & TMake.Source.TargetOptions
     }
 
     interface Phases {

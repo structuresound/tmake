@@ -13,7 +13,7 @@ import { Property as CacheProperty } from './cache';
 import { Configuration } from './configuration';
 import { errors } from './errors';
 import { semverRegex } from './lib';
-import { Runtime, defaults, next } from './runtime';
+import { Runtime, defaults, settings, next } from './runtime';
 
 export const metaDataKeys = ['name', 'user', 'path'];
 export const sourceKeys = ['git', 'archive', 'version'];
@@ -116,25 +116,25 @@ function generateTargets(project: TMake.Project) {
     const { environment } = defaults;
 
     const flatTargets: TMake.Platform[] = Runtime.moss(environment.build, {
-        stack: {
-            project,
-            environment
-        }
+        selectors: project.raw.options,
+        stack: {environment, settings}
     }).data;
     return map(flatTargets, (rawTarget) => {
         const inherit = clone(project.parsed);
+
+        // TODO: Formalize the inheritence process with merge operators in MOSS
         inherit.target = combine(inherit.target, rawTarget);
+
+        const selectors = {
+            ...project.raw.options,
+            ...rawTarget.options,
+            [environment.host.compiler]: true,
+            [rawTarget.platform]: true,
+            [rawTarget.architecture]: true
+        }
         const config = Runtime.moss(<any>inherit, {
-            stack: {
-                environment,
-                project
-            },
-            selectors: {
-                ...rawTarget.options,
-                [environment.host.compiler]: true,
-                [rawTarget.platform]: true,
-                [rawTarget.architecture]: true
-            }
+            stack: {environment, settings},
+            selectors
         }).data;
         return <TMake.Configuration>new Configuration(<any>config, project);
     });
@@ -206,6 +206,8 @@ export class Project {
     dependencies: { [index: string]: TMake.Project }
 
     constructor(_projectFile: TMake.Project.Raw, parent?: Project) {
+        const { environment } = defaults;
+
         // load conf
         if (!_projectFile) {
             throw new Error('constructing node with undefined configuration');
@@ -219,13 +221,20 @@ export class Project {
             this.raw = <TMake.Project.Raw>clone(_projectFile);
         }
 
-        const projectDefaults = clone(defaults);
-        const projectOverrides = Runtime.moss(clone(this.raw), {
-            selectors: this.raw.options,
-            stack: projectDefaults
+        const selectors = this.raw.options;
+
+        const inherit = Runtime.moss(clone(defaults.project), {
+            selectors,
+            stack: {environment, settings}
         }).data;
 
-        this.parsed = <any>merge(projectDefaults.project, projectOverrides);
+        const local = Runtime.moss(clone(this.raw), {
+            selectors,
+            stack: {environment, settings}
+        }).data;
+
+        // TODO: Formalize the inheritence process with merge operators in MOSS
+        this.parsed = combine(inherit, local);
 
         if (this.parsed.git) {
             this.parsed.git = new Git(this.raw.git);

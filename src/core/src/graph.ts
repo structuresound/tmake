@@ -18,7 +18,7 @@ function loadCache(project: TMake.Project) {
         if (result) {
           project.loadCache(result);
         }
-        return Bluebird.each(project.parsed.configurations, (e) => {
+        return Bluebird.each(project.parsed.configurations, (e: TMake.Configuration) => {
           return loadConfiguration(e);
         });
       }).then(() => {
@@ -54,7 +54,7 @@ function scanDependencies(require: OLHM<TMake.Project.Raw>, node: TMake.Project,
     keys.push(k);
   }
   return Bluebird.map(keys,
-    (key) => {
+    (key: string) => {
       let dep: TMake.Project.Raw = <any>require[key]
       if (check(dep, String)) {
         dep = projectFromString(<string><any>dep);
