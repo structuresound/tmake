@@ -3,7 +3,7 @@ import 'mocha';
 import * as path from 'path';
 import * as Bluebird from 'bluebird';
 import { contains, containsAny, check } from 'typed-json-transform';
-import { Project, Configuration, Runtime, args, parseFileAsync } from 'tmake-core';
+import { Project, Configuration, Runtime, defaults, args, parseFileAsync } from 'tmake-core';
 
 import { TestDb } from './db';
 
@@ -15,10 +15,12 @@ describe('configuration', function(){
 
   it('creates a configuration object with values',() => {
     Runtime.init(new TestDb());
+    const { architecture } = defaults.environment.host;
     return parseFileAsync(path.join(__dirname, 'config/meta.yaml'))
       .then((projectFile) => {
         project = new Project(<TMake.Project.Raw><any>projectFile);
-        configuration = project.parsed.configurations[0];
+        console.log('get configuration for', architecture, 'from list', Object.keys(project.parsed.configurations));
+        configuration = project.parsed.configurations[architecture];
         const name = configuration.parsed.name;
         return expect(name, name).to.equal('metaProject');
       });

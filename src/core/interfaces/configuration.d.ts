@@ -38,6 +38,8 @@ declare namespace TMake {
     class Cache extends TMake.Cache.Base<string> {
       configuration: TMake.Configuration;
       assets?: TMake.Cache.Property<string>
+      libs?: TMake.Cache.Property<string[]>
+      checksums?: TMake.Cache.Property<string[]>
       plugin: TMake.Cache.Base<string>
       constructor(configuration)
       update(): PromiseLike<any>
@@ -48,7 +50,11 @@ declare namespace TMake {
       interface File {
         _id: string
         project: string
-        cache: any
+        version: string
+        cache: {
+          libs: {[index: string]: string}
+          checksums: {[index: string]: string}
+        }
       }
     }
   }

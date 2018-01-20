@@ -108,10 +108,11 @@ export const settings: TMake.Settings = <any>{};
 export const keywords: string[] = [];
 export const selectors: string[] = [];
 
-interface MossOptions {
+interface MossOptions<T> {
   stack?: {
     environment?: TMake.Environment,
-    settings?: TMake.Settings
+    settings?: TMake.Settings,
+    parent?: T
   }
   selectors?: { [index: string]: boolean }
 }
@@ -126,7 +127,7 @@ export namespace Runtime {
   }
 
   export const pluginMap: { [index: string]: typeof Plugin } = {};
-  export function moss(config: TMake.Source.Project, options: MossOptions = {}) {
+  export function moss<T>(config: T, options: MossOptions<T> = {}) {
     const defaultSelectors = okmap(keywords, (keyword) => {
       return { [keyword]: <any>contains(selectors, keyword) };
     });
@@ -149,8 +150,9 @@ export namespace Runtime {
     return next(layer, config);
   }
 
-  export function inherit(parent: TMake.Source.Project, child: TMake.Source.Project, options: MossOptions){
+  export function inherit<T>(parent: T, child: T, options: MossOptions<T>){
     const inherit = Runtime.moss(clone(parent), options).data;
+    options.stack.parent = inherit;
     const local = Runtime.moss(clone(child), options).data;
     return merge(inherit, local);
   }
@@ -183,7 +185,8 @@ export namespace Runtime {
     let instance: Plugin;
     let ctx: TMake.Configuration;
     try {
-      ctx = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.configurations[0];
+      const {architecture} = defaults.environment.host;
+      ctx = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.configurations[architecture];
     }
     catch (e) {
       console.warn(`error: ${e.message}. while creating plugin context for ${name} plugin`);

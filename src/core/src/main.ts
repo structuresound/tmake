@@ -51,11 +51,7 @@ function singleCommand(project: TMake.Project, phase: string, selectedDeps: TMak
       const aspect = args._[2];
       if (aspect) {
         log.verbose(`parse ${aspect} for project ${project.parsed.name}`);
-        if (project.parsed.configurations[0][aspect]) {
-          log.verbose(`aspect ${aspect} found in environment`);
-          log.log(project.parsed.configurations[0][aspect]);
-        }
-        else if (project[aspect]) {
+        if (project[aspect]) {
           log.log(project[aspect]);
         } else {
           log.error(`${aspect} not found`);
@@ -113,9 +109,10 @@ export class ProjectRunner {
     this.project = node;
   }
   do(fn: Function, opt?: any) {
-    return Bluebird.each(this.project.parsed.configurations, (configuration: TMake.Configuration) => {
+    const iterable = map(this.project.parsed.configurations, (v) => v);
+    return Bluebird.each(iterable, (configuration: TMake.Configuration) => {
       return fn(configuration, opt);
-    })
+    });
   }
   fetch(isTest?: boolean) { return Fetch.project(this.project, isTest); }
   generate(isTest?: boolean) {
@@ -186,7 +183,8 @@ export class ProjectRunner {
 
       }
     });
-    return Bluebird.each(this.project.parsed.configurations, (configuration: TMake.Configuration) => {
+    const iterable = map(this.project.parsed.configurations, (v) => v);
+    return Bluebird.each(iterable, (configuration: TMake.Configuration) => {
       const hash = configuration.hash();
       log.dev('nuke', configuration.parsed.d.build)
       file.nuke(configuration.parsed.d.build);

@@ -119,12 +119,7 @@ function generateTargets(project: TMake.Project) {
         selectors: project.raw.options,
         stack: {environment, settings}
     }).data;
-    return map(flatTargets, (rawTarget) => {
-        // const inherit = clone(project.parsed);
-
-        // // TODO: Formalize the inheritence process with merge operators in MOSS
-        // inherit.target = merge(inherit.target, rawTarget);
-
+    const res = okmap(flatTargets, (rawTarget) => {
         const selectors = {
             ...project.raw.options,
             ...rawTarget.options,
@@ -136,8 +131,10 @@ function generateTargets(project: TMake.Project) {
             stack: { environment: {...environment, target: rawTarget }, settings, },
             selectors
         });
-        return <TMake.Configuration>new Configuration(<any>config, project);
+        const configuration = <TMake.Configuration>new Configuration(<any>config, project);
+        return {[configuration.parsed.target.architecture]: configuration};
     });
+    return res as any;
 }
 
 function resolveVersion(conf: TMake.Project.Parsed) {

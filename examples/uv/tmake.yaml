@@ -2,8 +2,35 @@
 git:
   repository: libuv/libuv
   tag: v1.11.0
+target>:
+  flags:
+    linker:
+      =:
+        pthread: true
+        m: true
+      +linux:
+        dl: true
+        rt: true
+    c:
+      =:
+        fvisibility: hidden
+        g: true
+        std: gnu89
+        pedantic: true
+        Wall: true
+        Wextra: true
+        Wno-unused-parameter: true
+      +mac:
+        D_DARWIN_USE_64_BIT_INODE: 1
+        D_DARWIN_UNLIMITED_SELECT: 1
+path:
+  includeDirs:
+  - source/src
+  install:
+    headers:
+    - from: source/include
+      to: include/uv
 configure:
-  for: ninja
   replace:
     include_uv:
       matching:
@@ -18,19 +45,12 @@ configure:
         pthread-barrier:
         - '#include "pthread-barrier.h"'
         - '#include <uv/pthread-barrier.h>'
-path:
-  includeDirs:
-  - source/src
-  install:
-    headers:
-    - from: source/include
-      to: include/uv
-build:
-  with: ninja
-  linux:
-    - src/unix/*.c
-  mac, ios:
+generate:
+  ninja:
     matching:
+      =linux:
+      - src/unix/*.c
+      =mac, ios:
       - src/unix/*.c
       - '!src/unix/aix*'
       - '!src/unix/linux*'
@@ -41,21 +61,5 @@ build:
       - '!src/unix/pthread-fixes.c'
       - '!src/unix/freebsd*'
       - '!src/unix/sunos*'
-  linkerFlags:
-    mac, linux:
-      pthread: true
-      m: true
-    linux:
-      dl: true
-      rt: true
-  cFlags:
-    fvisibility: hidden
-    g: true
-    std: gnu89
-    pedantic: true
-    Wall: true
-    Wextra: true
-    Wno-unused-parameter: true
-    mac:
-      D_DARWIN_USE_64_BIT_INODE: 1
-      D_DARWIN_UNLIMITED_SELECT: 1
+build:
+  ninja: {}

@@ -189,8 +189,10 @@ export class Compiler extends Shell {
     const { dependencies } = this.configuration.project
     if (dependencies) {
       const stack = _.map(dependencies, (dep: Project) => {
+        const {architecture} = this.configuration.parsed.target;
         console.log('get libs from project', dep.cache.libs.value());
-        return _.map(dep.cache.libs.value(), (lib) => {
+        const {libs} = dep.parsed.configurations[architecture].cache;
+        return _.map(libs.value(), (lib) => {
           console.log('+', path.join(dep.parsed.d.home, lib));
           return path.join(dep.parsed.d.home, lib);
         })

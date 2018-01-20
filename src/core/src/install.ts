@@ -114,16 +114,12 @@ function libs(configuration: Configuration): PromiseLike<any> {
       }
       const checksums: any = {};
       const libs = flatten(libPaths);
-      configuration.project.cache.libs.set(libs);
       each(libs, (lib) => {
         checksums[stringHash(path.basename(lib))] = fileHashSync(path.join(configuration.project.parsed.d.home, lib));
       });
-      return Runtime.Db.updateProject(configuration.project, {
-        $set: {
-          'cache.checksums': checksums,
-          'cache.libs': libs
-        }
-      });
+      configuration.cache.libs.set(libs);
+      configuration.cache.checksums.set(checksums);
+      return configuration.update();
     });
   }
   return Bluebird.resolve();

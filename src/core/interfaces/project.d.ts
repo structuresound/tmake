@@ -111,7 +111,7 @@ declare namespace TMake {
       libs?: string[];
       d?: TMake.Project.Dirs;
       p?: TMake.Project.Dirs;
-      configurations?: TMake.Configuration[];
+      configurations?: {[index: string]: TMake.Configuration};
     }
 
     interface Cache {

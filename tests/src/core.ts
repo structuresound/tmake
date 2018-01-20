@@ -6,7 +6,7 @@ import { assert, expect } from 'chai';
 import { contains, check } from 'typed-json-transform';
 
 import {
-  ProjectRunner, list, findAndClean,
+  ProjectRunner, list, findAndClean, defaults,
   Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke
 } from 'tmake-core';
 
@@ -22,12 +22,15 @@ describe('tmake-core', function () {
 
   let googleNode: TMake.Project;
   let helloNode: TMake.Project;
-
   const testDb = new ClientDb();
+
+  let architecture = '';
 
   before(() => {
     assert.ok(testDb.projectNamed, 'Missing Db');
     Runtime.init([], testDb);
+    architecture = defaults.environment.host.architecture;
+    assert.ok(architecture, 'Missing Host Architecture');
     Runtime.loadPlugins();
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
     const helloWorld = parseFileSync(path.join(__dirname, 'config/hello.yaml'));
@@ -81,9 +84,15 @@ describe('tmake-core', function () {
         assert.equal(parsed.version, '1.8.0', msg);
         assert.ok(!parsed.configure, msg);
         assert.ok(!parsed.path, msg);
-        const hasGTest = contains(entry.cache.libs, `lib/${Runtime.os.arch()}/libgtest.a`);
-        const hasGTestMain = contains(entry.cache.libs, `lib/${Runtime.os.arch()}/libgtest_main.a`);
-        return expect(hasGTest && hasGTestMain).to.deep.equal(true, msg);
+        const arch = Runtime.os.arch();
+        const id = googleNode.parsed.configurations[arch].hash();
+        return testDb.loadConfiguration(id).then((c) => {
+          assert.ok(c, `no configuration for hash: ${id}`);
+          const msg = JSON.stringify(c);
+          const hasGTest = contains(c.cache.libs, `lib/${arch}/libgtest.a`);
+          const hasGTestMain = contains(c.cache.libs, `lib/${arch}/libgtest_main.a`);
+          return expect(hasGTest && hasGTestMain).to.deep.equal(true, msg);
+        });
       });
   });
 
@@ -99,7 +108,7 @@ describe('tmake-core', function () {
   it('configure: for: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).configure().then(() => {
-        const fp = path.join(helloNode.parsed.configurations[0].parsed.d.build, 'build.ninja')
+        const fp = path.join(helloNode.parsed.configurations[architecture].parsed.d.build, 'build.ninja')
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
@@ -109,7 +118,7 @@ describe('tmake-core', function () {
   it('build: with: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
-        const fp = path.join(args.runDir, 'build', helloNode.parsed.configurations[0].parsed.target.architecture, `${helloNode.parsed.name}`);
+        const fp = path.join(args.runDir, 'build', helloNode.parsed.configurations[architecture].parsed.target.architecture, `${helloNode.parsed.name}`);
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });

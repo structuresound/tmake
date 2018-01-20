@@ -4,29 +4,26 @@ git:
 environment:
   OPENSSL_VERSION: 1.0.2h
   DEVELOPER: "$(xcode-select -print-path)"
-  mac:
-    TRIPLE: darwin64-x86_64-cc
   x64:
     OPENSSL_ARCH: x86_64
 configure:
   shell:
     bignum: sed -ie "s/BIGNUM \*I,/BIGNUM \*i,/g" crypto/rsa/rsa.h
   make:
-    arguments: ${TRIPLE}
+    arguments: ${parent.target.flags.compiler.target}
     flags:
       openssldir: ${d.build}/openssl-${OPENSSL_VERSION}  
-    linux:
-      arguments:
+    arguments:
+      =linux:
         enable-tlsext: 1
         no-shared: 1
         no-zlib: 1
         -fPIC: 1
         no-gost: 1
-    ios:
-      arguments:
+      =ios:
         iphoneos-cross: 1
         -no-asm: 1
-  ios:
+  +ios:
     replace:
         files:
           matching:
@@ -37,7 +34,7 @@ configure:
       perl: perl -i -pe 's|static volatile sig_atomic_t intr_signal|static volatile int intr_signal|' crypto/ui/ui_openssl.c
 build:
   make:
-    ios:
+    =ios:
       prefix: CC="${DEVELOPER}/usr/bin/gcc -fembed-bitcode -arch ${OPENSSL_ARCH}"
 path:
   project: source

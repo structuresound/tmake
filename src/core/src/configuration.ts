@@ -25,6 +25,8 @@ export class Cache extends BaseCache<string> {
     configuration: Configuration;
     assets?: TMake.Cache.Property<string>;
     plugin: BaseCache<string>
+    libs: TMake.Cache.Property<string[]>
+    checksums: TMake.Cache.Property<string[]>
     constructor(configuration) {
         super();
         this.configuration = configuration;
@@ -39,6 +41,12 @@ export class Cache extends BaseCache<string> {
         });
         this.assets = new CacheProperty<string>(() => {
             return "";
+        });
+        this.libs = new CacheProperty<string[]>(() => {
+            return [];
+        });
+        this.checksums = new CacheProperty<string[]>(() => {
+            return [];
         });
     }
     update() {
@@ -173,14 +181,14 @@ export class Configuration {
     hash(): string {
         return jsonStableHash({
             meta: _.pick(this.project, ['name', 'version']),
-            build: _.pick(this.parsed, ['generate', 'build', 'configure'])
+            build: _.pick(this.parsed, ['generate', 'build', 'configure', 'target'])
         });
     }
     merge(other: TMake.Configuration.Cache.File): void {
         loadCache(this, other);
     }
     toCache(): TMake.Configuration.Cache.File {
-        return { _id: this.hash(), project: this.project.parsed.name, cache: this.cache.toJSON() };
+        return { _id: this.hash(), project: this.project.parsed.name, version: this.project.parsed.version, cache: this.cache.toJSON() };
     }
     update() {
         return Runtime.Db.cacheConfiguration(this.toCache());
