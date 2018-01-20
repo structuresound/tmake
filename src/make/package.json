@@ -29,6 +29,6 @@
     },
     "Keywords": [],
     "dependencies": {
-        "typed-json-transform": "^0.17.1"
+        "typed-json-transform": "^0.18.2"
     }
 }
