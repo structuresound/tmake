@@ -14,18 +14,13 @@ declare namespace TMake {
         }
     }
 
-    interface Targets {
-        [index : string] : TMake.TargetPlatform
-    }
 
     interface Product {
-        targets : Targets,
-        build : Targets
+        build : TMake.Platforms
     }
 
     interface Environment extends Product {
-        host : TMake.HostPlatform,
-        target?: TMake.TargetPlatform
+        host : TMake.Host,
         tools?: TMake.Tools
     }
 

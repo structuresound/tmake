@@ -25,12 +25,17 @@ describe('tmake-core', function () {
   const testDb = new ClientDb();
 
   let architecture = '';
+  let platform = '';
 
   before(() => {
     assert.ok(testDb.projectNamed, 'Missing Db');
-    Runtime.init([], testDb);
+    Runtime.init({database: testDb});
+
     architecture = defaults.environment.host.architecture;
     assert.ok(architecture, 'Missing Host Architecture');
+    platform = defaults.environment.host.name;
+    assert.ok(platform, 'Missing Host Platform');
+
     Runtime.loadPlugins();
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
     const helloWorld = parseFileSync(path.join(__dirname, 'config/hello.yaml'));
@@ -63,7 +68,8 @@ describe('tmake-core', function () {
         return new ProjectRunner(googleNode)
           .install()
           .then(() => {
-            const fp = `trie_modules/lib/${Runtime.os.arch()}/libgtest.a`;
+            const id = googleNode.parsed.platforms[platform][architecture].hash();
+            const fp = `trie_modules/lib/${id}/libgtest.a`;
             const exists = fs.existsSync(path.join(args.runDir, fp));
             return expect(exists, fp).to.equal(true);
           }).then(() => {
@@ -84,13 +90,13 @@ describe('tmake-core', function () {
         assert.equal(parsed.version, '1.8.0', msg);
         assert.ok(!parsed.configure, msg);
         assert.ok(!parsed.path, msg);
-        const arch = Runtime.os.arch();
-        const id = googleNode.parsed.configurations[arch].hash();
+        console.log('platform', platform);
+        const id = googleNode.parsed.platforms[platform][architecture].hash();
         return testDb.loadConfiguration(id).then((c) => {
           assert.ok(c, `no configuration for hash: ${id}`);
           const msg = JSON.stringify(c);
-          const hasGTest = contains(c.cache.libs, `lib/${arch}/libgtest.a`);
-          const hasGTestMain = contains(c.cache.libs, `lib/${arch}/libgtest_main.a`);
+          const hasGTest = contains(c.cache.libs, `lib/${id}/libgtest.a`);
+          const hasGTestMain = contains(c.cache.libs, `lib/${id}/libgtest_main.a`);
           return expect(hasGTest && hasGTestMain).to.deep.equal(true, msg);
         });
       });
@@ -108,7 +114,7 @@ describe('tmake-core', function () {
   it('configure: for: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).configure().then(() => {
-        const fp = path.join(helloNode.parsed.configurations[architecture].parsed.d.build, 'build.ninja')
+        const fp = path.join(helloNode.parsed.platforms[platform][architecture].parsed.d.build, 'build.ninja')
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
@@ -118,7 +124,7 @@ describe('tmake-core', function () {
   it('build: with: ninja', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
-        const fp = path.join(args.runDir, 'build', helloNode.parsed.configurations[architecture].parsed.target.architecture, `${helloNode.parsed.name}`);
+        const fp = path.join(args.runDir, 'build', helloNode.parsed.platforms[platform][architecture].parsed.target.architecture, `${helloNode.parsed.name}`);
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
@@ -128,7 +134,7 @@ describe('tmake-core', function () {
   it('install: binaries', () => {
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).install().then(() => {
-        const fp = path.join(args.runDir, 'bin', Runtime.os.arch(), `${helloNode.parsed.name}`);
+        const fp = path.join(args.runDir, 'bin', platform, Runtime.os.arch(), `${helloNode.parsed.name}`);
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
@@ -136,7 +142,7 @@ describe('tmake-core', function () {
   });
 
   it('test: main', () => {
-    return execAsync(path.join(args.runDir, 'bin', Runtime.os.arch(), helloNode.parsed.name))
+    return execAsync(path.join(args.runDir, 'bin', platform, Runtime.os.arch(), helloNode.parsed.name))
       .then((res) => {
         const results = res.split('\n');
         return expect(results[results.length - 2])

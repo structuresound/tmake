@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as _ from 'lodash';
 import { join } from 'path';
-import { check, valueForKeyPath, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, OLHM, select, map, flatObject } from 'typed-json-transform';
+import { check, valueForKeyPath, each, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, select, map, flatObject } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { args } from './runtime';
@@ -114,27 +114,33 @@ function getProjectPaths(project: TMake.Project.Parsed) {
 
 function generateTargets(project: TMake.Project) {
     const { environment } = defaults;
-
-    const flatTargets: TMake.Platform[] = Runtime.moss(environment.build, {
+    const build: {[index: string]: {[index: string]: TMake.Target}} = Runtime.moss(environment.build, {
         selectors: project.raw.options,
-        stack: {environment, settings}
     }).data;
-    const res = okmap(flatTargets, (rawTarget) => {
-        const selectors = {
-            ...project.raw.options,
-            ...rawTarget.options,
-            [environment.host.compiler]: true,
-            [rawTarget.platform]: true,
-            [rawTarget.architecture]: true
+
+    return okmap(build, (targets, name) => {
+        const platform = {
+            name,
+            targets,
         }
-        const config = Runtime.inherit(clone(project.parsed), {target: rawTarget}, {
-            stack: { environment: {...environment, target: rawTarget }, settings, },
-            selectors
+        return okmap(platform.targets, (target, architecture) => {
+            target.architecture = <TMake.Target.Architecture>architecture;
+            target.name = <TMake.Platform.Name>name;
+            const selectors = {
+                ...project.raw.options,
+                ...target.options,
+                [environment.host.compiler]: true,
+                [platform.name]: true,
+                [target.architecture]: true
+            }
+            // console.log('selectors', selectors);
+            const config = Runtime.inherit(clone(project.parsed), {target}, {
+                environment: {...project.raw.environment, target},
+                selectors
+            });
+            return <TMake.Configuration>new Configuration(<any>config, project);
         });
-        const configuration = <TMake.Configuration>new Configuration(<any>config, project);
-        return {[configuration.parsed.target.architecture]: configuration};
     });
-    return res as any;
 }
 
 function resolveVersion(conf: TMake.Project.Parsed) {
@@ -219,10 +225,8 @@ export class Project {
         }
 
         const selectors = this.raw.options;
-
         this.parsed = Runtime.inherit(defaults.project, this.raw, {
-            selectors,
-            stack: {environment, settings}
+            selectors
         });
 
         if (this.parsed.git) {
@@ -263,7 +267,7 @@ export class Project {
             }
         }
 
-        this.parsed.configurations = generateTargets(this);
+        this.parsed.platforms = <any>generateTargets(this);
 
         /* CACHE */
         const fetch = new CacheProperty(() => stringHash(this.url()));
@@ -275,14 +279,13 @@ export class Project {
         }, { require: fetch });
         const libs = new CacheProperty(() => {
             throw new Error('no getter, resolved during install phase');
-        })
+        });
 
         this.cache = {
             fetch,
             metaData,
             libs
         }
-
     }
 
     force() {

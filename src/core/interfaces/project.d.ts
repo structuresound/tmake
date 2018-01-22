@@ -10,22 +10,39 @@ declare namespace TMake {
     [index: string]: OLHV<T>;
   }
 
-  interface Platform {
-    architecture?: string,
-    endianness?: 'BE' | 'LE',
-    platform?: 'mac' | 'win' | 'linux' | 'ios' | 'android',
-    options?: {[index: string]: boolean},
-    cpu?: { num: number, speed?: number }
+  namespace Target {
+    type Architecture = 'x86' | 'arm64' | 'armv7'
+    type Endianness = 'BE' | 'LE'
   }
 
-  interface HostPlatform extends Platform {
-    compiler?: 'clang' | 'gcc' | 'msvc' | 'ic'
-  }
-
-  interface TargetPlatform extends Platform {
+  interface Target {
+    // in config file
+    endianness?: Target.Endianness
+    options?: {[index: string]: boolean}
+    // inherited from keys
+    architecture?: Target.Architecture
+    name?: Platform.Name
     flags?: TMake.Plugin.Compiler.Flags
   }
 
+  namespace Platform {
+    type Name = 'mac' | 'win' | 'linux' | 'ios' | 'android'
+  }
+
+  interface Platform {
+    name?: Platform.Name,
+    targets?: {[index: string]: Target}
+  }
+
+  interface Platforms {
+    [index: string]: Platform
+  }
+
+  interface Host extends Platform {
+    architecture: Target.Architecture,
+    compiler?: 'clang' | 'gcc' | 'msvc' | 'ic',
+    cpu?: { num: number, speed?: number }
+  }
 
   namespace Source {
     interface Meta {
@@ -56,9 +73,10 @@ declare namespace TMake {
     }
 
     interface Configuration {
+      environment?: { [index: string]: any }
       options?: { [index: string]: boolean }
       path?: Configuration.Dirs;
-      target?: TMake.TargetPlatform & TMake.Source.TargetOptions
+      target?: TMake.Platform & TMake.Source.TargetOptions
     }
 
     interface Phases {
@@ -103,7 +121,12 @@ declare namespace TMake {
     }
 
     interface Raw extends Source.Project {
-      hash?: string
+      hash?: string;
+    }
+
+    namespace Parsed {
+      interface Platform {[index: string]: TMake.Configuration}
+      interface Platforms {[index: string]: Platform}
     }
 
     interface Parsed extends Raw {
@@ -111,7 +134,7 @@ declare namespace TMake {
       libs?: string[];
       d?: TMake.Project.Dirs;
       p?: TMake.Project.Dirs;
-      configurations?: {[index: string]: TMake.Configuration};
+      platforms?: Parsed.Platforms;
     }
 
     interface Cache {

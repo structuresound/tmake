@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import { join } from 'path';
 import * as fs from 'fs';
 import { resolve } from 'bluebird';
-import { cascade, check, clone, contains, map, arrayify, combine, combineN, extend, okmap, plain as toJSON, OLHM } from 'typed-json-transform';
+import { cascade, check, clone, contains, map, arrayify, combine, combineN, extend, okmap, plain as toJSON } from 'typed-json-transform';
 import { startsWith } from './string';
 import { log } from './log';
 import { jsonStableHash, fileHashSync, stringHash } from './hash';
@@ -81,7 +81,15 @@ function loadCache(a: Configuration, b: TMake.Configuration.Cache.File) {
     }
 }
 
-function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, architecture: string, projectDirs: TMake.Project.Dirs): TMake.Configuration.Dirs {
+interface ConfigurationDirOptions {
+    pathOptions: TMake.Configuration.Dirs
+    hash: string, 
+    platform: string, 
+    architecture: string,
+    projectDirs: TMake.Project.Dirs
+}
+
+function getConfigurationDirs({pathOptions, hash, platform, architecture, projectDirs}: ConfigurationDirOptions): TMake.Configuration.Dirs {
     const d = <TMake.Configuration.Dirs>clone(projectDirs);
 
     d.build = join(d.root, pathOptions.build);
@@ -94,14 +102,14 @@ function getConfigurationDirs(pathOptions: TMake.Configuration.Dirs, architectur
             return {
                 matching: ft.matching,
                 from: join(d.root, ft.from),
-                to: join(d.root, (ft.to || 'bin'), architecture)
+                to: join(d.root, (ft.to || 'bin'), platform, architecture)
             };
         }),
         libraries: map(arrayify(pathOptions.install.libraries), (ft: TMake.Install.Options) => {
             return {
                 matching: ft.matching,
                 from: join(d.root, ft.from),
-                to: join(d.home, (ft.to || 'lib'), architecture)
+                to: join(d.home, (ft.to || 'lib'), hash)
             };
         })
     }
@@ -145,15 +153,6 @@ function getProjectFile(configuration: Configuration, systemName: string): strin
     return (<any>buildFileNames)[systemName];
 }
 
-function objectify<T>(input: T) {
-    if (check(input, String)) {
-        return <T><any>{
-            [<string><any>input]: {}
-        };
-    }
-    return input || <T><any>{};
-}
-
 export class Configuration {
     parsed: TMake.Configuration.Parsed;
     cache: TMake.Configuration.Cache;
@@ -169,7 +168,12 @@ export class Configuration {
         if (!this.parsed.target.architecture) throw new Error(`no target architecture \n${dump(this.parsed)}`);
 
         const p = getConfigurationPaths(<any>path, this.parsed.target.architecture, this.parsed.target.output.type);
-        const d = getConfigurationDirs(p, this.parsed.target.architecture, this.parsed.d);
+        const d = getConfigurationDirs({
+            pathOptions: p, 
+            platform: this.parsed.target.name, 
+            architecture: this.parsed.target.architecture,
+            hash: this.hash(),
+            projectDirs: this.parsed.d});
         extend(this.parsed, {
             path: path,
             p,
@@ -188,7 +192,14 @@ export class Configuration {
         loadCache(this, other);
     }
     toCache(): TMake.Configuration.Cache.File {
-        return { _id: this.hash(), project: this.project.parsed.name, version: this.project.parsed.version, cache: this.cache.toJSON() };
+        return { _id: this.hash(), 
+            project: this.project.parsed.name,
+            version: this.project.parsed.version,
+            platform: this.parsed.target.name,
+            architecture: this.parsed.target.architecture,
+            date: new Date(),
+            cache: this.cache.toJSON() 
+        };
     }
     update() {
         return Runtime.Db.cacheConfiguration(this.toCache());

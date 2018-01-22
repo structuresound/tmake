@@ -25,7 +25,7 @@ var Make = /** @class */ (function (_super) {
             this.options.prefix,
             './configure',
             tmake_core_1.jsonToFlags(this.options.arguments, { prefix: '' }).join(' '),
-            tmake_core_1.jsonToFlags(this.options.flags, { prefix: '--' }).join(' ')
+            tmake_core_1.jsonToFlags(this.options.compilerFlags, { prefix: '--' }).join(' ')
         ].join(' ');
     };
     Make.prototype.buildCommand = function () {

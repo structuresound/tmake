@@ -353,9 +353,9 @@ through@~2.3.4:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
 
-typed-json-transform@^0.18.2:
-  version "0.18.2"
-  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.18.2.tgz#41d45b317ae2831bb85eeb76a0d9076ff7e6d342"
+typed-json-transform@^0.19.0:
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.19.0.tgz#3c7c0f6726db2a926c9e38d29a6b7908891fc9f2"
 
 underscore@~1.4.4:
   version "1.4.4"

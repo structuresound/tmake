@@ -76,9 +76,9 @@ var ClientDb = /** @class */ (function (_super) {
         var _this = _super.call(this) || this;
         var cacheDir = path_1.join(tmake_core_1.args.runDir, tmake_core_1.args.cachePath);
         var dbPaths = {
-            projects: path_1.join(cacheDir, 'projects.db'),
-            configurations: path_1.join(cacheDir, 'configurations.db'),
-            errors: path_1.join(cacheDir, 'errors.db')
+            projects: path_1.join(cacheDir, 'projects.json'),
+            configurations: path_1.join(cacheDir, 'configurations.json'),
+            errors: path_1.join(cacheDir, 'errors.json')
         };
         var testMode = ((process.env.NODE_ENV === 'test') || process.env.LOADED_MOCHA_OPTS);
         if (testMode) {
@@ -90,8 +90,7 @@ var ClientDb = /** @class */ (function (_super) {
             catch (e) { }
         }
         _this.collections = typed_json_transform_1.okmap(dbPaths, function (val, key) {
-            return _a = {}, _a[key] = new Datastore({ filename: val, autoload: true }), _a;
-            var _a;
+            return new Datastore({ filename: val, autoload: true });
         });
         return _this;
     }

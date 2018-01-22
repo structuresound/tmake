@@ -150,7 +150,7 @@ export function tmake(cla: any, rootConfig: TMake.Project.Raw, projectName?: str
   const commands = cla._;
 
   delete cla._;
-  Runtime.init(cla, Db);
+  Runtime.init({commandLine: cla, database: Db});
 
   if (!projectName) {
     projectName = rootConfig.name || Project.resolveName(rootConfig);

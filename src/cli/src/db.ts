@@ -69,9 +69,9 @@ export class ClientDb extends Database {
     const cacheDir = join(args.runDir, args.cachePath);
 
     const dbPaths = {
-      projects: join(cacheDir, 'projects.db'),
-      configurations: join(cacheDir, 'configurations.db'),
-      errors: join(cacheDir, 'errors.db')
+      projects: join(cacheDir, 'projects.json'),
+      configurations: join(cacheDir, 'configurations.json'),
+      errors: join(cacheDir, 'errors.json')
     }
 
     const testMode = ((process.env.NODE_ENV === 'test') || process.env.LOADED_MOCHA_OPTS);
@@ -84,7 +84,7 @@ export class ClientDb extends Database {
     }
 
     this.collections = <any>okmap(dbPaths, (val: string, key) => {
-      return { [key]: new Datastore({ filename: val, autoload: true }) };
+      return new Datastore({ filename: val, autoload: true });
     })
   }
 }

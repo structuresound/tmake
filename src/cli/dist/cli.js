@@ -136,7 +136,7 @@ function tmake(cla, rootConfig, projectName) {
     var Db = new db_1.ClientDb();
     var commands = cla._;
     delete cla._;
-    tmake_core_1.Runtime.init(cla, Db);
+    tmake_core_1.Runtime.init({ commandLine: cla, database: Db });
     if (!projectName) {
         projectName = rootConfig.name || tmake_core_1.Project.resolveName(rootConfig);
     }

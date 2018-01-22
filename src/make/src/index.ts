@@ -18,7 +18,7 @@ export class Make extends Compiler {
       this.options.prefix,
       './configure',
       jsonToFlags(this.options.arguments, { prefix: '' }).join(' '),
-      jsonToFlags(this.options.flags, { prefix: '--' }).join(' ')
+      jsonToFlags(this.options.compilerFlags, { prefix: '--' }).join(' ')
     ].join(' ');
   }
 

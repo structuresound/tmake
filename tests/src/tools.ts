@@ -16,21 +16,22 @@ describe('tools', function () {
     mac: '9d0c46a1ff1ad7dea95b0814e6919d84'
   }
 
-  var configuration: TMake.Configuration;
-
   this.timeout(120000);
 
-  let host: TMake.HostPlatform;
+
+  let host: TMake.Host;
   let ninja: TMake.Tool;
+  let configuration: TMake.Configuration; 
 
   before(() => {
-    Runtime.init(new TestDb());
+    Runtime.init({database: new TestDb()});
 
     const project = new Project({ name: 'tools-test' });
-    configuration = project.parsed.configurations[0];
 
     host = defaults.environment.host;
     ninja = defaults.environment.tools.ninja;
+    configuration = project.parsed.platforms[host.name][host.architecture];
+
   });
 
   it('can parse tools correctly', () => {
@@ -40,10 +41,10 @@ describe('tools', function () {
       .equal('ninja');
     expect(ninja.bin)
       .to
-      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[host.platform], 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[host.name], 'ninja'));
     return expect(ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${host.platform}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${host.name}.zip`);
   });
 
   it('can fetch a zip', () => {

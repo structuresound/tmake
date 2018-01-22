@@ -2734,6 +2734,10 @@ typed-json-transform@^0.18.2:
   version "0.18.2"
   resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.18.2.tgz#41d45b317ae2831bb85eeb76a0d9076ff7e6d342"
 
+typed-json-transform@^0.19.0:
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/typed-json-transform/-/typed-json-transform-0.19.0.tgz#3c7c0f6726db2a926c9e38d29a6b7908891fc9f2"
+
 uid-number@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/uid-number/-/uid-number-0.0.6.tgz#0ea10e8035e8eb5b8e4449f06da1c730663baa81"

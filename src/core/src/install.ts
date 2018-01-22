@@ -54,8 +54,9 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
 }
 
 function bin(configuration: Configuration) {
-  if (contains(['executable'], configuration.parsed.target.output.type)) {
-    const base = path.join(args.runDir, 'bin', configuration.parsed.target.architecture);
+  const { target } = configuration.parsed;
+  if (contains(['executable'], target.output.type)) {
+    const base = path.join(args.runDir, 'bin', target.name);
     mkdir('-p', base);
     const binaries: string[] = [];
     each(configuration.parsed.d.install.binaries, (ft: TMake.Install.Options) => {

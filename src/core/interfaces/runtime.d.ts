@@ -31,17 +31,21 @@ interface CPU {
 
 interface OS {
   platform(): string,
-  arch(): string,
+  arch(): TMake.Target.Architecture,
   endianness(): string,
   cpus(): CPU[]
 }
 
+interface RuntimeArgs {
+  commandLine?: { [index: string]: any }, 
+  database?: TMake.Database.Interface
+}
 declare module 'tmake-core/runtime' {
   const args: TMake.Args;
   const defaults: TMake.Defaults;
 
   namespace Runtime {
-    export function init(args: { [index: string]: any }, database?: TMake.Database.Interface);
+    export function init(runtimeArgs: RuntimeArgs);
     export function loadPlugins();
     export function j(): number;
     export const Db: TMake.Database.Interface;

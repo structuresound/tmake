@@ -13,7 +13,7 @@ let rootModule: TMake.Project;
 describe('graph', () => {
   let modules;
   before(() => {
-    Runtime.init(new TestDb());
+    Runtime.init({database: new TestDb()});
     return graph(helloWorld).then((res) => {
       modules = res;
       rootModule = modules[modules.length - 1];

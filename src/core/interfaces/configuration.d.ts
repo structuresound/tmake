@@ -10,7 +10,7 @@ declare namespace TMake {
     cache: Configuration.Cache;
     project: Project;
 
-    constructor(target: TargetPlatform, state: any, parent: TMake.Project)
+    constructor(target: Target, state: any, parent: TMake.Project)
     hash(): string;
     merge(other: Configuration.Cache.File): void;
     toCache(): TMake.Configuration.Cache.File;
@@ -25,7 +25,7 @@ declare namespace TMake {
     }
 
     interface Parsed extends Source.Project {
-      target: TMake.TargetPlatform & TMake.Source.TargetOptions
+      target: TMake.Target & TMake.Source.TargetOptions
       d: Configuration.Dirs
       p: Configuration.Dirs
       s: string[]
@@ -48,11 +48,14 @@ declare namespace TMake {
 
     namespace Cache {
       interface File {
-        _id: string
-        project: string
-        version: string
+        _id: string,
+        project: string,
+        version: string,
+        platform: string,
+        architecture: string,
+        date: Date,
         cache: {
-          libs: {[index: string]: string}
+          libs: {[index: string]: string},
           checksums: {[index: string]: string}
         }
       }

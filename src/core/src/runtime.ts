@@ -96,7 +96,7 @@ export namespace Args {
 
 export function parseSelectors(dict: any, prefix: string) {
   const _selectors: string[] = [];
-  const selectables = _.pick(dict, ['platform', 'architecture']);
+  const selectables = _.pick(dict, ['name', 'architecture']);
   for (const key of Object.keys(selectables)) {
     _selectors.push(`${prefix || ''}${selectables[key]}`);
   }
@@ -109,40 +109,39 @@ export const keywords: string[] = [];
 export const selectors: string[] = [];
 
 interface MossOptions<T> {
-  stack?: {
-    environment?: TMake.Environment,
-    settings?: TMake.Settings,
-    parent?: T
-  }
+  environment?: any,
   selectors?: { [index: string]: boolean }
 }
-
 
 export namespace Runtime {
   export const os = {
     endianness: _os.endianness,
     platform(){return settings.platform.name[_os.platform()]},
-    arch: _os.arch,
+    arch(){ return <TMake.Target.Architecture>_os.arch()},
     cpus: _os.cpus
   }
 
   export const pluginMap: { [index: string]: typeof Plugin } = {};
   export function moss<T>(config: T, options: MossOptions<T> = {}) {
     const defaultSelectors = okmap(keywords, (keyword) => {
-      return { [keyword]: <any>contains(selectors, keyword) };
+      return { key: keyword, value: <any>contains(selectors, keyword) };
     });
 
     const additionalSelectors = options.selectors || {};
     const additionalKeywords = Object.keys(additionalSelectors);
 
     const specificSelectors = okmap(additionalKeywords, (keyword) => {
-      return { [keyword]: <any>contains(selectors, keyword) || additionalSelectors[keyword] };
+      return { key: keyword, value: <any>contains(selectors, keyword) || additionalSelectors[keyword] };
     });
 
+    const environment = {...defaults.environment, ...options.environment};
+    if ((<any>config).environment){
+      extend(environment, (<any>config).environment);
+    }
     const s = { ...defaultSelectors, ...specificSelectors };
     const layer = {
       data: {}, state: {
-        auto: options.stack || defaults,
+        auto: {environment, settings},
         stack: {},
         selectors: s
       }
@@ -150,9 +149,10 @@ export namespace Runtime {
     return next(layer, config);
   }
 
-  export function inherit<T>(parent: T, child: T, options: MossOptions<T>){
+  export function inherit<T>(parent: T, child: T, options: MossOptions<T> = {}){
     const inherit = Runtime.moss(clone(parent), options).data;
-    options.stack.parent = inherit;
+    if (!options.environment) options.environment = {};
+    options.environment.parent = inherit;
     const local = Runtime.moss(clone(child), options).data;
     return merge(inherit, local);
   }
@@ -183,17 +183,18 @@ export namespace Runtime {
   export function registerPlugin(plugin: typeof Plugin) {
     const { name } = (<any>plugin);
     let instance: Plugin;
-    let ctx: TMake.Configuration;
+    let configuration: TMake.Configuration;
     try {
-      const {architecture} = defaults.environment.host;
-      ctx = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.configurations[architecture];
+      const { host } = defaults.environment;
+      const rawTarget = host.targets[host.architecture];
+      configuration = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.platforms[rawTarget.name][rawTarget.architecture];
     }
     catch (e) {
       console.warn(`error: ${e.message}. while creating plugin context for ${name} plugin`);
       throw(e);
     }
     try {
-      instance = new plugin(ctx);
+      instance = new plugin(configuration);
       pluginMap[instance.name] = plugin;
     } catch (e){
       console.warn(`error: ${e.message}. while creating ${name} plugin`);
@@ -208,36 +209,22 @@ export namespace Runtime {
   function initDefaults(cla: { [index: string]: string }) {
     const { keyword } = settings;
 
-    const host = {
+    const host: TMake.Host = {
+      targets: {
+        [os.arch()]: {
+          architecture: <TMake.Target.Architecture>os.arch(),
+          name: os.platform() as any,
+          endianness: os.endianness()
+        }
+      },
+      name: os.platform() as any,
       architecture: os.arch(),
-      endianness: os.endianness(),
-      platform: os.platform() as any,
       cpu: { num: os.cpus().length, speed: os.cpus()[0].speed }
     };
 
-    let environment: TMake.Environment;
-    let project: TMake.Project;
-
     const environmentDefaultsPath = join(args.settingsDir, 'environment.yaml');
     try {
-      environment = parseFileSync(environmentDefaultsPath);
-    } catch (e){
-      throw new Error(`missing settings file @ ${environmentDefaultsPath}`);
-    }
-    const projectDefaultsPath = join(args.settingsDir, 'project.yaml');
-    try {
-      project = parseFileSync(projectDefaultsPath);
-    }
-    catch(e){
-      throw new Error(`missing settings file @ ${projectDefaultsPath}`);
-    }
-    try {
-      environment.host = {
-        ...host, ...environment.host
-      }
-
       const hostKeywords = map(keyword.host, (key) => { return `host-${key}`; });
-      const defaultHost = (environment.host && environment.host.platform) || os.platform();
 
       keywords.push(...hostKeywords);
       keywords.push(...[].concat(keyword.target)
@@ -248,7 +235,7 @@ export namespace Runtime {
         .concat(keyword.deploy));
 
       const parsedSelectors = [
-        parseSelectors(environment.host, 'host-')
+        parseSelectors(host, 'host-')
       ]
       selectors.push(...flatten(parsedSelectors));
 
@@ -269,18 +256,24 @@ export namespace Runtime {
         args.force = 'all';
       }
 
-      const parsedEnvironment: TMake.Environment = moss(clone(environment), {
-        stack: environment as any
-      }).data;
-      
+
+      let environment;
+      try {
+        environment = parseFileSync(environmentDefaultsPath);
+      } catch (e){
+        throw new Error(`missing settings file @ ${environmentDefaultsPath}`);
+      }
+      environment.host = { ...host, ...environment.host};
+
+      let localEnvironment = {};
       const localEnvironmentPath = join(args.runDir, 'environment.yaml');
       try {
-        const localProduct: TMake.Environment = parseFileSync(localEnvironmentPath);
-        extend(parsedEnvironment, { product: moss(<any>localProduct, { stack: parsedEnvironment as any }).data });
+        const localEnvironment: TMake.Environment = parseFileSync(localEnvironmentPath);
       }
       catch {
       }
 
+      const parsedEnvironment: TMake.Environment = inherit(environment, localEnvironment);
       const {tools} = parsedEnvironment;
       
       for (const name of Object.keys(tools)) {
@@ -295,18 +288,23 @@ export namespace Runtime {
       }
 
       defaults.environment = parsedEnvironment;
-      defaults.project = project;
+      const projectDefaultsPath = join(args.settingsDir, 'project.yaml');
+      try {
+        defaults.project = parseFileSync(projectDefaultsPath);
+      }
+      catch(e){
+        throw new Error(`missing settings file @ ${projectDefaultsPath}`);
+      }
     }
     catch (e) {
       console.warn(`error parsing defaults: ${e.message} ${e.stack}`);
     }
   }
 
-  export function init(cla: { [index: string]: any }, database?: TMake.Database.Interface) {
+  export function init({commandLine, database}: RuntimeArgs) {
     if (database) {
       Db = database;
     }
-
     const listsPath = join(args.settingsDir, 'keywords.yaml');
     try {
       extend(settings, {keyword: parseFileSync(listsPath)});
@@ -321,7 +319,7 @@ export namespace Runtime {
     catch(e){
       throw new Error(`missing settings file @ ${dictionariesPath}`);
     }
-    initDefaults(cla);
+    initDefaults(commandLine);
     registerPlugin(Ninja);
   }
 }

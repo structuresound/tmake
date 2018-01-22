@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
 import * as file from './file';
-import { contains, clone, map, OLHM } from 'typed-json-transform';
+import { contains, clone, flatten, map } from 'typed-json-transform';
 
 import { args, Args } from './runtime';
 import { login, get, post } from './cloud';
@@ -57,7 +57,7 @@ function singleCommand(project: TMake.Project, phase: string, selectedDeps: TMak
           log.error(`${aspect} not found`);
         }
       } else {
-        log.log(map(project.parsed.configurations, (configuration) => configuration.parsed));
+        log.log(map(project.parsed.platforms, (platform) => platform));
       }
       break;
   }
@@ -109,8 +109,8 @@ export class ProjectRunner {
     this.project = node;
   }
   do(fn: Function, opt?: any) {
-    const iterable = map(this.project.parsed.configurations, (v) => v);
-    return Bluebird.each(iterable, (configuration: TMake.Configuration) => {
+    const configurations = flatten(map(this.project.parsed.platforms, (p) => map(p, (c) => c)));
+    return Bluebird.each(configurations, (configuration: TMake.Configuration) => {
       return fn(configuration, opt);
     });
   }
@@ -183,8 +183,8 @@ export class ProjectRunner {
 
       }
     });
-    const iterable = map(this.project.parsed.configurations, (v) => v);
-    return Bluebird.each(iterable, (configuration: TMake.Configuration) => {
+    const configurations = flatten(map(this.project.parsed.platforms, (p) => map(p, (c) => c)));
+    return Bluebird.each(configurations, (configuration: TMake.Configuration) => {
       const hash = configuration.hash();
       log.dev('nuke', configuration.parsed.d.build)
       file.nuke(configuration.parsed.d.build);

@@ -14,14 +14,13 @@ describe('configuration', function(){
   let configuration: TMake.Configuration;
 
   it('creates a configuration object with values',() => {
-    Runtime.init(new TestDb());
-    const { architecture } = defaults.environment.host;
+    Runtime.init({database: new TestDb()});
+    const { host } = defaults.environment;
     return parseFileAsync(path.join(__dirname, 'config/meta.yaml'))
       .then((projectFile) => {
         project = new Project(<TMake.Project.Raw><any>projectFile);
-        console.log('get configuration for', architecture, 'from list', Object.keys(project.parsed.configurations));
-        configuration = project.parsed.configurations[architecture];
-        const name = configuration.parsed.name;
+        configuration = project.parsed.platforms[host.name][host.architecture];
+        const {name} = configuration.parsed;
         return expect(name, name).to.equal('metaProject');
       });
   });

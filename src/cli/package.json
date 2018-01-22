@@ -36,7 +36,7 @@
     },
     "dependencies": {
         "js-yaml": "^3.10.0",
-        "typed-json-transform": "^0.18.2",
+        "typed-json-transform": "^0.19.0",
         "bluebird": "^3.5.0",
         "chalk": "^1.1.1",
         "cli-spinner": "^0.2.6",
