@@ -23,7 +23,7 @@ interface Ctx {
   platform: string
 }
 
-let crossCompilePlatforms = ['android'];
+let crossCompilePlatforms = [];
 
 if (os.platform() == 'darwin'){
   // crossCompilePlatforms.push('ios');
