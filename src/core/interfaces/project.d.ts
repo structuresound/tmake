@@ -13,32 +13,34 @@ declare namespace TMake {
   namespace Target {
     type Architecture = 'x86' | 'arm64' | 'armv7'
     type Endianness = 'BE' | 'LE'
+    interface File {
+      architecture?: Target.Architecture
+      endianness?: Target.Endianness
+      options?: {[index: string]: boolean}
+    }
   }
 
-  interface Target {
-    // in config file
-    endianness?: Target.Endianness
-    options?: {[index: string]: boolean}
-    // inherited from keys
-    architecture?: Target.Architecture
-    name?: Platform.Name
+  interface Target extends Target.File {
+    platform?: Platform.Name
     flags?: TMake.Plugin.Compiler.Flags
   }
 
   namespace Platform {
     type Name = 'mac' | 'win' | 'linux' | 'ios' | 'android'
+    interface File {[index: string]: Target.File}
   }
 
-  interface Platform {
-    name?: Platform.Name,
-    targets?: {[index: string]: Target}
-  }
+  interface Platform {[index: string]: Target}
 
+  namespace Platforms {
+    interface File {[index: string]: Platform.File}
+  }
+  
   interface Platforms {
     [index: string]: Platform
   }
 
-  interface Host extends Platform {
+  interface Host extends TMake.Target {
     architecture: Target.Architecture,
     compiler?: 'clang' | 'gcc' | 'msvc' | 'ic',
     cpu?: { num: number, speed?: number }
@@ -76,17 +78,26 @@ declare namespace TMake {
       environment?: { [index: string]: any }
       options?: { [index: string]: boolean }
       path?: Configuration.Dirs;
-      target?: TMake.Platform & TMake.Source.TargetOptions
+      target?: TMake.Source.TargetOptions
     }
 
     interface Phases {
       build?: Phase;
       generate?: Phase;
       configure?: Phase;
+      test?: Phase;
+      run?: TMake.Platforms.File;
     }
 
     interface Project extends Meta, Configuration, Phases {
     }
+  }
+
+  interface ProjectOptions {
+    projectFile?: TMake.Project.Raw,
+    extendFile?: TMake.Project.Raw,
+    parent?: Project,
+    test?: boolean
   }
 
   class Project {
@@ -95,13 +106,15 @@ declare namespace TMake {
     dependencies: { [index: string]: TMake.Project }
     cache: Project.Cache
 
-    constructor(_projectFile: Project.Raw, parent?: Project)
+    constructor(options: ProjectOptions)
+    init(parent?: Project, test?: boolean): void
     force(): void
     url(): string
     safeDeps(): { [index: string]: TMake.Project.Cache.File }
     loadCache(cache: TMake.Project.Cache.File): void
     toCache(): TMake.Project.Raw
     toRegistry(): TMake.Project.Raw
+    testProject(): TMake.Project
     hash(): string
   }
 

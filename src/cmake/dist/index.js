@@ -35,7 +35,7 @@ var CMake = /** @class */ (function (_super) {
         var environment = tmake_core_1.defaults.environment;
         var defines = this.options.defines || {};
         var cMakeDefines = typed_json_transform_1.extend({
-            LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
+            LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries.from
         }, defines);
         var command = this.cmake.bin + " -G Ninja -DCMAKE_MAKE_PROGRAM=" + this.ninja.bin + " " + this.configuration.parsed.d.project;
         for (var _i = 0, _a = Object.keys(cMakeDefines); _i < _a.length; _i++) {
@@ -48,6 +48,7 @@ var CMake = /** @class */ (function (_super) {
             }
             command += " -D" + k + "=" + value;
         }
+        tmake_core_1.log.verbose('configure with CMAKE', command);
         return command;
     };
     CMake.prototype.buildCommand = function () {

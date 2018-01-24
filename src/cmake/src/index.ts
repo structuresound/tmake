@@ -30,7 +30,7 @@ export class CMake extends Compiler {
 
     const defines = this.options.defines || {};
     const cMakeDefines = extend({
-      LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries[0].from
+      LIBRARY_OUTPUT_PATH: this.configuration.parsed.d.install.libraries.from
     }, defines);
     let command = `${this.cmake.bin} -G Ninja -DCMAKE_MAKE_PROGRAM=${this.ninja.bin} ${this.configuration.parsed.d.project}`;
     for (const k of Object.keys(cMakeDefines)) {
@@ -42,6 +42,7 @@ export class CMake extends Compiler {
       }
       command += ` -D${k}=${value}`;
     }
+    log.verbose('configure with CMAKE', command);
     return command;
   }
   buildCommand() {

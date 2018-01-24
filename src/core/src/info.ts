@@ -8,11 +8,11 @@ const { quiet, verbose, add, warn } = log;
 
 export const info = {
   fetch: {
-    nuke: function (project) {
-      log.error(`remove existing source @ ${project.d.clone}`);
+    nuke: function (project: TMake.Project) {
+      log.error(`remove existing source @ ${project.parsed.d.clone}`);
     },
-    local: function (project) {
-      verbose(`skip fetch, project is local ${project.name}`);
+    local: function (project: TMake.Project) {
+      verbose(`skip fetch, project is local ${project.parsed.name}`);
     },
     dirty: function (project: TMake.Project) {
       if (project.cache.fetch.dirty()) {

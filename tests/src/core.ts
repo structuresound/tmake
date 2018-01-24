@@ -7,7 +7,7 @@ import { contains, check } from 'typed-json-transform';
 
 import {
   ProjectRunner, list, findAndClean, defaults,
-  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke
+  Runtime, execAsync, graph, loadCache, args, parseFileSync, nuke, moveArchive
 } from 'tmake-core';
 
 import { ClientDb } from 'tmake-cli';
@@ -17,24 +17,27 @@ Bluebird.onPossiblyUnhandledRejection(function (e: Error, promise: any) {
   console.log(e.stack);
 });
 
-describe('tmake-core', function () {
-  this.timeout(240000);
+describe('core', function () {
+  this.timeout(600000);
 
-  let googleNode: TMake.Project;
-  let helloNode: TMake.Project;
-  const testDb = new ClientDb();
-
-  let architecture = '';
-  let platform = '';
-
+  const ctx = {
+    googleNode: undefined,
+    helloNode: undefined,
+    testDb: undefined,
+    architecture: '',
+    platform: ''
+  }
+  
   before(() => {
-    assert.ok(testDb.projectNamed, 'Missing Db');
-    Runtime.init({database: testDb});
+    ctx.testDb = new ClientDb();
+    assert.ok(ctx.testDb.projectNamed, 'Missing Db');
+    Runtime.init({database: ctx.testDb});
 
-    architecture = defaults.environment.host.architecture;
-    assert.ok(architecture, 'Missing Host Architecture');
-    platform = defaults.environment.host.name;
-    assert.ok(platform, 'Missing Host Platform');
+    const { host: {architecture, platform} } = defaults.environment;
+    ctx.architecture = architecture;
+    assert.ok(ctx.architecture, 'Missing Host Architecture');
+    ctx.platform = platform;
+    assert.ok(ctx.platform, 'Missing Host Platform');
 
     Runtime.loadPlugins();
     assert.equal(args.runDir, path.join(__dirname, '../runtime'), 'test configuration');
@@ -44,16 +47,18 @@ describe('tmake-core', function () {
     assert.equal('CMake', cmake.name);
     return graph(helloWorld)
       .then((res) => {
-        googleNode = res[0];
-        helloNode = res[res.length - 1];
-        const {parsed} = helloNode;
+        ctx.googleNode = res[0];
+        assert.isOk(ctx.googleNode);
+        ctx.helloNode = res[res.length - 1];
+        assert.isOk(ctx.helloNode);
+        const { parsed } = ctx.helloNode;
         assert.isOk(parsed);
         assert.equal(parsed.name, 'hello');
-        const {target} = parsed;
+        const { target } = parsed;
         assert.isOk(target, 'Missing target from parsed project');
         assert.isOk(target.flags, 'Missing flags from parsed target');
-        assert.isOk(googleNode.parsed);
-        return expect(googleNode.parsed.name).to.equal('googletest');
+        assert.isOk(ctx.googleNode.parsed);
+        return expect(ctx.googleNode.parsed.name).to.equal('gtest');
       });
   });
 
@@ -61,7 +66,9 @@ describe('tmake-core', function () {
     assert.ok(args.cachePath);
   });
 
-  it('install: a built static lib, and required headers', () => {
+  it('can build and install', () => {
+    const {googleNode, platform, architecture} = ctx;
+    assert.ok(googleNode, 'missing project');
     this.slow(5000);
     return loadCache(googleNode)
       .then(() => {
@@ -69,49 +76,54 @@ describe('tmake-core', function () {
           .install()
           .then(() => {
             const id = googleNode.parsed.platforms[platform][architecture].hash();
-            const fp = `trie_modules/lib/${id}/libgtest.a`;
+            const fp = `trie_modules/lib/${platform}/${architecture}/${id}/libgtest.a`;
             const exists = fs.existsSync(path.join(args.runDir, fp));
             return expect(exists, fp).to.equal(true);
           }).then(() => {
-            const fp = path.join(args.runDir, `trie_modules/include/gtest/gtest.h`);
+            const fp = path.join(args.runDir, `trie_modules/include/${platform}/gtest/gtest.h`);
             const exists = fs.existsSync(fp);
             return expect(exists, fp).to.equal(true);
           });
       });
   });
 
-  it('check: built libs got added to local cache', () => {
+  it('can move built libs to local cache', () => {
+    const {googleNode, platform, architecture, testDb} = ctx;
+    assert.ok(googleNode, 'missing project');
     return testDb.projectNamed(googleNode.parsed.name)
       .then((entry) => {
-        const parsed = entry;
-        assert.ok(parsed.name);
+        assert.ok(entry);
+        assert.ok(entry.name);
         const msg = JSON.stringify(entry);
-        assert.equal(parsed.name, googleNode.parsed.name, msg);
-        assert.equal(parsed.version, '1.8.0', msg);
-        assert.ok(!parsed.configure, msg);
-        assert.ok(!parsed.path, msg);
-        console.log('platform', platform);
+        assert.equal(entry.name, googleNode.parsed.name, msg);
+        assert.equal(entry.version, '1.8.0', msg);
+        assert.ok(!entry.configure, msg);
+        assert.ok(!entry.path, msg);
         const id = googleNode.parsed.platforms[platform][architecture].hash();
         return testDb.loadConfiguration(id).then((c) => {
           assert.ok(c, `no configuration for hash: ${id}`);
           const msg = JSON.stringify(c);
-          const hasGTest = contains(c.cache.libs, `lib/${id}/libgtest.a`);
-          const hasGTestMain = contains(c.cache.libs, `lib/${id}/libgtest_main.a`);
+          const hasGTest = contains(c.cache.libs, `lib/${platform}/${architecture}/${id}/libgtest.a`);
+          const hasGTestMain = contains(c.cache.libs, `lib/${platform}/${architecture}/${id}/libgtest_main.a`);
           return expect(hasGTest && hasGTestMain).to.deep.equal(true, msg);
         });
       });
   });
 
-  it('fetch: git', () => {
+  it('can fetch git', () => {
     this.slow(2000);
+    const {helloNode, platform, architecture} = ctx;
+    assert.ok(helloNode, 'missing project');
     return new ProjectRunner(helloNode).fetch().then(() => {
-      const fp = path.join(args.runDir, 'source/README.md');
+      const fp = path.join(args.runDir, 'hello/README.md');
       const exists = fs.existsSync(fp);
       return expect(exists, fp).to.equal(true, fp);
     })
   });
 
-  it('configure: for: ninja', () => {
+  it('can configure ninja', () => {
+    const {helloNode, platform, architecture} = ctx;
+    assert.ok(helloNode, 'missing project');
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).configure().then(() => {
         const fp = path.join(helloNode.parsed.platforms[platform][architecture].parsed.d.build, 'build.ninja')
@@ -121,17 +133,21 @@ describe('tmake-core', function () {
     });
   });
 
-  it('build: with: ninja', () => {
+  it('can build with ninja', () => {
+    const {helloNode, platform, architecture} = ctx;
+    assert.ok(helloNode, 'missing project');
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).build().then(() => {
-        const fp = path.join(args.runDir, 'build', helloNode.parsed.platforms[platform][architecture].parsed.target.architecture, `${helloNode.parsed.name}`);
+        const fp = path.join(args.runDir, 'build', helloNode.parsed.platforms[platform][architecture].hash(), `${helloNode.parsed.name}`);
         const exists = fs.existsSync(fp);
         return expect(exists, fp).to.equal(true);
       });
     });
   });
 
-  it('install: binaries', () => {
+  it('can install binaries', () => {
+    const {helloNode, platform, architecture} = ctx;
+    assert.ok(helloNode, 'missing project');
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).install().then(() => {
         const fp = path.join(args.runDir, 'bin', platform, Runtime.os.arch(), `${helloNode.parsed.name}`);
@@ -141,16 +157,9 @@ describe('tmake-core', function () {
     });
   });
 
-  it('test: main', () => {
-    return execAsync(path.join(args.runDir, 'bin', platform, Runtime.os.arch(), helloNode.parsed.name))
-      .then((res) => {
-        const results = res.split('\n');
-        return expect(results[results.length - 2])
-          .to.equal('Hello, world, from Visual C++!');
-      });
-  });
-
   it('can clean the project', () => {
+    const {helloNode, platform, architecture} = ctx;
+    assert.ok(helloNode, 'missing project');
     return loadCache(helloNode).then(() => {
       return new ProjectRunner(helloNode).clean().then(() => {
         const fe = fs.existsSync(path.join(args.runDir, 'build'));
@@ -159,4 +168,13 @@ describe('tmake-core', function () {
     });
   });
 
+  it('can run an executable', () => {
+    const { platform, helloNode } = ctx;
+    return execAsync(path.join(args.runDir, 'bin', platform, Runtime.os.arch(), helloNode.parsed.name))
+      .then((res) => {
+        const results = res.split('\n');
+        return expect(results[results.length - 2])
+          .to.equal('Hello, world, from Visual C++!');
+      });
+  });
 });

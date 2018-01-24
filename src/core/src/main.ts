@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
 import * as Bluebird from 'bluebird';
-import * as path from 'path';
+import {join} from 'path';
 import * as colors from 'chalk';
 import * as fs from 'fs';
 import * as file from './file';
-import { contains, clone, flatten, map } from 'typed-json-transform';
+import { contains, clone, each, flatten, map } from 'typed-json-transform';
 
 import { args, Args } from './runtime';
 import { login, get, post } from './cloud';
@@ -20,8 +20,7 @@ import { info } from './info';
 import { errors, TMakeError } from './errors';
 import { Shell } from './shell';
 
-import test from './test';
-import { Configuration } from './index';
+import { Configuration, execAsync } from './index';
 
 function isSingleCommand(phase: string) {
   return contains(['parse', 'graph', 'clean'], phase);
@@ -114,8 +113,8 @@ export class ProjectRunner {
       return fn(configuration, opt);
     });
   }
-  fetch(isTest?: boolean) { return Fetch.project(this.project, isTest); }
-  generate(isTest?: boolean) {
+  fetch() { return Fetch.project(this.project); }
+  generate() {
     return this.fetch()
       .then(() => {
         log.verbose(`  generate`);
@@ -131,19 +130,16 @@ export class ProjectRunner {
           return installHeaders(this.project);
         });
     }
-    return this.generate(isTest).then(() => {
+    return this.generate().then(() => {
       return doConfigure();
     });
   }
-  build(isTest?: boolean) {
-    return this.configure(isTest)
+  build() {
+    return this.configure()
       .then(() => {
         log.verbose(`  build`);
         return this.do(build);
       });
-  }
-  all() {
-    return this.install();
   }
   install() {
     return this.build()
@@ -154,22 +150,44 @@ export class ProjectRunner {
         });
       });
   }
-  test() { return this.build(true).then(() => test(this)); }
-  // link() {
-  //   const root = this.project;
-  //   return this.install()
-  //     .then(() => {
-  //       return graph(this.project).then((deps) => {
-  //         return Bluebird.each(deps, (project) => {
-  //           if (!project.tree) {
-  //             const doc = project.toRegistry();
-  //             const query = { name: doc.name, tag: doc.tag || 'master' };
-  //             return Runtime.Db.link(query, { $set: doc }, { upsert: true });
-  //           }
-  //         })
-  //       });
-  //     });
-  // }
+  test() { 
+    return this.install().then(() => {
+      if (this.project.parsed.test){
+        log.verbose(`  test`);
+        return new ProjectRunner(this.project.testProject()).all();
+      }
+      return Bluebird.resolve();
+    });
+  }
+  run(){
+    return this.test().then(() => {
+      const {run, d, name, platforms} = this.project.parsed;
+      if (run){
+        log.verbose(`  run`);
+        let iterable = [];
+        each(platforms, (platform, name: string) => {
+          each(platform, (configuration, architecture) => {
+            if (platform){
+              const config = platform[configuration.parsed.target.architecture];
+              if (config){
+                const executable = join(config.parsed.d.install.binaries.to, config.parsed.name);
+                return iterable.push(executable);
+              }
+            }
+            throw new Error(`no configuration found for ${name}-${architecture}`);
+          });
+        });
+        return Bluebird.each(iterable, (cmd) => {
+          log.verbose('     ' + cmd);
+          return execAsync(<string>cmd, {silent: true});
+        });
+      }
+      return Bluebird.resolve();
+    });
+  }
+  all() {
+    return this.run();
+  }
   clean() {
     log.quiet(`cleaning ${this.project.parsed.name}`);
     _.each(this.project.cache.libs.value(), (libFile) => {

@@ -17,9 +17,9 @@ describe('configuration', function(){
     Runtime.init({database: new TestDb()});
     const { host } = defaults.environment;
     return parseFileAsync(path.join(__dirname, 'config/meta.yaml'))
-      .then((projectFile) => {
-        project = new Project(<TMake.Project.Raw><any>projectFile);
-        configuration = project.parsed.platforms[host.name][host.architecture];
+      .then((projectFile: any) => {
+        project = new Project({projectFile});
+        configuration = project.parsed.platforms[host.platform][host.architecture];
         const {name} = configuration.parsed;
         return expect(name, name).to.equal('metaProject');
       });
@@ -31,6 +31,6 @@ describe('configuration', function(){
   it('creates correct paths', () => {
     assert.equal(configuration.parsed.d.source, path.join(args.runDir, 'source'), 'source dir');
     assert.equal(configuration.parsed.d.project, path.join(args.runDir, 'source'), 'project dir');
-    assert.equal(configuration.parsed.d.build, path.join(args.runDir, `build/${Runtime.os.arch()}`), 'build dir');
+    assert.equal(configuration.parsed.d.build, path.join(args.runDir, `build/${configuration.hash()}`), 'build dir');
   });
 });

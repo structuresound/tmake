@@ -14,6 +14,7 @@ import { Configuration } from './configuration';
 import { errors } from './errors';
 import { semverRegex } from './lib';
 import { Runtime, defaults, settings, next } from './runtime';
+import { inherits } from 'util';
 
 export const metaDataKeys = ['name', 'user', 'path'];
 export const sourceKeys = ['git', 'archive', 'version'];
@@ -57,34 +58,21 @@ function getProjectDirs(_project: TMake.Project, parent: TMake.Project.Parsed): 
     }
     d.source = join(d.clone, pathOptions.source);
     d.build = join(d.root, pathOptions.build);
-    d.install = <TMake.Install>{
-        headers: _.map(arrayify(pathOptions.install.headers), (ft: TMake.Install.Options) => {
-            return {
-                matching: ft.matching,
-                from: join(d.clone, ft.from),
-                to: join(d.home, 'include', (ft.to || project.name))
-            };
-        })
+
+    if (!d.install) d.install = {};
+    const {headers, assets} = pathOptions.install;
+
+    d.install.headers = {
+        matching: headers.matching,
+        from: join(d.source, headers.from),
+        to: join(d.home, headers.to || 'include')
     }
-    if (pathOptions.install.assets) {
-        d.install.assets = map(arrayify(pathOptions.install.assets),
-            (ft: TMake.Install.Options) => {
-                return {
-                    matching: ft.matching,
-                    from: join(d.root, ft.from),
-                    to: join(args.runDir, ft.to || 'bin')
-                };
-            });
-    }
-    if (contains(['static', 'dynamic'], project.target.output.type)){
-        d.install.libraries = map(arrayify(pathOptions.install.libraries),
-            (ft: TMake.Install.Options) => {
-                return {
-                    matching: ft.matching,
-                    from: join(d.root, ft.from),
-                    to: join(d.home, ft.to || 'lib')
-                };
-            });
+    if (assets) {
+        d.install.assets = {
+            matching: assets.matching,
+            from: join(d.root, assets.from),
+            to: join(args.runDir, assets.to || 'bin')
+        }
     }
     return d;
 }
@@ -95,45 +83,37 @@ function getProjectPaths(project: TMake.Project.Parsed) {
         source: '',
         headers: 'include',
         build: 'build',
-        clone: 'source',
+        clone: 'source'
     };
     const pathOptions = <TMake.Project.Dirs>extend(defaultPaths, path);
-    if (pathOptions.install == null) {
+    if (!pathOptions.install) {
         pathOptions.install = {};
     }
-    if (pathOptions.install.headers == null) {
-        pathOptions.install
-            .headers = [{ from: pathOptions.headers }];
-    }
-    if (pathOptions.install.libraries == null) {
-        pathOptions.install
-            .libraries = [{ from: pathOptions.build, to: 'lib' }];
+    if (!pathOptions.install.headers) {
+        pathOptions.install.headers = {
+            from: defaultPaths.headers
+        };
     }
     return pathOptions;
 }
 
-function generateTargets(project: TMake.Project) {
+function generateTargets(project: TMake.Project, test?: boolean) {
     const { environment } = defaults;
-    const build: {[index: string]: {[index: string]: TMake.Target}} = Runtime.moss(environment.build, {
+
+    const platforms = test ? environment.test : environment.build;
+    const build: TMake.Platforms = Runtime.moss(platforms, {
         selectors: project.raw.options,
     }).data;
 
-    return okmap(build, (targets, name) => {
-        const platform = {
-            name,
-            targets,
-        }
-        return okmap(platform.targets, (target, architecture) => {
-            target.architecture = <TMake.Target.Architecture>architecture;
-            target.name = <TMake.Platform.Name>name;
+    return okmap(build, (platform, platformName) => {
+        return okmap(platform, (target) => {
             const selectors = {
                 ...project.raw.options,
                 ...target.options,
                 [environment.host.compiler]: true,
-                [platform.name]: true,
+                [platformName]: true,
                 [target.architecture]: true
             }
-            // console.log('selectors', selectors);
             const config = Runtime.inherit(clone(project.parsed), {target}, {
                 environment: {...project.raw.environment, target},
                 selectors
@@ -208,27 +188,38 @@ export class Project {
     cache: TMake.Project.Cache
     dependencies: { [index: string]: TMake.Project }
 
-    constructor(_projectFile: TMake.Project.Raw, parent?: Project) {
+    constructor({projectFile, extendFile, parent, test}: TMake.ProjectOptions) {
         const { environment } = defaults;
-
         // load conf
-        if (!_projectFile) {
+        if (!projectFile) {
             throw new Error('constructing node with undefined configuration');
         }
-        if (check(_projectFile, Project)) {
-            return <any>_projectFile;
+        if (check(projectFile, Project)) {
+            return <any>projectFile;
         }
-        if (check(_projectFile, String)) {
-            this.raw = fromGitString(<string><any>_projectFile);
+        if (check(projectFile, String)) {
+            this.raw = fromGitString(<string><any>projectFile);
         } else {
-            this.raw = <TMake.Project.Raw>clone(_projectFile);
+            this.raw = <TMake.Project.Raw>clone(projectFile);
         }
 
-        const selectors = this.raw.options;
-        this.parsed = Runtime.inherit(defaults.project, this.raw, {
-            selectors
-        });
+        if (extendFile){
+            const intermediate = Runtime.inherit(defaults.project, extendFile, {
+                selectors: extendFile.options
+            });
+            this.parsed = merge(intermediate, Runtime.moss(clone(this.raw), {
+                selectors: this.raw.options
+            }).data);
+        } else {
+            const selectors = this.raw.options;
+            this.parsed = Runtime.inherit(defaults.project, this.raw, {
+                selectors
+            });
+        }
+        this.init(parent, test);
+    }
 
+    init(parent, test){
         if (this.parsed.git) {
             this.parsed.git = new Git(this.raw.git);
         }
@@ -267,7 +258,7 @@ export class Project {
             }
         }
 
-        this.parsed.platforms = <any>generateTargets(this);
+        this.parsed.platforms = <any>generateTargets(this, test);
 
         /* CACHE */
         const fetch = new CacheProperty(() => stringHash(this.url()));
@@ -330,6 +321,28 @@ export class Project {
     }
     hash() {
         return jsonStableHash(this.toRegistry());
+    }
+    testProject(): TMake.Project {
+        const testProjectFile: TMake.Project.Raw = <any>this.parsed.test;
+        if (!testProjectFile.name){
+            testProjectFile.name = `${this.parsed.name}-tests`;
+        }
+        const toInherit = clone(this.raw);
+        delete toInherit.test;
+        delete toInherit['test>'];
+        delete toInherit.git;
+        const project = new Project({
+            projectFile: testProjectFile,
+            extendFile: toInherit, 
+            test: true
+        });
+        if (!project.parsed.target.output){
+            project.parsed.target.output = {
+                type: 'executable'
+            }
+        }
+        project.dependencies = {[this.parsed.name]: this};
+        return project;
     }
 }
 

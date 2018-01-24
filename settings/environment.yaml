@@ -6,7 +6,7 @@ host:
 tools:
   ninja:
     version: 1.7.1
-    url: https://github.com/ninja-build/ninja/releases/download/v${version}/ninja-${host.name}.zip
+    url: https://github.com/ninja-build/ninja/releases/download/v${version}/ninja-${host.platform}.zip
   clang:
     bin: $(which gcc)
   gcc:
@@ -14,7 +14,9 @@ tools:
   cmake:
     bin: $(which cmake)
 architectures:
-  auto: $host.targets.${host.architecture}
+  auto: 
+    architecture: $host.architecture
+    endianness: $host.endianness
   x64:
     architecture: x64
     endianness: LE
@@ -29,16 +31,22 @@ architectures:
     float: hard
 build:
   =:
-    $host.name:
+    $host.platform:
       $host.architecture: $architectures.auto
   =ios:
     ios:
       arm64: $architectures.arm64
-      simulator:
+      +legacy:
+        armv7a: $architectures.armv7
+        armv6: $architectures.armv6
+      x64:
         =: $architectures.auto
         +:
           options:
             simulator: true
-      +legacy:
-        armv7a: $architectures.armv7
-        armv6: $architectures.armv6
+test:
+  =: $build
+  =ios:
+    ios:
+      x64: $build.ios.x64
+

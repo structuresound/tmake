@@ -10,8 +10,8 @@ describe('project', () => {
   let project: TMake.Project;
   before(() => {
     return parseFileAsync(path.join(__dirname, 'config/meta.yaml'))
-      .then((projectFile) => {
-        project = new Project(<TMake.Project.Raw><any>projectFile);
+      .then((projectFile: any) => {
+        project = new Project({projectFile});
       });
   });
 

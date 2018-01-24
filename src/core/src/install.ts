@@ -11,6 +11,8 @@ import { stringHash, fileHashSync } from './hash';
 import { Runtime } from './runtime';
 import { replaceAll, startsWith } from './string';
 import { Configuration } from './configuration';
+import { join } from 'path';
+import { Project } from './index';
 
 function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLike<string[]> {
   const filePaths: string[] = [];
@@ -56,16 +58,14 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
 function bin(configuration: Configuration) {
   const { target } = configuration.parsed;
   if (contains(['executable'], target.output.type)) {
-    const base = path.join(args.runDir, 'bin', target.name);
+    const base = path.join(args.runDir, 'bin', target.platform, target.architecture);
     mkdir('-p', base);
     const binaries: string[] = [];
-    each(configuration.parsed.d.install.binaries, (ft: TMake.Install.Options) => {
-      const from = path.join(ft.from, configuration.project.parsed.name);
-      const to = path.join(ft.to || base, configuration.project.parsed.name);
-      // log.verbose(`[ install bin ] from ${from} to ${to}`);
-      mv(from, to);
-      binaries.push(to);
-    });
+    const ft = configuration.parsed.d.install.binaries;
+    const from = path.join(ft.from, configuration.project.parsed.name);
+    const to = path.join(ft.to || base, configuration.project.parsed.name);
+    mv(from, to);
+    binaries.push(to);
   }
   return Bluebird.resolve();
 }
@@ -74,7 +74,7 @@ function assets(configuration: Configuration): PromiseLike<any> {
   const { glob } = configuration.parsed.target;
 
   if (configuration.parsed.d.install.assets) {
-    return Bluebird.map(configuration.parsed.d.install.assets, (ft: TMake.Install.Options) => {
+    const ft = configuration.parsed.d.install.assets;
       const patterns = ft.matching || glob.assets.images.concat(glob.assets.fonts);
       log.verbose(`[ install assets ] from ${ft.from} to ${ft.to}`);
       return copy({
@@ -83,9 +83,8 @@ function assets(configuration: Configuration): PromiseLike<any> {
           relative: configuration.project.parsed.d.home,
           followSymlinks: true
         }
-      });
-    }).then(assetPaths => {
-      configuration.cache.assets.set(flatten(assetPaths).join(', '));
+      }).then(assetPaths => {
+      configuration.cache.assets.set(assetPaths.join(', '));
       return configuration.update();
     });
   };
@@ -96,7 +95,7 @@ function libs(configuration: Configuration): PromiseLike<any> {
   const { output } = configuration.parsed.target;
 
   if (contains(['static', 'dynamic'], configuration.parsed.target.output.type)) {
-    return Bluebird.map(configuration.parsed.d.install.libraries, (ft: TMake.Install.Options) => {
+      const ft = configuration.parsed.d.install.libraries;
       let patterns = ft.matching || ['**/*.a'];
       if (output.type === 'dynamic') {
         patterns = ft.matching || ['**/*.dylib', '**/*.so', '**/*.dll'];
@@ -108,17 +107,15 @@ function libs(configuration: Configuration): PromiseLike<any> {
           followSymlinks: false,
           relative: configuration.project.parsed.d.home
         }
-      });
-    }).then((libPaths) => {
+      }).then((libPaths) => {
       if (!libPaths.length) {
         return Bluebird.resolve();
       }
       const checksums: any = {};
-      const libs = flatten(libPaths);
-      each(libs, (lib) => {
+      each(libPaths, (lib) => {
         checksums[stringHash(path.basename(lib))] = fileHashSync(path.join(configuration.project.parsed.d.home, lib));
       });
-      configuration.cache.libs.set(libs);
+      configuration.cache.libs.set(libPaths);
       configuration.cache.checksums.set(checksums);
       return configuration.update();
     });
@@ -138,31 +135,33 @@ export function lipo(project: TMake.Project): PromiseLike<any> {
 
 export function installHeaders(project: TMake.Project): PromiseLike<any> {
   const { glob, output } = project.parsed.target;
-
   if (contains([
     'static', 'dynamic'
   ], output.type)) {
-    return Bluebird.each(project.parsed.d.install.headers, (ft: TMake.Install.Options) => {
-      const patterns = ft.matching || glob.headers;
-      if (args.verbose) {
-        log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', ft.to);
+    const iter = Object.keys(project.parsed.platforms);
+    return Bluebird.map(iter, (platformName: string) => {
+    const ft = project.parsed.d.install.headers;
+    const to = join(ft.to, platformName, project.parsed.name);
+    const patterns = ft.matching || glob.headers;
+    if (args.verbose) {
+      log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', to);
+    }
+    return link({
+      patterns, from: ft.from, to: to, opt: {
+        flatten: false,
+        followSymlinks: true,
+        relative: project.parsed.d.home
       }
-      return link({
-        patterns, from: ft.from, to: ft.to, opt: {
-          flatten: false,
-          followSymlinks: true,
-          relative: project.parsed.d.home
-        }
-      });
-    })
+    });
+  });
   }
   return Bluebird.resolve();
 }
 
 export function installProject(project: TMake.Project) {
-  return installHeaders(project).then(() => {
+  // return installHeaders(project).then(() => {
     return lipo(project);
-  });
+  // });
 }
 
 export function installConfiguration(configuration: Configuration) {

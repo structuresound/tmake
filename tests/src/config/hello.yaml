@@ -1,24 +1,24 @@
 git: structuresound/hello
+target:
+  output:
+    type: executable
+path:
+  clone: hello
 generate:
   ninja:
     matching:
     - '**/*.cpp'
 build: ninja
-target:
-  output:
-    type: executable
 require:
   gtest:
     git:
       repository: google/googletest
       archive: release-1.8.0
+    name: gtest
     configure: cmake
     build: cmake
     path:
-      project: source
+      project: source/googletest
       install:
         headers:
-        - from: googletest/include/gtest
-          to: gtest
-        - from: googlemock/include/gmock
-          to: gmock
+          from: googletest/include/gtest

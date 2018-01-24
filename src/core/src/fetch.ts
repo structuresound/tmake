@@ -20,6 +20,7 @@ export namespace Fetch {
     mkdir('-p', cacheDir);
     let cacheFile = path.join(cacheDir, stringHash(url));
     if (fs.existsSync(cacheFile)) {
+      log.verbose('use existing cache', cacheFile);
       return Bluebird.resolve(cacheFile);
     }
     return new Bluebird<string>((resolve, reject) => {
@@ -64,10 +65,15 @@ export namespace Fetch {
         //     }
         // }
       };
-      return progress(request(url), options)
+      const ws = fs.createWriteStream(cacheFile);
+      const dl = request(url);
+      dl.on('error', (err) => {
+        fs.unlinkSync(cacheFile); 
+        reject(err)
+      })
+      return progress(dl, options)
         .on('progress', progressFn)
-        .on('error', reject)
-        .pipe(fs.createWriteStream(cacheFile))
+        .pipe(ws)
         .on('finish', () => { return resolve(cacheFile); });
     });
   }
@@ -104,7 +110,15 @@ export namespace Fetch {
     mkdir('-p', project.parsed.d.root);
     info.fetch.url(project);
     return download(url)
-      .then((filePath) => { return unarchiveSource(filePath, project.parsed.d.clone); });
+      .then((filePath) => {
+        return unarchiveSource(filePath, project.parsed.d.clone).then((res) => {
+          return Bluebird.resolve(res);
+        }, (err) => {
+          log.warn(`error unarchiving source @ ${filePath}, clearing cache and trying download again`);
+          fs.unlinkSync(filePath);
+          return getSource(project);
+        })
+      })
   }
 
   function linkSource(project: TMake.Project) {

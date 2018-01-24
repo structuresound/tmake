@@ -15,10 +15,9 @@ declare namespace TMake {
   }
 
   interface Install {
-    binaries?: Install.Options[];
-    headers?: Install.Options[];
-    libs?: Install.Options[];
-    assets?: Install.Options[];
-    libraries?: Install.Options[];
+    headers?: Install.Options;
+    assets?: Install.Options;
+    libraries?: Install.Options;
+    binaries?: Install.Options;
   }
 }

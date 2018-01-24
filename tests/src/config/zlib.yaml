@@ -1,29 +1,49 @@
-user: leif
+---
 git:
   repository: madler/zlib
   tag: v1.2.8
-configure>:
-  replace:
-    gzguts:
-      matching:
-        - "gzguts.h"
-      inputs:
-        unistd:
-        - "#ifdef _LARGEFILE64_SOURCE"
-        - "#include <unistd.h>\n#ifdef _LARGEFILE64_SOURCE"
-  ninja:
-build>:
-  ninja:
-    matching:
-      - "*.c"
-    compilerFlags:
-      +ios:
-        miphoneos-version-min: "=6.0"
-    cFlags:
+options:
+  buildTests: false
+  ASM686: false # Enable building i686 assembly implementation
+  AMD64: false # Enable building amd64 assembly implementation
+path:
+  clone: 'zlib'
+  install:
+    headers:
+      from: ''
+target>:
+  flags:
+    c:
       O: 3
       Wall: true
       Wwrite-strings: true
       Wpointer-arith: true
-      Wconversion: true
+      +mac, ios, linux, android:
+        D_LARGEFILE64_SOURCE: 1
+        DHAVE_SYS_TYPES_H: 1
+        DHAVE_STDINT_H: 1
+        DHAVE_STDDEF_H: 1
       +ios:
-        "fembed-bitcode": true
+        fembed-bitcode: true
+generate:
+  ninja:
+    matching:
+      - '*.c'
+build: ninja
+test>:
+  target:
+    output:
+      type: executable
+  configure:
+    replace:
+      includes:
+        matching:
+        - 'test/*.c'
+        inputs:
+          inftrees.h: zlib/inftrees.h
+          inflate.h: zlib/inflate.h
+  generate:
+    ninja:
+      matching:
+        - 'test/infcover.c'
+  run: {}

@@ -182,21 +182,24 @@ export class Compiler extends Shell {
   sources() {
     const { configuration } = this;
     const patterns = arrayify(this.options.matching || configuration.parsed.target.glob.sources);
-    console.log('glob sources', patterns);
+    log.verbose('sources', patterns);
     return glob(patterns, configuration.parsed.d.source, configuration.project.parsed.d.source);
   }
   libraries(): PromiseLike<any> {
-    const { dependencies } = this.configuration.project
+    const { dependencies } = this.configuration.project;
     if (dependencies) {
+      const {architecture, platform} = this.configuration.parsed.target;
+      log.verbose('pull libs from dependencies', platform, architecture);
       const stack = _.map(dependencies, (dep: Project) => {
-        const {architecture, name} = this.configuration.parsed.target;
-        console.log('get libs from project', dep.cache.libs.value());
-        const {libs} = dep.parsed.platforms[name][architecture].cache;
+        const configuration = dep.parsed.platforms[platform][architecture];
+        if (!configuration) throw new Error(`no configuration for ${platform}-${architecture}, have ${Object.keys(dep.parsed.platforms[name])}`);
+        const {libs} = configuration.cache;
+        // console.log('get libs from project', libs.value());
         return _.map(libs.value(), (lib) => {
           console.log('+', path.join(dep.parsed.d.home, lib));
           return path.join(dep.parsed.d.home, lib);
-        })
-      })
+        });
+      });
       return Bluebird.resolve(_.flatten(stack));
     }
     return Bluebird.resolve()

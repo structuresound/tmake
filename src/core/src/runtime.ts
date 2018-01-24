@@ -105,8 +105,38 @@ export function parseSelectors(dict: any, prefix: string) {
 
 export const defaults: TMake.Defaults = <any>{};
 export const settings: TMake.Settings = <any>{};
-export const keywords: string[] = [];
-export const selectors: string[] = [];
+
+const listsPath = join(args.settingsDir, 'keywords.yaml');
+try {
+  extend(settings, {keyword: parseFileSync(listsPath)});
+}
+catch(e){
+  throw new Error(`missing settings file @ ${listsPath}`);
+}
+const dictionariesPath = join(args.settingsDir, 'dictionaries.yaml');
+try {
+extend(settings, parseFileSync(dictionariesPath));
+} 
+catch(e){
+  throw new Error(`missing settings file @ ${dictionariesPath}`);
+}
+
+
+const environmentDefaultsPath = join(args.settingsDir, 'environment.yaml');
+let environment;
+try {
+  environment = parseFileSync(environmentDefaultsPath);
+} catch (e){
+  throw new Error(`missing settings file @ ${environmentDefaultsPath}`);
+}
+
+let localEnvironment = {};
+const localEnvironmentPath = join(args.runDir, 'environment.yaml');
+try {
+  const localEnvironment: TMake.Environment = parseFileSync(localEnvironmentPath);
+}
+catch {
+}
 
 interface MossOptions<T> {
   environment?: any,
@@ -114,6 +144,9 @@ interface MossOptions<T> {
 }
 
 export namespace Runtime {
+  export const keywords: string[] = [];
+  export const selectors: string[] = [];
+
   export const os = {
     endianness: _os.endianness,
     platform(){return settings.platform.name[_os.platform()]},
@@ -185,9 +218,13 @@ export namespace Runtime {
     let instance: Plugin;
     let configuration: TMake.Configuration;
     try {
-      const { host } = defaults.environment;
-      const rawTarget = host.targets[host.architecture];
-      configuration = new Project({ name: 'Testing' + name + 'Plugin' }).parsed.platforms[rawTarget.name][rawTarget.architecture];
+      const { build } = defaults.environment;
+      const platformName = Object.keys(build)[0];
+      const platform = build[platformName];
+      const architecture = Object.keys(platform)[0];
+      const { parsed } = new Project({projectFile: { name: 'Testing' + name + 'Plugin' }});
+      configuration = parsed.platforms[platformName][architecture];
+      if (!configuration) throw new Error(`no configuration for ${platform}-${architecture}`);
     }
     catch (e) {
       console.warn(`error: ${e.message}. while creating plugin context for ${name} plugin`);
@@ -207,22 +244,19 @@ export namespace Runtime {
   }
 
   function initDefaults(cla: { [index: string]: string }) {
-    const { keyword } = settings;
+    // cleanup
+    while(keywords.length) keywords.pop();
+    while(selectors.length) selectors.pop();
+
+    const { keyword } = clone(settings);
 
     const host: TMake.Host = {
-      targets: {
-        [os.arch()]: {
-          architecture: <TMake.Target.Architecture>os.arch(),
-          name: os.platform() as any,
-          endianness: os.endianness()
-        }
-      },
-      name: os.platform() as any,
+      platform: os.platform() as any,
       architecture: os.arch(),
+      endianness: os.endianness(),
       cpu: { num: os.cpus().length, speed: os.cpus()[0].speed }
     };
 
-    const environmentDefaultsPath = join(args.settingsDir, 'environment.yaml');
     try {
       const hostKeywords = map(keyword.host, (key) => { return `host-${key}`; });
 
@@ -256,28 +290,26 @@ export namespace Runtime {
         args.force = 'all';
       }
 
-
-      let environment;
-      try {
-        environment = parseFileSync(environmentDefaultsPath);
-      } catch (e){
-        throw new Error(`missing settings file @ ${environmentDefaultsPath}`);
-      }
-      environment.host = { ...host, ...environment.host};
-
-      let localEnvironment = {};
-      const localEnvironmentPath = join(args.runDir, 'environment.yaml');
-      try {
-        const localEnvironment: TMake.Environment = parseFileSync(localEnvironmentPath);
-      }
-      catch {
-      }
-
-      const parsedEnvironment: TMake.Environment = inherit(environment, localEnvironment);
-      const {tools} = parsedEnvironment;
+      const withAutoHost = {...environment, host: { ...host, ...environment.host}};
+      const parsedEnvironment: TMake.Environment = inherit(withAutoHost, localEnvironment);
       
-      for (const name of Object.keys(tools)) {
-        const tool = tools[name];
+      const buildPlatforms: TMake.Platforms.File = <any>parsedEnvironment.build;
+      parsedEnvironment.build = okmap(buildPlatforms, (targets, platform) => {
+        return okmap(targets, (target, architecture) => {
+          return {...target, platform}
+        });
+      });
+
+      const testPlatforms: TMake.Platforms.File = <any>parsedEnvironment.test;
+      parsedEnvironment.test = okmap(testPlatforms, (targets, platform) => {
+        return okmap(targets, (target, architecture) => {
+          return {...target, platform}
+        });
+      });
+      // console.log('parsed build', JSON.stringify(parsedEnvironment.build, null, 2));
+
+      const {tools} = parsedEnvironment;
+      parsedEnvironment.tools = okmap(tools, (tool, name: string) => {
         if (tool.name == null) {
           tool.name = name;
         }
@@ -285,7 +317,8 @@ export namespace Runtime {
           tool.bin = name;
           tool.bin = Tools.pathForTool(tool);
         }
-      }
+        return tool;
+      });
 
       defaults.environment = parsedEnvironment;
       const projectDefaultsPath = join(args.settingsDir, 'project.yaml');
@@ -304,20 +337,6 @@ export namespace Runtime {
   export function init({commandLine, database}: RuntimeArgs) {
     if (database) {
       Db = database;
-    }
-    const listsPath = join(args.settingsDir, 'keywords.yaml');
-    try {
-      extend(settings, {keyword: parseFileSync(listsPath)});
-    }
-    catch(e){
-      throw new Error(`missing settings file @ ${listsPath}`);
-    }
-    const dictionariesPath = join(args.settingsDir, 'dictionaries.yaml');
-    try {
-    extend(settings, parseFileSync(dictionariesPath));
-    } 
-    catch(e){
-      throw new Error(`missing settings file @ ${dictionariesPath}`);
     }
     initDefaults(commandLine);
     registerPlugin(Ninja);

@@ -14,9 +14,13 @@ declare namespace TMake {
         }
     }
 
+    namespace Product {
+        interface File {[index: string]: TMake.Platform.File}
+    }
 
     interface Product {
-        build : TMake.Platforms
+        build : {[index: string]: TMake.Platform}
+        test : {[index: string]: TMake.Platform}
     }
 
     interface Environment extends Product {

@@ -25,13 +25,10 @@ describe('tools', function () {
 
   before(() => {
     Runtime.init({database: new TestDb()});
-
-    const project = new Project({ name: 'tools-test' });
-
+    const project = new Project({projectFile: { name: 'tools-test' }});
     host = defaults.environment.host;
     ninja = defaults.environment.tools.ninja;
-    configuration = project.parsed.platforms[host.name][host.architecture];
-
+    configuration = project.parsed.platforms[host.platform][host.architecture];
   });
 
   it('can parse tools correctly', () => {
@@ -41,10 +38,10 @@ describe('tools', function () {
       .equal('ninja');
     expect(ninja.bin)
       .to
-      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[host.name], 'ninja'));
+      .equal(path.join(args.homeDir, 'toolchain/ninja', v171Checksums[host.platform], 'ninja'));
     return expect(ninja.url)
       .to
-      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${host.name}.zip`);
+      .equal(`https://github.com/ninja-build/ninja/releases/download/${ninjaVersion}/ninja-${host.platform}.zip`);
   });
 
   it('can fetch a zip', () => {
@@ -59,7 +56,7 @@ describe('tools', function () {
   it('cached the zip to the right location', () => {
     const hash = stringHash(ninja.url);
     const cachePath = path.join(args.homeDir, 'cache', hash);
-    return expect(fs.existsSync(cachePath))
+    return expect(fs.existsSync(cachePath), cachePath)
       .to
       .equal(true);
   });

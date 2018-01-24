@@ -253,7 +253,6 @@ export function run() {
                 }
                 if (defaultCommand) {
                   const projectName = commands[1] || projectFile.name;
-                  // log.log(`tmake all ${projectName}`)
                 }
                 return tmake(cla, projectFile);
             }

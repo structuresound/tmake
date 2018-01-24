@@ -70,7 +70,7 @@ export class Ninja extends Compiler {
         const ninjaConfig = ninja_build_gen();
         log.verbose('note: this should scan dependencies for their possibly intermediate header insta' +
             'll dirs');
-        const includeString = `-I ${this.configuration.parsed.d.root}/trie_modules/include` + _.map(this.options.includeDirs, (dir) => {
+        const includeString = `-I ${this.configuration.parsed.d.root}/trie_modules/include/${this.configuration.parsed.target.platform}` + _.map(this.options.includeDirs, (dir) => {
           return `-I${dir}`;
         }).join(' ');
 

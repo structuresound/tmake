@@ -29,4 +29,7 @@ export class Plugin {
     install(): any {
         return Bluebird.resolve();
     }
+    test(): any {
+        return Bluebird.resolve();
+    }
 }

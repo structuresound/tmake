@@ -51,7 +51,7 @@ export class Phase implements TMake.Plugins {
   }
 }
 
-export function configure(configuration: Configuration, isTest?: boolean): PromiseLike<any> {
+export function configure(configuration: Configuration): PromiseLike<any> {
   const phase = new Phase(configuration.parsed.configure);
   if (configuration.project.force() || configuration.cache.configure.dirty()) {
     return Bluebird.each(
@@ -128,7 +128,7 @@ export function configure(configuration: Configuration, isTest?: boolean): Promi
 }
 
 
-export function build(configuration: Configuration, isTest?: boolean): PromiseLike<any> {
+export function build(configuration: Configuration): PromiseLike<any> {
   if (configuration.project.force() || configuration.cache.build.dirty()) {
     const phase = new Phase(configuration.parsed.build);
     return Bluebird.each(

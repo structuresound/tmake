@@ -36,7 +36,7 @@ function loadConfiguration(configuration: TMake.Configuration) {
 }
 
 function createNode(_conf: TMake.Project.Raw, parent?: TMake.Project) {
-  const node = new Project(_conf, <any>parent);
+  const node = new Project({projectFile: _conf, parent});
   return loadCache(<TMake.Project>node);
 }
 

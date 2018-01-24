@@ -23,9 +23,10 @@ declare namespace TMake {
   }
 
   interface Tools {
-    ninja?: Tool
-    clang?: Tool
-    cmake?: Tool
+    [index: string]: Tool,
+    ninja?: Tool,
+    clang?: Tool,
+    cmake?: Tool,
     gcc?: Tool
   }
 }
