@@ -3,6 +3,7 @@ import { readdirSync } from 'fs';
 import { mkdir } from 'shelljs'
 import { join } from 'path';
 import { Project } from './project';
+import { Product } from './product';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Ninja } from './ninja';
@@ -66,16 +67,15 @@ if (!args.configDir) {
 if (!args.settingsDir) {
   args.settingsDir = join(args.npmDir, 'settings');
 }
-if (!args.cachePath) {
-  args.cachePath = 'trie_modules';
-}
 if (!args.program) {
   args.program = 'tmake';
 }
 if (!args.homeDir) {
   args.homeDir = `${homeDir()}/.tmake`;
 }
-
+if (!args.cachePath){
+  args.cachePath = 'package';
+}
 if (process.env.TMAKE_ARGS) {
   extend(args, Args.decode(process.env.TMAKE_ARGS));
 }
@@ -96,7 +96,7 @@ export namespace Args {
 
 export function parseSelectors(dict: any, prefix: string) {
   const _selectors: string[] = [];
-  const selectables = _.pick(dict, ['name', 'architecture']);
+  const selectables = _.pick(dict, ['platform', 'architecture']);
   for (const key of Object.keys(selectables)) {
     _selectors.push(`${prefix || ''}${selectables[key]}`);
   }
@@ -140,7 +140,7 @@ catch {
 
 interface MossOptions<T> {
   environment?: any,
-  selectors?: { [index: string]: boolean }
+  selectors: { [index: string]: boolean }
 }
 
 export namespace Runtime {
@@ -155,7 +155,7 @@ export namespace Runtime {
   }
 
   export const pluginMap: { [index: string]: typeof Plugin } = {};
-  export function moss<T>(config: T, options: MossOptions<T> = {}) {
+  export function moss<T>(config: T, options: MossOptions<T> = {selectors:{}}) {
     const defaultSelectors = okmap(keywords, (keyword) => {
       return { key: keyword, value: <any>contains(selectors, keyword) };
     });
@@ -179,14 +179,19 @@ export namespace Runtime {
         selectors: s
       }
     };
-    return next(layer, config);
+    return next(layer, config).data;
   }
 
-  export function inherit<T>(parent: T, child: T, options: MossOptions<T> = {}){
-    const inherit = Runtime.moss(clone(parent), options).data;
+  export function inherit<T>(parent: T, child: T, options: MossOptions<T> = {selectors: {}}){
+    const inherit = Runtime.moss(parent, options);
+    return inheritParsed(inherit, child, options);
+  }
+
+  export function inheritParsed<T>(parent: T, child: T, options: MossOptions<T> = {selectors: {}}){
+    const inherit = clone(parent);
     if (!options.environment) options.environment = {};
     options.environment.parent = inherit;
-    const local = Runtime.moss(clone(child), options).data;
+    const local = Runtime.moss(clone(child), options);
     return merge(inherit, local);
   }
 
@@ -218,12 +223,12 @@ export namespace Runtime {
     let instance: Plugin;
     let configuration: TMake.Configuration;
     try {
-      const { build } = defaults.environment;
-      const platformName = Object.keys(build)[0];
-      const platform = build[platformName];
+      const { test } = defaults.environment.target;
+      const platformName = Object.keys(test)[0];
+      const platform = test[platformName];
       const architecture = Object.keys(platform)[0];
-      const { parsed } = new Project({projectFile: { name: 'Testing' + name + 'Plugin' }});
-      configuration = parsed.platforms[platformName][architecture];
+      const { platforms } = new Product({});
+      configuration = platforms[platformName][architecture];
       if (!configuration) throw new Error(`no configuration for ${platform}-${architecture}`);
     }
     catch (e) {
@@ -261,7 +266,7 @@ export namespace Runtime {
       const hostKeywords = map(keyword.host, (key) => { return `host-${key}`; });
 
       keywords.push(...hostKeywords);
-      keywords.push(...[].concat(keyword.target)
+      keywords.push(...keyword.target
         .concat(keyword.architecture)
         .concat(keyword.compiler)
         .concat(keyword.sdk)
@@ -293,15 +298,15 @@ export namespace Runtime {
       const withAutoHost = {...environment, host: { ...host, ...environment.host}};
       const parsedEnvironment: TMake.Environment = inherit(withAutoHost, localEnvironment);
       
-      const buildPlatforms: TMake.Platforms.File = <any>parsedEnvironment.build;
-      parsedEnvironment.build = okmap(buildPlatforms, (targets, platform) => {
+      const buildPlatforms: TMake.Platforms.File = <any>parsedEnvironment.target.lib;
+      parsedEnvironment.target.lib = okmap(buildPlatforms, (targets, platform) => {
         return okmap(targets, (target, architecture) => {
           return {...target, platform}
         });
       });
 
-      const testPlatforms: TMake.Platforms.File = <any>parsedEnvironment.test;
-      parsedEnvironment.test = okmap(testPlatforms, (targets, platform) => {
+      const testPlatforms: TMake.Platforms.File = <any>parsedEnvironment.target.test;
+      parsedEnvironment.target.test = okmap(testPlatforms, (targets, platform) => {
         return okmap(targets, (target, architecture) => {
           return {...target, platform}
         });
@@ -323,7 +328,7 @@ export namespace Runtime {
       defaults.environment = parsedEnvironment;
       const projectDefaultsPath = join(args.settingsDir, 'project.yaml');
       try {
-        defaults.project = parseFileSync(projectDefaultsPath);
+        extend(defaults, parseFileSync(projectDefaultsPath));
       }
       catch(e){
         throw new Error(`missing settings file @ ${projectDefaultsPath}`);

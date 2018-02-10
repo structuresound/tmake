@@ -235,6 +235,7 @@ declare namespace NeDBPromise {
 
 declare module 'tmake-cli/db' {
     export interface Collections {
+        registry: DataStore<TMake.Source.File>;
         projects: DataStore<TMake.Project.Cache.File>;
         configurations: DataStore<TMake.Configuration.Cache.File>;
         errors: DataStore<TMake.Report>;
@@ -253,8 +254,12 @@ declare module 'tmake-cli/db' {
         cleanConfigurations(projectName: string): PromiseLike<number>
         cleanConfiguration(hash: string): PromiseLike<number>
 
-        insertReport(report: TMake.Report)
+        registerPackage(project: TMake.Source.File);
+        getPackage(entry: TMake.Source.Package): PromiseLike<TMake.Source.File>;
+
+        insertReport(report: TMake.Report);
         getReports(): PromiseLike<TMake.Report[]>
+        
         reset()
     }
 

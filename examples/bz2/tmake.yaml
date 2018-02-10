@@ -1,0 +1,17 @@
+name: bz2
+project:
+  archive: http://www.bzip.org/1.0.6/bzip2-1.0.6.tar.gz
+  generate:
+    ninja:
+      matching:
+        - "*.c"
+  build: ninja
+target:
+  flags:
+    c:
+      O: 2
+      g: true
+      Wall: true
+      D_FILE_OFFSET_BITS: 64
+      Winline: true
+      Wconversion: true

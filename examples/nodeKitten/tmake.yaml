@@ -1,7 +1,56 @@
+---
+name: nodeKitten
 git:
   organization: structuresound
   repository: nodeKitten
-configure:
-  tmake: {}
-build:
-  tmake: {}
+path:
+  install:
+    headers:
+      from: source
+target>:
+  flags:
+    cpp:
+      =mac, ios:
+        std: c++14
+        fobjc-arc: true
+generate:
+  ninja:
+    =mac, ios:
+      matching:
+      - core/**/*.cpp
+      - ext/**/*.cpp
+      - ext/**/*.c
+      - "!core/**/*tests*.cpp"
+      - "!core/platform/android/**/*.*"
+      - "!core/platform/emscripten/**/*.*"
+build: ninja
+require:
+  png:
+    git:
+      repository: glennrp/libpng
+      archive: v1.6.25
+    build:
+      with: cmake
+    path:
+      project: source
+      install:
+        headers:
+        - from: source
+          to: include/png
+        - from: build/x64
+          to: include/png
+  freetype-gl:
+    git: rougier/freetype-gl
+    configure:
+      for: ninja
+    build:
+      with: ninja
+      matching:
+        - "*.c"
+    path:
+      install:
+        headers:
+        - from: source
+          to: include/freetype-gl
+    require:
+      freetype: ../freetype

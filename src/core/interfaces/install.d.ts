@@ -13,11 +13,4 @@ declare namespace TMake {
       patterns: string[], from: string, to: string, opt: TMake.Vinyl.Options
     }
   }
-
-  interface Install {
-    headers?: Install.Options;
-    assets?: Install.Options;
-    libraries?: Install.Options;
-    binaries?: Install.Options;
-  }
 }

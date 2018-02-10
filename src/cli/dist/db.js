@@ -10,6 +10,14 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var Datastore = require("nedb-promise");
 var path_1 = require("path");
@@ -32,7 +40,7 @@ var Database = /** @class */ (function () {
     };
     Database.prototype.updateProject = function (project, modifier) {
         console.log('update project', modifier);
-        return this.collections.projects.update({ name: project.parsed.name }, modifier);
+        return this.collections.projects.update({ name: project.name }, modifier);
     };
     Database.prototype.removeProject = function (name, version) {
         if (version) {
@@ -65,6 +73,17 @@ var Database = /** @class */ (function () {
     Database.prototype.getReports = function () {
         return this.collections.errors.find({});
     };
+    Database.prototype.registerPackage = function (entry) {
+        return this.collections.registry.update({ name: entry.name }, { $set: entry }, { upsert: true });
+    };
+    Database.prototype.getPackage = function (entry) {
+        var name = entry.name, user = entry.user, tag = entry.tag;
+        var query = __assign({
+            user: 'local',
+            tag: 'latest'
+        }, entry);
+        return this.collections.registry.findOne(query);
+    };
     Database.prototype.reset = function () {
     };
     return Database;
@@ -74,8 +93,9 @@ var ClientDb = /** @class */ (function (_super) {
     __extends(ClientDb, _super);
     function ClientDb() {
         var _this = _super.call(this) || this;
-        var cacheDir = path_1.join(tmake_core_1.args.runDir, tmake_core_1.args.cachePath);
+        var cacheDir = path_1.join(tmake_core_1.args.homeDir, 'state');
         var dbPaths = {
+            registry: path_1.join(cacheDir, 'registry.json'),
             projects: path_1.join(cacheDir, 'projects.json'),
             configurations: path_1.join(cacheDir, 'configurations.json'),
             errors: path_1.join(cacheDir, 'errors.json')

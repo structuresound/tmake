@@ -68,9 +68,7 @@ export class Ninja extends Compiler {
         artifacts.libraries = libraries;
         const relativeToSource = path.relative(this.configuration.parsed.d.build, this.configuration.parsed.d.source) || '.';
         const ninjaConfig = ninja_build_gen();
-        log.verbose('note: this should scan dependencies for their possibly intermediate header insta' +
-            'll dirs');
-        const includeString = `-I ${this.configuration.parsed.d.root}/trie_modules/include/${this.configuration.parsed.target.platform}` + _.map(this.options.includeDirs, (dir) => {
+        const includeString = `-I ${this.configuration.parsed.d.home}/include/${this.configuration.parsed.platform}` + _.map(this.options.includeDirs, (dir) => {
           return `-I${dir}`;
         }).join(' ');
 
@@ -103,10 +101,8 @@ export class Ninja extends Compiler {
         let linkCommand = 'ar rv $out $in';
         let libName = this.options.outputFile;
         artifacts.libraries && log.verbose('    ', 'link:', artifacts.libraries);
-        const {name} = this.configuration.project.parsed;
-        const {target: {
-            output
-          }} = this.configuration.parsed;
+        const { name } = this.configuration.project;
+        const { output } = this.configuration.parsed;
 
         switch (output.type) {
           case 'static':
@@ -171,8 +167,8 @@ export class Ninja extends Compiler {
 
         stream.write("####\n");
         stream.write("## trieMake\n");
-        stream.write(`## project: ${this.configuration.project.parsed.name}\n`);
-        stream.write(`## target: ${this.configuration.parsed.target.architecture}\n`);
+        stream.write(`## project: ${this.configuration.project.name}\n`);
+        stream.write(`## target: ${this.configuration.parsed.architecture}\n`);
         stream.write(`####\n\n`);
 
         ninjaConfig.saveToStream(stream);

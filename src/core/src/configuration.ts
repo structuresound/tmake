@@ -15,7 +15,7 @@ import { execAsync } from './shell';
 import { mkdir } from 'shelljs';
 import { absolutePath, pathArray } from './parse';
 import { Plugin as BasePlugin } from './plugin';
-import { Project } from './project';
+import { Product } from './product';
 import { args } from './runtime';
 import { dump } from 'js-yaml';
 import { next } from 'js-moss';
@@ -82,59 +82,47 @@ function loadCache(a: Configuration, b: TMake.Configuration.Cache.File) {
 }
 
 interface ConfigurationDirOptions {
-    pathOptions: TMake.Configuration.Dirs
+    path: TMake.Configuration.Dirs
     hash: string, 
     platform: string, 
     architecture: string,
-    projectDirs: TMake.Project.Dirs
-    projectName: string
+    product: TMake.Product,
+    project: TMake.Project
 }
 
-function getConfigurationDirs({pathOptions, hash, platform, architecture, projectDirs, projectName}: ConfigurationDirOptions): TMake.Configuration.Dirs {
-    const d = <TMake.Configuration.Dirs>clone(projectDirs);
+function getConfigurationDirs({hash, path, platform, architecture, product, project}: ConfigurationDirOptions): TMake.Configuration.Dirs {
+    const {root, home} = project.d;
 
-    d.build = join(d.root, pathOptions.build);
-    d.project = join(d.root, pathOptions.project || '');
-    if (d.build == null) {
-        d.build = join(projectDirs.build, pathOptions.build);
+    const productSource = product.d.source;
+
+
+    const defaults = {
+        build: join('build', project.name, product.name, platform, architecture)
     }
-    const {binaries, libraries} = pathOptions.install;
-    d.install = <TMake.Install>{
-        binaries: {
+    const p = {...defaults, ...path};
+    const build = join(root, p.build );
+
+    const d: TMake.Configuration.Dirs = <any>{
+        build: build,
+        project: path.project || build
+    };
+
+    const {binaries, libraries} = p.install;
+
+    d.install = {
+        binaries: <TMake.Install.Options> {
                 matching: binaries.matching,
-                from: join(d.root, binaries.from),
-                to: join(d.root, (binaries.to || 'bin'), platform, architecture)
+                from: join(root, binaries.from),
+                to: join(root, (binaries.to || 'bin'), platform, architecture)
         },
         libraries: {
                 matching: libraries.matching,
-                from: join(d.root, libraries.from),
-                to: libraries.to || join(d.home, 'lib', platform, architecture, hash)
+                from: join(root, libraries.from),
+                to: libraries.to || join(home, 'lib', platform, architecture, hash)
         }
     }
     return d;
 }
-
-function getConfigurationPaths(_paths: TMake.Configuration.Dirs, hash: string, outputType: string) {
-    const paths = combine({
-        root: '',
-        test: 'build_tests'
-    }, _paths);
-
-    paths.build = join(paths.build, hash);
-
-    if (!check(paths.project, String)) {
-        if (outputType === 'executable') {
-            paths.project = paths.build;
-        } else {
-            paths.project = paths.clone;
-        }
-    }
-    
-    if (!paths.install) paths.install = {};
-    if (!paths.install.libraries) paths.install.libraries = { from: paths.build };
-    if (!paths.install.binaries) paths.install.binaries = { from: paths.build };
-    return paths;
-};
 
 function getProjectFile(configuration: Configuration, systemName: string): string {
     const buildFileNames = {
@@ -149,37 +137,31 @@ function getProjectFile(configuration: Configuration, systemName: string): strin
 }
 
 export class Configuration {
-    parsed: TMake.Configuration.Parsed;
+    product: TMake.Product;
+    target: TMake.Trie.Target;
     cache: TMake.Configuration.Cache;
     plugins: { [index: string]: TMake.Plugin }
-    project: TMake.Project;
-
-    constructor(config: TMake.Configuration.Parsed, project: TMake.Project) {
-        this.parsed = config;
-        this.project = project;
+    
+    constructor({product, target}: TMake.Configuration.Constructor) {
+        this.product = product;
+        this.target = target;
         this.plugins = {};
-        const path = project.parsed.p;
         
-        const { target: {architecture, platform} } = this.parsed;
+        const {architecture, platform} = target;
 
-        if (!platform) throw new Error(`no target platform \n${dump(this.parsed)}`);
-        if (!architecture) throw new Error(`no target architecture \n${dump(this.parsed)}`);
+        if (!platform) throw new Error(`no target platform \n${dump(target)}`);
+        if (!architecture) throw new Error(`no target architecture \n${dump(target)}`);
 
         const hash = this.hash();
-        const p = getConfigurationPaths(<any>path, hash, this.parsed.target.output.type);
-        const d = getConfigurationDirs({
-            pathOptions: p, 
+        extend(this, getConfigurationDirs({
             platform, 
             architecture,
             hash,
-            projectDirs: this.parsed.d,
-            projectName: this.parsed.name});
-        extend(this.parsed, {
-            path: path,
-            p,
-            d
+            path: target.path,
+            product,
+            project: product.project
         });
-
+            
         this.cache = new Cache(this);
     }
     hash(): string {
@@ -192,7 +174,8 @@ export class Configuration {
         loadCache(this, other);
     }
     toCache(): TMake.Configuration.Cache.File {
-        const { name, version, target: {platform, architecture }} = this.parsed;
+        const { name } = this.project;
+        const { version, platform, architecture } = this.parsed;
         return { _id: this.hash(), 
             project: name,
             version,

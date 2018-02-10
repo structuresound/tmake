@@ -8,13 +8,13 @@ const { quiet, verbose, add, warn } = log;
 
 export const info = {
   fetch: {
-    nuke: function (project: TMake.Project) {
+    nuke: function (project: TMake.Product) {
       log.error(`remove existing source @ ${project.parsed.d.clone}`);
     },
-    local: function (project: TMake.Project) {
-      verbose(`skip fetch, project is local ${project.parsed.name}`);
+    local: function (project: TMake.Product) {
+      verbose(`skip fetch, project is local ${project.name}`);
     },
-    dirty: function (project: TMake.Project) {
+    dirty: function (project: TMake.Product) {
       if (project.cache.fetch.dirty()) {
         verbose(`cache invalid ${project.cache.fetch.get()}`);
         verbose(project.toCache());
@@ -31,8 +31,8 @@ export const info = {
     }
   },
   graph: {
-    names: function (graph: TMake.Project[]) {
-      quiet(_.map(graph, (project) => project.parsed.name));
+    names: function (graph: TMake.Product[]) {
+      quiet(_.map(graph, (project) => project.name));
     }
   },
   report: function (report: any) {

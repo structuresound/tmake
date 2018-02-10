@@ -83,7 +83,7 @@ export namespace Fetch {
     return file.unarchive(filePath, tempDir, toDir);
   }
 
-  function updateCache(project: TMake.Project) {
+  function updateCache(project: TMake.Product) {
     const modifier = {
       $set: {
         'cache.fetch': project.cache.fetch.update()
@@ -92,8 +92,8 @@ export namespace Fetch {
     return Runtime.Db.updateProject(project, modifier);
   }
 
-  function upsertCache(project: TMake.Project) {
-    return Runtime.Db.projectNamed(project.parsed.name).then((res: any) => {
+  function upsertCache(project: TMake.Product) {
+    return Runtime.Db.projectNamed(project.name).then((res: any) => {
       if (res) {
         return updateCache(project);
       }
@@ -102,7 +102,7 @@ export namespace Fetch {
     })
   }
 
-  function getSource(project: TMake.Project) {
+  function getSource(project: TMake.Product) {
     const url = project.url();
     if (url === 'none') {
       return Bluebird.resolve('');
@@ -121,7 +121,7 @@ export namespace Fetch {
       })
   }
 
-  function linkSource(project: TMake.Project) {
+  function linkSource(project: TMake.Product) {
     const url = project.url();
     info.fetch.link(project);
     return new Bluebird<void>((resolve, reject) => {
@@ -138,7 +138,7 @@ export namespace Fetch {
     });
   }
 
-  function destroy(project: TMake.Project) {
+  function destroy(project: TMake.Product) {
     try {
       info.fetch.nuke(project);
       file.nuke(project.parsed.d.clone);
@@ -152,7 +152,7 @@ export namespace Fetch {
     return Runtime.Db.updateProject(project, modifier);
   }
 
-  function getIt(project: TMake.Project, exists: boolean) {
+  function getIt(project: TMake.Product, exists: boolean) {
     if (!exists || project.cache.fetch.dirty() || project.force()) {
       info.fetch.dirty(project);
       if (exists) {
@@ -162,7 +162,7 @@ export namespace Fetch {
     }
   }
 
-  function maybeFetch(project: TMake.Project) {
+  function maybeFetch(project: TMake.Product) {
     if (project.parsed.link) {
       return linkSource(project).then(() => Bluebird.resolve(true));
     }
@@ -175,7 +175,7 @@ export namespace Fetch {
     return Bluebird.resolve(false);
   }
 
-  export function project(project: TMake.Project, isTest?: boolean) {
+  export function project(project: TMake.Product, isTest?: boolean) {
     return maybeFetch(project).then(() => { return upsertCache(project) });
   }
 }

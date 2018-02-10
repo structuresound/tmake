@@ -17,8 +17,8 @@ declare namespace TMake {
 declare module 'tmake-core/main' {
   class ProjectRunner {
     [index: string]: any;
-    project: TMake.Project;
-    constructor(node: TMake.Project);
+    project: TMake.Product;
+    constructor(node: TMake.Product);
     do(fn: Function, opt?: any): PromiseLike<void>
     fetch(isTest?: boolean): PromiseLike<void>
     generate(isTest?: boolean): PromiseLike<void>
@@ -31,11 +31,11 @@ declare module 'tmake-core/main' {
     clean(): PromiseLike<void>
   }
 
-  function processDep(node: TMake.Project, phase: string): PromiseLike<void>
-  function unlink(config: TMake.Project.Cache.File): PromiseLike<void>
-  function push(config: TMake.Project.Cache.File): PromiseLike<void>
-  function list(repo: string, selector: Object): PromiseLike<TMake.Project>
-  function findAndClean(depName: string): PromiseLike<TMake.Project>
-  function execute(conf: TMake.Project.Raw, phase: string, subProject?: string)
+  function processDep(node: TMake.Product, phase: string): PromiseLike<void>
+  function unlink(config: TMake.Product.Cache.File): PromiseLike<void>
+  function push(config: TMake.Product.Cache.File): PromiseLike<void>
+  function list(repo: string, selector: Object): PromiseLike<TMake.Product>
+  function findAndClean(depName: string): PromiseLike<TMake.Product>
+  function execute(conf: TMake.Trie.Project, phase: string, subProject?: string)
 }
 

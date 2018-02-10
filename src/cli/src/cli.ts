@@ -145,7 +145,7 @@ export function createPackage() {
 }
 
 
-export function tmake(cla: any, rootConfig: TMake.Project.Raw, projectName?: string) {
+export function tmake(cla: any, rootConfig: TMake.Source.File, projectName?: string) {
   const Db = new ClientDb();
   const commands = cla._;
 
@@ -229,7 +229,7 @@ export function run() {
         .then(
         (res) => {
           if (res) {
-            const projectFile = <TMake.Project.Raw><any>res;
+            const projectFile = <TMake.Source.File><any>res;
             const cmd = commands[0];
             if (!check(cmd, String)) {
               log.quiet(manual());

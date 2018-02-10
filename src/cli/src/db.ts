@@ -24,7 +24,7 @@ export class Database implements TMake.Database.Interface {
   }
   updateProject(project: TMake.Project, modifier: Mongo.Modifier) {
     console.log('update project', modifier);
-    return this.collections.projects.update({ name: project.parsed.name }, modifier);
+    return this.collections.projects.update({ name: project.name }, modifier);
   }
   removeProject(name: string, version?: string) {
     if (version) {
@@ -50,12 +50,25 @@ export class Database implements TMake.Database.Interface {
   cleanConfiguration(hash: string): PromiseLike<any> {
     return this.collections.configurations.remove({ _id: hash });
   }
-
   insertReport(report: TMake.Report) {
     return this.collections.errors.insert(report);
   }
   getReports() {
     return this.collections.errors.find({});
+  }
+  registerPackage(entry: TMake.Source.File){
+    return this.collections.registry.update({ name: entry.name }, { $set: entry }, { upsert: true });
+  }
+  getPackage(entry: TMake.Source.Package){
+    const { name, user, tag } = entry;
+    const query = {
+      ...{
+        user: 'local',
+        tag: 'latest'
+      },
+      ...entry
+    }
+    return this.collections.registry.findOne(query);
   }
 
   reset() {
@@ -66,9 +79,10 @@ export class ClientDb extends Database {
   constructor() {
     super();
 
-    const cacheDir = join(args.runDir, args.cachePath);
+    const cacheDir = join(args.homeDir, 'state');
 
     const dbPaths = {
+      registry: join(cacheDir, 'registry.json'),
       projects: join(cacheDir, 'projects.json'),
       configurations: join(cacheDir, 'configurations.json'),
       errors: join(cacheDir, 'errors.json')

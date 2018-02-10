@@ -72,14 +72,14 @@ export const errors = {
     }
   },
   project: {
-    notFound: function (name: string, graph?: TMake.Project[]) {
+    notFound: function (name: string, graph?: TMake.Product[]) {
       log.log(`${colors.magenta(name)} does not appear in the module graph, check the name?`);
       if (graph) {
         info.graph.names(graph)
       }
       exit(1);
     },
-    noRoot: function (project: TMake.Project) {
+    noRoot: function (project: TMake.Product) {
       throw new TMakeError('project has no root directory or parent');
     }
   },

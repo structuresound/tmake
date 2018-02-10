@@ -26,55 +26,55 @@ function isSingleCommand(phase: string) {
   return contains(['parse', 'graph', 'clean'], phase);
 }
 
-function singleCommand(project: TMake.Project, phase: string, selectedDeps: TMake.Project[]) {
+function singleCommand(project: TMake.Product, phase: string, selectedDeps: TMake.Product[]) {
   switch (phase) {
     case 'clean':
       return graph(project.raw)
-        .then((deps: TMake.Project[]) => {
-          return <any>Bluebird.each(deps, (node: TMake.Project) => {
+        .then((deps: TMake.Product[]) => {
+          return <any>Bluebird.each(deps, (node: TMake.Product) => {
             return processDep(node, phase);
           });
         });
     case 'graph':
       return graph(project.raw)
-        .then((deps: TMake.Project[]) => {
+        .then((deps: TMake.Product[]) => {
           if (deps) {
             if (args.verbose) {
               log.log(deps);
             } else {
-              log.log(_.map(deps, (project) => project.parsed.name));
+              log.log(_.map(deps, (project) => project.name));
             }
           }
         });
     case 'parse':
       const aspect = args._[2];
       if (aspect) {
-        log.verbose(`parse ${aspect} for project ${project.parsed.name}`);
+        log.verbose(`parse ${aspect} for project ${project.name}`);
         if (project[aspect]) {
           log.log(project[aspect]);
         } else {
           log.error(`${aspect} not found`);
         }
       } else {
-        log.log(map(project.parsed.platforms, (platform) => platform));
+        log.log(map(project.platforms, (platform) => platform));
       }
       break;
   }
   return Bluebird.resolve();
 }
 
-export function execute(conf: TMake.Project.Raw, phase: string, subProject?: string) {
-  let root: TMake.Project;
+export function execute(conf: TMake.Source.File, phase: string, subProject?: string) {
+  let root: TMake.Product;
   return graph(conf)
-    .then((deps: TMake.Project[]) => {
+    .then((deps: TMake.Product[]) => {
       let selectedDeps = deps;
       root = deps[deps.length - 1];
-      if (subProject !== root.parsed.name) {
+      if (subProject !== root.name) {
         selectedDeps = []
         let notFound = true;
         for (const project of deps) {
           selectedDeps.push(project);
-          if (project.parsed.name === subProject) {
+          if (project.name === subProject) {
             root = project;
             log.warn(`restrict to submodule: ${subProject}`);
             notFound = false;
@@ -94,7 +94,7 @@ export function execute(conf: TMake.Project.Raw, phase: string, subProject?: str
       if (!args.quiet) {
         log.add(_.map(selectedDeps, d => d.parsed.name).join(' >> '));
       }
-      return <any>Bluebird.each(selectedDeps, (node: TMake.Project) => {
+      return <any>Bluebird.each(selectedDeps, (node: TMake.Product) => {
         return processDep(node, phase);
       });
     })
@@ -103,12 +103,12 @@ export function execute(conf: TMake.Project.Raw, phase: string, subProject?: str
 
 export class ProjectRunner {
   [index: string]: any;
-  project: TMake.Project;
-  constructor(node: TMake.Project) {
+  project: TMake.Product;
+  constructor(node: TMake.Product) {
     this.project = node;
   }
   do(fn: Function, opt?: any) {
-    const configurations = flatten(map(this.project.parsed.platforms, (p) => map(p, (c) => c)));
+    const configurations = flatten(map(this.project.platforms, (p) => map(p, (c) => c)));
     return Bluebird.each(configurations, (configuration: TMake.Configuration) => {
       return fn(configuration, opt);
     });
@@ -161,16 +161,17 @@ export class ProjectRunner {
   }
   run(){
     return this.test().then(() => {
-      const {run, d, name, platforms} = this.project.parsed;
+      const { platforms, parsed } = this.project;
+      const {run, d} = parsed;
       if (run){
         log.verbose(`  run`);
         let iterable = [];
-        each(platforms, (platform, name: string) => {
+        each(platforms, (platform, platformName: string) => {
           each(platform, (configuration, architecture) => {
             if (platform){
-              const config = platform[configuration.parsed.target.architecture];
+              const config = platform[configuration.parsed.architecture];
               if (config){
-                const executable = join(config.parsed.d.install.binaries.to, config.parsed.name);
+                const executable = join(config.parsed.d.install.binaries.to, config.parsed.platform);
                 return iterable.push(executable);
               }
             }
@@ -189,7 +190,7 @@ export class ProjectRunner {
     return this.run();
   }
   clean() {
-    log.quiet(`cleaning ${this.project.parsed.name}`);
+    log.quiet(`cleaning ${this.project.name}`);
     _.each(this.project.cache.libs.value(), (libFile) => {
       log.verbose(`rm ${libFile}`);
       try {
@@ -201,7 +202,7 @@ export class ProjectRunner {
 
       }
     });
-    const configurations = flatten(map(this.project.parsed.platforms, (p) => map(p, (c) => c)));
+    const configurations = flatten(map(this.project.platforms, (p) => map(p, (c) => c)));
     return Bluebird.each(configurations, (configuration: TMake.Configuration) => {
       const hash = configuration.hash();
       log.dev('nuke', configuration.parsed.d.build)
@@ -211,22 +212,21 @@ export class ProjectRunner {
       log.dev('nuke', this.project.parsed.d.build)
       file.nuke(this.project.parsed.d.build);
       log.verbose('clean project cache');
-      return Runtime.Db.removeProject(this.project.parsed.name)
+      return Runtime.Db.removeProject(this.project.name)
     })
   }
 }
 
-export function processDep(node: TMake.Project, phase: string) {
+export function processDep(node: TMake.Product, phase: string) {
   if (!args.quiet) {
-    log.log(`${node.parsed.name}`);
+    log.log(`${node.name}`);
   }
   process.chdir(args.runDir);
   return new ProjectRunner(node)[phase]();
 }
 
-export function push(config: TMake.Project.Raw) {
-  prompt
-    .ask(colors.green(
+export function push(config: TMake.Source.File) {
+  prompt.ask(colors.green(
       `push will do a clean, full build, test and if successful will upload to the ${colors.yellow('public repository')}\n${colors.yellow('do that now?')} ${colors.gray('(yy = disable this warning)')}`))
     .then((res: boolean) => {
       if (res) {
@@ -252,7 +252,7 @@ export function push(config: TMake.Project.Raw) {
 export function list(repo: string, selector: any) {
   switch (repo) {
     default:
-    case 'cache': return Runtime.Db.findProjects(selector) as PromiseLike<TMake.Project.Raw[]>;
+    case 'cache': return Runtime.Db.findProjects(selector) as PromiseLike<TMake.Source.File[]>;
   }
 }
 

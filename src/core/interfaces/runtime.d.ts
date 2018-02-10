@@ -1,16 +1,9 @@
 /// <reference path="args.d.ts" />
 /// <reference path="db.d.ts" />
-/// <reference path="defaults.d.ts" />
+/// <reference path="environment.d.ts" />
 /// <reference path="plugin.d.ts" />
 
 declare namespace TMake {
-  interface Settings {
-    keywords: Runtime.Keywords
-    plugins: { [index: string]: string }
-    defaults: TMake.Defaults
-    // =hidden // platform: any
-  }
-
   namespace Runtime {
     interface Keywords {
       environment: string[]
@@ -30,8 +23,8 @@ interface CPU {
 }
 
 interface OS {
-  platform(): string,
-  arch(): TMake.Target.Architecture,
+  platform(): TMake.Trie.Environment.Platform.Name,
+  arch(): TMake.Trie.Environment.Target.Architecture,
   endianness(): string,
   cpus(): CPU[]
 }

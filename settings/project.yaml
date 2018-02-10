@@ -1,4 +1,6 @@
-target>:
+user: local
+tag: latest
+project:
   output:
     type: static
     lipo: false
@@ -7,8 +9,9 @@ target>:
       images: ['**/*.{png, jpg, jpeg, tiff, ico, svg, bmp}']
       fonts: ['**/*.{ttf, otf, woff, woff2}']
     headers: ['**/*.{h, hh, hpp, hxx, ipp}', '!test*/**']
+target:
+  glob:
     sources: ['**/*.{cpp, cc, c}', '!**/*.test.*', '!test*/**']
-    tests: ['test*/*.{cpp, cc, c}', '**/*.test.*']
   sdk:
     =host-mac:
       $<:

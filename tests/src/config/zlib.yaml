@@ -1,17 +1,23 @@
 ---
-git:
-  repository: madler/zlib
-  tag: v1.2.8
-options:
-  buildTests: false
-  ASM686: false # Enable building i686 assembly implementation
-  AMD64: false # Enable building amd64 assembly implementation
-path:
-  clone: 'zlib'
-  install:
-    headers:
-      from: ''
-target>:
+project:
+  git:
+    repository: madler/zlib
+    tag: v1.2.8
+  options:
+    buildTests: false
+    ASM686: false # Enable building i686 assembly implementation
+    AMD64: false # Enable building amd64 assembly implementation
+  path:
+    clone: 'zlib'
+    install:
+      headers:
+        from: ''
+  generate:
+    ninja:
+      matching:
+        - '*.c'
+  build: ninja
+target:
   flags:
     c:
       O: 3
@@ -25,25 +31,20 @@ target>:
         DHAVE_STDDEF_H: 1
       +ios:
         fembed-bitcode: true
-generate:
-  ninja:
-    matching:
-      - '*.c'
-build: ninja
-test>:
-  target:
+test:
+  project:
     output:
       type: executable
-  configure:
-    replace:
-      includes:
+    configure:
+      replace:
+        includes:
+          matching:
+          - 'test/*.c'
+          inputs:
+            inftrees: zlib/inftrees.h
+            inflate: zlib/inflate.h
+    generate:
+      ninja:
         matching:
-        - 'test/*.c'
-        inputs:
-          inftrees.h: zlib/inftrees.h
-          inflate.h: zlib/inflate.h
-  generate:
-    ninja:
-      matching:
-        - 'test/infcover.c'
-  run: {}
+          - 'test/infcover.c'
+    run: {}

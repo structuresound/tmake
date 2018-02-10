@@ -7,6 +7,7 @@ declare namespace TMake {
         settingsDir?: string;
         configDir?: string;
         cachePath?: string;
+        cacheDir?: string;
         compiler?: string;
         program?: string;
         verbose?: boolean;

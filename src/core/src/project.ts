@@ -1,357 +1,114 @@
-import * as os from 'os';
-import * as _ from 'lodash';
-import { join } from 'path';
-import { check, valueForKeyPath, each, merge, mergeValueAtKeypath, clone, extend, contains, combine, okmap, plain as toJSON, arrayify, select, map, flatObject } from 'typed-json-transform';
-import { startsWith } from './string';
-import { log } from './log';
-import { args } from './runtime';
-import { absolutePath, pathArray } from './parse';
+import {check, clone, extend} from 'typed-json-transform';
+import {join} from 'path';
+
+import {args} from './runtime';
+import {log} from './log';
+import {Git} from './git';
 import { jsonStableHash, stringHash } from './hash';
-import { jsonToFrameworks, jsonToCFlags, jsonToFlags } from './compiler';
-import { Git } from './git';
 import { Property as CacheProperty } from './cache';
-import { Configuration } from './configuration';
-import { errors } from './errors';
 import { semverRegex } from './lib';
-import { Runtime, defaults, settings, next } from './runtime';
-import { inherits } from 'util';
 
-export const metaDataKeys = ['name', 'user', 'path'];
-export const sourceKeys = ['git', 'archive', 'version'];
-export const toolchainKeys = ['host', 'target'];
-export const pluginKeys = ['generate', 'build', 'configure'];
-export const dependencyKeys = ['require', 'override'];
-export const registryKeys = dependencyKeys.concat(metaDataKeys).concat(sourceKeys).concat(toolchainKeys).concat(pluginKeys);
-
-export const ephemeralKeys = ['dir', 'd', 'p'];
-
-function getProjectDirs(_project: TMake.Project, parent: TMake.Project.Parsed): TMake.Project.Dirs {
-    const project = _project.parsed;
-
-    const pathOptions = project.p;
-    const d: TMake.Project.Dirs = <TMake.Project.Dirs>clone(project.d || {});
-    if (!d.home) {
-        d.home = join(args.runDir, args.cachePath);
+function resolveUrl(project : TMake.Project) : string {
+    const {trie, git} = project;
+    if (git) {
+        return git.fetch();
     }
-    if (parent) {
-        if (!project.name) {
-            log.error(project);
-            throw new Error('node has no name');
-        }
-        if (parent.d.localCache && !d.localCache) {
-            d.localCache = parent.d.localCache;
-        }
-        d.root = project.dir || join(d.localCache || d.home, project.name);
-    } else {
-        d.root = args.configDir
-    }
-    if (project.link) {
-        d.localCache = join(project.dir, args.cachePath);
-    }
-    if (pathOptions.includeDirs) {
-        d.includeDirs = pathArray((pathOptions.includeDirs), d.root);
-    } else {
-        d.includeDirs = [];
-    }
-    if (!d.clone) {
-        d.clone = join(d.root, pathOptions.clone);
-    }
-    d.source = join(d.clone, pathOptions.source);
-    d.build = join(d.root, pathOptions.build);
-
-    if (!d.install) d.install = {};
-    const {headers, assets} = pathOptions.install;
-
-    d.install.headers = {
-        matching: headers.matching,
-        from: join(d.source, headers.from),
-        to: join(d.home, headers.to || 'include')
-    }
-    if (assets) {
-        d.install.assets = {
-            matching: assets.matching,
-            from: join(d.root, assets.from),
-            to: join(args.runDir, assets.to || 'bin')
-        }
-    }
-    return d;
-}
-
-function getProjectPaths(project: TMake.Project.Parsed) {
-    const { path } = project;
-    const defaultPaths = {
-        source: '',
-        headers: 'include',
-        build: 'build',
-        clone: 'source'
-    };
-    const pathOptions = <TMake.Project.Dirs>extend(defaultPaths, path);
-    if (!pathOptions.install) {
-        pathOptions.install = {};
-    }
-    if (!pathOptions.install.headers) {
-        pathOptions.install.headers = {
-            from: defaultPaths.headers
-        };
-    }
-    return pathOptions;
-}
-
-function generateTargets(project: TMake.Project, test?: boolean) {
-    const { environment } = defaults;
-
-    const platforms = test ? environment.test : environment.build;
-    const build: TMake.Platforms = Runtime.moss(platforms, {
-        selectors: project.raw.options,
-    }).data;
-
-    return okmap(build, (platform, platformName) => {
-        return okmap(platform, (target) => {
-            const selectors = {
-                ...project.raw.options,
-                ...target.options,
-                [environment.host.compiler]: true,
-                [platformName]: true,
-                [target.architecture]: true
-            }
-            const config = Runtime.inherit(clone(project.parsed), {target}, {
-                environment: {...project.raw.environment, target},
-                selectors
-            });
-            return <TMake.Configuration>new Configuration(<any>config, project);
-        });
-    });
-}
-
-function resolveVersion(conf: TMake.Project.Parsed) {
-    if (conf.git) {
-        return conf.git.version();
-    }
-    if (check(conf.version, String)) {
-        return conf.version;
-    }
-    if (check(conf.tag, String)) {
-        return conf.tag;
-    }
-}
-
-function loadCache(a: Project, b: TMake.Project.Cache.File) {
-    if (!a || !b) return;
-    for (const k of Object.keys(b)) {
-        if (!a.parsed[k]) {
-            a.parsed[k] = b[k];
-        }
-    }
-    if (b.cache) {
-        for (const k of Object.keys(b.cache)) {
-            const v = b.cache[k];
-            if (v) {
-                log.dev('cache -->', k, ':', v);
-                a.cache[k] && a.cache[k].set(v);
-            }
-        }
-    }
-}
-
-function parsePath(s: string) {
-    if (startsWith(s, '/')) {
-        return s;
-    }
-    return join(args.runDir, s);
-}
-
-function resolveUrl(project: TMake.Project.Parsed): string {
-    if (project.git) {
-        return project.git.fetch();
-    }
-    if (project.link) {
+    if (trie.link) {
         return 'link';
     }
-    if (project.archive) {
-        return project.archive;
+    if (trie.archive) {
+        return trie.archive;
     }
     if (!args.test && project.d.root === args.runDir) {
         // this is the root module
         return 'none';
     }
-    log.warn(`cannot resolve source url, is ${project.name} a meta project?`);
+    log.warn(`cannot resolve source url, is ${trie.name} a meta project?`);
     return 'none';
+}
+
+function resolveVersion(project: TMake.Project) {
+    if (project.git) {
+        return project.git.version();
+    }
+    if (check(project.version, String)) {
+        return project.version;
+    }
+}
+
+function getProjectDirs(project: TMake.Project, parent : TMake.Project) {
+    const p = {
+        clone: 'source',
+        ...project.trie.path
+    };
+
+    const d: TMake.Project.Dirs = {
+        ...project.d
+    }
+    if (!d.home) {
+        d.home = args.homeDir;
+    }
+    if (parent) {
+        if (!name) {
+            log.error(project);
+            throw new Error('product node has no name');
+        }
+        d.root = project.dir || join(d.localCache || join(d.home, args.cachePath), project.name);
+    } else {
+        d.root = args.configDir;
+    }
+
+    if (!d.root) 
+        throw new Error(`no root dir for project ${project.name}`);
+
+    return {d, p};
 }
 
 export function fromGitString(str: string) {
     return { git: new Git(str) };
 }
 
-export class Project {
-    raw: TMake.Project.Raw
-    parsed: TMake.Project.Parsed
-    cache: TMake.Project.Cache
-    dependencies: { [index: string]: TMake.Project }
+export class Project extends TMake.Project {
+    constructor(options: TMake.Project.Constructor){
+        super(options);
+        const {trie, parent} = options;
 
-    constructor({projectFile, extendFile, parent, test}: TMake.ProjectOptions) {
-        const { environment } = defaults;
-        // load conf
-        if (!projectFile) {
-            throw new Error('constructing node with undefined configuration');
+        if (this.git) {
+            this.git = new Git(trie.git);
         }
-        if (check(projectFile, Project)) {
-            return <any>projectFile;
-        }
-        if (check(projectFile, String)) {
-            this.raw = fromGitString(<string><any>projectFile);
-        } else {
-            this.raw = <TMake.Project.Raw>clone(projectFile);
+        if (!this.name) {
+            this.name = this.git.name();
         }
 
-        if (extendFile){
-            const intermediate = Runtime.inherit(defaults.project, extendFile, {
-                selectors: extendFile.options
-            });
-            this.parsed = merge(intermediate, Runtime.moss(clone(this.raw), {
-                selectors: this.raw.options
-            }).data);
-        } else {
-            const selectors = this.raw.options;
-            this.parsed = Runtime.inherit(defaults.project, this.raw, {
-                selectors
-            });
-        }
-        this.init(parent, test);
-    }
-
-    init(parent, test){
-        if (this.parsed.git) {
-            this.parsed.git = new Git(this.raw.git);
-        }
-        if (!this.parsed.name) {
-            this.parsed.name = Project.resolveName(this.parsed);
-        }
         // LAZY Defaults
-        if (!this.parsed.version) {
-            const version = resolveVersion(this.parsed);
+        if (!this.version) {
+            const version = resolveVersion(this);
             if (semverRegex().test(version)) {
-                this.parsed.version = semverRegex().exec(version)[0];
+                this.version = semverRegex().exec(version)[0];
             } else {
-                this.parsed.version = version || 'master';
-            }
-        }
-        if (!this.parsed.user) {
-            this.parsed.user = 'local';
-        }
-
-        this.parsed.p = getProjectPaths(this.parsed);
-        this.parsed.d = getProjectDirs(this, parent ? parent.parsed : undefined);
-
-        // Overrides
-        if (parent) {
-            if (parent.parsed.override) {
-                for (const selector of Object.keys(parent.parsed.override)) {
-                    const override = parent.parsed.override[selector];
-                    mergeValueAtKeypath(override, `override.${selector}`, this.parsed);
-                    if (selector === 'force' || select([this.parsed.name], selector)) {
-                        for (const kp of Object.keys(override)) {
-                            const val = override[kp];
-                            mergeValueAtKeypath(val, kp, this.parsed);
-                        }
-                    }
-                }
+                this.version = '0.0.1';
             }
         }
 
-        this.parsed.platforms = <any>generateTargets(this, test);
+        extend(this, getProjectDirs(this, parent));
 
         /* CACHE */
         const fetch = new CacheProperty(() => stringHash(this.url()));
-        const metaData = new CacheProperty(() => {
+        const meta = new CacheProperty(() => {
             return jsonStableHash({
-                version: this.parsed.version,
-                require: this.safeDeps()
+                version: this.version
             });
         }, { require: fetch });
-        const libs = new CacheProperty(() => {
-            throw new Error('no getter, resolved during install phase');
-        });
-
         this.cache = {
-            fetch,
-            metaData,
-            libs
+            fetch
         }
     }
-
-    force() {
-        return args.force && ((args.force === this.parsed.name) || (args.force === 'all'));
-    }
-    url(): string { return resolveUrl(this.parsed); }
-    safeDeps(): { [index: string]: TMake.Project.Cache.File } {
-        const safe = {};
-        if (this.dependencies) {
-            for (const k of Object.keys(this.dependencies)) {
-                const dep = <any>this.dependencies[k];
-                if (!dep.parsed.name) {
-                    throw (new Error(log.getMessage('dep has no name', dep)));
-                }
-                safe[k] = { name: dep.parsed.name, hash: dep.hash() };
-            }
-        }
-        return safe;
-    }
-    loadCache(cache: TMake.Project.Cache.File): void { loadCache(this, cache); }
-    toCache(): TMake.Project.Raw {
-        const ret = <TMake.Project.Raw>_.pick(this.parsed,
-            ['name', 'libs', 'version']);
-        ret.cache = {};
-        ret.hash = this.hash();
-        for (const k of Object.keys(this.cache)) {
-            const prop = this.cache[k];
-            const v = prop.value();
-            if (v) {
-                log.verbose(`cache <-- ${k}: `, v);
-                ret.cache[k] = v;
-            }
-        }
-        return ret;
-    }
-    toRegistry(): TMake.Project.Raw {
-        const plain = <TMake.Project.Raw>_.pick(this.parsed, registryKeys);
-        if (plain.require) {
-            plain.require = <any>this.safeDeps();
-        }
-        return plain;
-    }
-    hash() {
-        return jsonStableHash(this.toRegistry());
-    }
-    testProject(): TMake.Project {
-        const testProjectFile: TMake.Project.Raw = <any>this.parsed.test;
-        if (!testProjectFile.name){
-            testProjectFile.name = `${this.parsed.name}-tests`;
-        }
-        const toInherit = clone(this.raw);
-        delete toInherit.test;
-        delete toInherit['test>'];
-        delete toInherit.git;
-        const project = new Project({
-            projectFile: testProjectFile,
-            extendFile: toInherit, 
-            test: true
-        });
-        if (!project.parsed.target.output){
-            project.parsed.target.output = {
-                type: 'executable'
-            }
-        }
-        project.dependencies = {[this.parsed.name]: this};
-        return project;
-    }
+    url(): string { return resolveUrl(this); }
 }
 
 export namespace Project {
-    export function resolveName(conf: TMake.Project.Raw | TMake.Project.Parsed, fallback?: string): string {
-        if (check(conf, String)) {
-            return new Git(<string><any>conf).name();
-        }
-        if (check(conf.name, String)) {
+    export function resolveName(conf : TMake.Trie.Project, fallback?: string) : string {
+        if(check(conf.name, String)) {
             return conf.name;
         }
         if (conf.git) {

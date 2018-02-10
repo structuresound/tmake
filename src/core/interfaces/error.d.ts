@@ -31,9 +31,9 @@ declare namespace TMake {
         noBuildFile(plugin: TMake.Plugin.Compiler)
       },
       project: {
-        notFound(name: string, graph?: TMake.Project[])
+        notFound(name: string, graph?: TMake.Product[])
       },
-      noRoot(project: TMake.Project),
+      noRoot(project: TMake.Product),
       shell: {
         failed(command: string, error: Error)
       },

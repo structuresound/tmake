@@ -9,16 +9,16 @@ import { iterateOLHM, mapOLHM, iterate } from './iterate';
 import { absolutePath } from './parse';
 import { jsonStableHash } from './hash';
 
-import { Project, fromGitString as projectFromString } from './project';
+import { Product, fromGitString as projectFromString } from './project';
 
-function loadCache(project: TMake.Project) {
-  return new Bluebird<TMake.Project>((resolve) => {
-    Runtime.Db.projectNamed(project.parsed.name)
+function loadCache(project: TMake.Product) {
+  return new Bluebird<TMake.Product>((resolve) => {
+    Runtime.Db.projectNamed(project.name)
       .then((result) => {
         if (result) {
           project.loadCache(result);
         }
-        const iterable = flatten(map(project.parsed.platforms, (p) => map(p, (c) => c)));
+        const iterable = flatten(map(project.platforms, (p) => map(p, (c) => c)));
         return Bluebird.each(iterable, (e: TMake.Configuration) => {
           return loadConfiguration(e);
         });
@@ -35,37 +35,42 @@ function loadConfiguration(configuration: TMake.Configuration) {
     });
 }
 
-function createNode(_conf: TMake.Project.Raw, parent?: TMake.Project) {
-  const node = new Project({projectFile: _conf, parent});
-  return loadCache(<TMake.Project>node);
+function createNode(_conf: TMake.Source.File, parent?: TMake.Product) {
+  const node = new Product({sourceFile: _conf, parent});
+  return loadCache(<TMake.Product>node);
 }
 
 interface Cache {
-  [index: string]: TMake.Project;
+  [index: string]: TMake.Product;
 }
 
 interface FileCache {
-  [index: string]: TMake.Project.Raw;
+  [index: string]: TMake.Source.File;
 }
 
-function scanDependencies(require: OLHM<TMake.Project.Raw>, node: TMake.Project, graph: Graph<TMake.Project>,
-  cache: Cache, fileCache: FileCache): PromiseLike<TMake.Project> {
+function scanDependencies(require: OLHM<TMake.Source.File>, node: TMake.Product, graph: Graph<TMake.Product>,
+  cache: Cache, fileCache: FileCache): PromiseLike<TMake.Product> {
   const keys = [];
   for (const k of Object.keys(require || {})) {
     keys.push(k);
   }
   return Bluebird.map(keys,
     (key: string) => {
-      let dep: TMake.Project.Raw = <any>require[key]
+      let dep: TMake.Source.File = <any>require[key]
       if (check(dep, String)) {
-        dep = projectFromString(<string><any>dep);
+        dep = {
+          name: dep as any,
+          project: {}
+        }
       }
       if (!dep.name) {
-        dep.name = Project.resolveName(dep, key);
+        dep.name = Product.resolveName(dep, key);
       }
-      return graphNode(dep, node, graph, cache, fileCache);
+      return Runtime.Db.getPackage(dep).then((extendFile) => {
+        return graphNode(dep, node, graph, cache, fileCache, extendFile);
+       });
     })
-    .then((deps) => {
+    .then((deps: any) => {
       if (deps.length) {
         node.dependencies = {}
         for (const dep of deps) {
@@ -76,51 +81,52 @@ function scanDependencies(require: OLHM<TMake.Project.Raw>, node: TMake.Project,
     });
 }
 
-function graphNode(conf: TMake.Project.Raw, parent: TMake.Project, graph: Graph<TMake.Project>,
-  cache: Cache, fileCache: FileCache): Bluebird<TMake.Project> {
-  if (conf.link) {
-    const configDir = absolutePath(conf.link, parent ? parent.parsed.d.root : args.configDir);
+function graphNode(sourceFile: TMake.Source.File, parent: TMake.Product, graph: Graph<TMake.Product>,
+  cache: Cache, fileCache: FileCache, extend?: TMake.Source.File): Bluebird<TMake.Product> {
+    const {project} = sourceFile;
+  if (parent && (sourceFile.name === parent.name)) {
+    throw new Error(`recursive dependency ${parent.name}`);
+  }
+  if (cache[sourceFile.name]) {
+    log.verbose(`project ${sourceFile.name} already loaded`);
+    return Bluebird.resolve(cache[sourceFile.name]);
+  }
+  if (project && project.link) {
+    const configDir = absolutePath(project.link, parent ? parent.parsed.d.root : args.configDir);
     // console.log('extend config', configDir);
     if (fileCache[configDir]) {
-      log.verbose(`file @ ${fileCache[configDir].dir} already loaded`);
+      log.verbose(`file @ ${fileCache[configDir].project.dir} already loaded`);
     } else {
-      const linkedConfig: TMake.Project.Raw = file.readConfigSync(configDir);
+      const linkedConfig: TMake.Source.File = file.readConfigSync(configDir);
       if (!linkedConfig) {
-        throw new Error(`can't resolve symlink ${conf.link} relative to parent ${parent.parsed.dir} fullpath: ${file.getConfigPath(configDir)}`)
+        throw new Error(`can't resolve symlink ${project.link} relative to parent ${parent.parsed.dir} fullpath: ${file.getConfigPath(configDir)}`)
       }
-      linkedConfig.dir = configDir;
-      fileCache[configDir] = <TMake.Project.Raw>combine(linkedConfig, conf);
+      linkedConfig.project.dir = configDir;
+      fileCache[configDir] = <TMake.Source.File>combine(linkedConfig, sourceFile);
     }
-    _.extend(conf, fileCache[configDir]);
+    _.extend(sourceFile, fileCache[configDir]);
   }
-  if (parent && (conf.name === parent.parsed.name)) {
-    throw new Error(`recursive dependency ${parent.parsed.name}`);
-  }
-  if (cache[conf.name]) {
-    log.verbose(`project ${conf.name} already loaded`);
-    return Bluebird.resolve(cache[conf.name]);
-  }
-  return createNode(conf, parent)
-    .then((node: TMake.Project) => {
-      graph.addNode(node.parsed.name);
+  return createNode(sourceFile, parent)
+    .then((node: TMake.Product) => {
+      graph.addNode(node.name);
       if (parent) {
-        log.verbose(`  ${parent.parsed.name} requires ${node.parsed.name}`);
-        graph.addDependency(parent.parsed.name, node.parsed.name);
+        log.verbose(`  ${parent.name} requires ${node.name}`);
+        graph.addDependency(parent.name, node.name);
       } else {
-        log.verbose(`graph >> ${node.parsed.name} ${node.parsed.dir ? '@ ' + node.parsed.dir : ''}`);
+        log.verbose(`graph >> ${node.name} ${node.parsed.dir ? '@ ' + node.parsed.dir : ''}`);
       }
-      cache[node.parsed.name] = node;
-      return scanDependencies(conf.require, node, graph, cache, fileCache);
-    }).then((node: TMake.Project) => {
+      cache[node.name] = node;
+      return scanDependencies(sourceFile.project.require, node, graph, cache, fileCache);
+    }).then((node: TMake.Product) => {
       if (args.verbose) {
-        log.add(`+${node.parsed.name} ${node.parsed.dir ? '@ ' + node.parsed.dir : ''}`);
+        log.add(`+${node.name} ${node.parsed.dir ? '@ ' + node.parsed.dir : ''}`);
       }
       return Bluebird.resolve(node);
     });
 }
 
-function _map(node: TMake.Project.Raw, graphType: string,
-  graphArg?: string): PromiseLike<TMake.Project[]> {
+function _map(node: TMake.Source.File, graphType: string,
+  graphArg?: string): PromiseLike<TMake.Product[]> {
   const cache: Cache = {};
   const fileCache: FileCache = {};
   const graph = new Graph();
@@ -128,7 +134,7 @@ function _map(node: TMake.Project.Raw, graphType: string,
   return graphNode(node, undefined, graph, cache, fileCache)
     .then(() => {
       const nodeNames = graph[graphType](graphArg);
-      const nodes: TMake.Project[] = _.map(nodeNames, (name: string) => { return cache[name]; });
+      const nodes: TMake.Product[] = _.map(nodeNames, (name: string) => { return cache[name]; });
       return Bluebird.resolve(nodes);
     }).catch((error) => {
       const nodeNames = graph[graphType](graphArg);
@@ -139,15 +145,15 @@ function _map(node: TMake.Project.Raw, graphType: string,
     });
 }
 
-function all(node: TMake.Project.Raw) {
+function all(node: TMake.Source.File) {
   return _map(node, 'overallOrder');
 }
 
-function deps(node: TMake.Project.Raw) {
+function deps(node: TMake.Source.File) {
   return _map(node, 'dependenciesOf', node.name);
 }
 
-function resolve(conf: TMake.Project.Raw) {
+function resolve(conf: TMake.Source.File) {
   if (!conf) {
     throw new Error('resolving without a root node');
   }

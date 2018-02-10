@@ -13,7 +13,7 @@ import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';
 import { ConfigurationPlugin, Configuration } from './configuration';
-import { Project } from './project';
+import { Product } from './project';
 import { errors } from './errors';
 import { Ninja } from './ninja';
 
@@ -123,7 +123,7 @@ export function configure(configuration: Configuration): PromiseLike<any> {
         return configuration.update();
       });
   }
-  log.verbose(`configuration is current, use --force=${configuration.project.parsed.name} if you suspect the cache is stale`);
+  log.verbose(`configuration is current, use --force=${configuration.project.name} if you suspect the cache is stale`);
   return Bluebird.resolve(configuration);
 }
 
@@ -150,6 +150,6 @@ export function build(configuration: Configuration): PromiseLike<any> {
         return configuration.update();
       });
   }
-  log.verbose(`configuration is current, use --force=${configuration.project.parsed.name} if you suspect the cache is stale`);
+  log.verbose(`configuration is current, use --force=${configuration.project.name} if you suspect the cache is stale`);
   return Bluebird.resolve(configuration);
 }

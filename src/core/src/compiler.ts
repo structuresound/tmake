@@ -14,7 +14,7 @@ import { deps } from './graph';
 import { mkdir } from 'shelljs';
 import { Shell } from './shell';
 import { jsonStableHash, fileHash, fileHashSync } from './hash';
-import { Project } from './project';
+import { Product } from './project';
 import { join, dirname } from 'path';
 import { errors, TMakeError } from './errors';
 import { Property as CacheProperty } from './cache';
@@ -144,7 +144,7 @@ function resolveFlags(configuration: TMake.Configuration, options: TMake.Plugin.
   const linkerFlags = options.linkerFlags || {};
   const compilerFlags = options.compilerFlags || {};
   const frameworks = options.frameworks || {};
-  const defaultFlags = configuration.parsed.target.flags;
+  const defaultFlags = configuration.parsed.flags;
 
   return {
     compiler: combine(defaultFlags.compiler, compilerFlags),
@@ -181,18 +181,18 @@ export class Compiler extends Shell {
   compilerFlags() { return jsonToCompilerFlags(this.flags.compiler, defaults.environment.host.compiler); }
   sources() {
     const { configuration } = this;
-    const patterns = arrayify(this.options.matching || configuration.parsed.target.glob.sources);
+    const patterns = arrayify(this.options.matching || configuration.parsed.glob.sources);
     log.verbose('sources', patterns);
     return glob(patterns, configuration.parsed.d.source, configuration.project.parsed.d.source);
   }
   libraries(): PromiseLike<any> {
     const { dependencies } = this.configuration.project;
     if (dependencies) {
-      const {architecture, platform} = this.configuration.parsed.target;
+      const {architecture, platform} = this.configuration.parsed;
       log.verbose('pull libs from dependencies', platform, architecture);
-      const stack = _.map(dependencies, (dep: Project) => {
-        const configuration = dep.parsed.platforms[platform][architecture];
-        if (!configuration) throw new Error(`no configuration for ${platform}-${architecture}, have ${Object.keys(dep.parsed.platforms[name])}`);
+      const stack = _.map(dependencies, (dep: Product) => {
+        const configuration = dep.platforms[platform][architecture];
+        if (!configuration) throw new Error(`no configuration for ${platform}-${architecture}, have ${Object.keys(dep.platforms[name])}`);
         const {libs} = configuration.cache;
         // console.log('get libs from project', libs.value());
         return _.map(libs.value(), (lib) => {

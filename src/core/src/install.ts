@@ -12,7 +12,7 @@ import { Runtime } from './runtime';
 import { replaceAll, startsWith } from './string';
 import { Configuration } from './configuration';
 import { join } from 'path';
-import { Project } from './index';
+import { Product } from './index';
 
 function copy({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLike<string[]> {
   const filePaths: string[] = [];
@@ -56,14 +56,14 @@ function link({ patterns, from, to, opt }: TMake.Install.CopyOptions): PromiseLi
 }
 
 function bin(configuration: Configuration) {
-  const { target } = configuration.parsed;
-  if (contains(['executable'], target.output.type)) {
-    const base = path.join(args.runDir, 'bin', target.platform, target.architecture);
+  const { parsed } = configuration;
+  if (contains(['executable'], parsed.output.type)) {
+    const base = path.join(args.runDir, 'bin', parsed.platform, parsed.architecture);
     mkdir('-p', base);
     const binaries: string[] = [];
     const ft = configuration.parsed.d.install.binaries;
-    const from = path.join(ft.from, configuration.project.parsed.name);
-    const to = path.join(ft.to || base, configuration.project.parsed.name);
+    const from = path.join(ft.from, configuration.project.name);
+    const to = path.join(ft.to || base, configuration.project.name);
     mv(from, to);
     binaries.push(to);
   }
@@ -71,7 +71,7 @@ function bin(configuration: Configuration) {
 }
 
 function assets(configuration: Configuration): PromiseLike<any> {
-  const { glob } = configuration.parsed.target;
+  const { glob } = configuration.parsed;
 
   if (configuration.parsed.d.install.assets) {
     const ft = configuration.parsed.d.install.assets;
@@ -92,9 +92,9 @@ function assets(configuration: Configuration): PromiseLike<any> {
 }
 
 function libs(configuration: Configuration): PromiseLike<any> {
-  const { output } = configuration.parsed.target;
+  const { output } = configuration.parsed;
 
-  if (contains(['static', 'dynamic'], configuration.parsed.target.output.type)) {
+  if (contains(['static', 'dynamic'], configuration.parsed.output.type)) {
       const ft = configuration.parsed.d.install.libraries;
       let patterns = ft.matching || ['**/*.a'];
       if (output.type === 'dynamic') {
@@ -124,8 +124,8 @@ function libs(configuration: Configuration): PromiseLike<any> {
 }
 
 
-export function lipo(project: TMake.Project): PromiseLike<any> {
-  const { glob, output } = project.parsed.target;
+export function lipo(project: TMake.Product): PromiseLike<any> {
+  const { glob, output } = project.parsed;
   if (!output.lipo){
     return Bluebird.resolve();
   }
@@ -133,15 +133,15 @@ export function lipo(project: TMake.Project): PromiseLike<any> {
   return Bluebird.resolve();
 }
 
-export function installHeaders(project: TMake.Project): PromiseLike<any> {
-  const { glob, output } = project.parsed.target;
+export function installHeaders(project: TMake.Product): PromiseLike<any> {
+  const { glob, output } = project.parsed;
   if (contains([
     'static', 'dynamic'
   ], output.type)) {
-    const iter = Object.keys(project.parsed.platforms);
+    const iter = Object.keys(project.platforms);
     return Bluebird.map(iter, (platformName: string) => {
     const ft = project.parsed.d.install.headers;
-    const to = join(ft.to, platformName, project.parsed.name);
+    const to = join(ft.to, platformName, project.name);
     const patterns = ft.matching || glob.headers;
     if (args.verbose) {
       log.add('[ install headers ]', patterns, '\nfrom', ft.from, '\nto', to);
@@ -158,9 +158,13 @@ export function installHeaders(project: TMake.Project): PromiseLike<any> {
   return Bluebird.resolve();
 }
 
-export function installProject(project: TMake.Project) {
+export function installProject(project: TMake.Product) {
   // return installHeaders(project).then(() => {
-    return lipo(project);
+    return lipo(project).then(() => {
+      const projectEntry = project.toRegistry();
+      // log.log('register package', projectEntry);
+      return Runtime.Db.registerPackage(projectEntry);
+    })
   // });
 }
 

@@ -76,11 +76,11 @@ describe('core', function () {
           .install()
           .then(() => {
             const id = googleNode.parsed.platforms[platform][architecture].hash();
-            const fp = `trie_modules/lib/${platform}/${architecture}/${id}/libgtest.a`;
-            const exists = fs.existsSync(path.join(args.runDir, fp));
+            const fp = `lib/${platform}/${architecture}/${id}/libgtest.a`;
+            const exists = fs.existsSync(path.join(googleNode.parsed.d.home, fp));
             return expect(exists, fp).to.equal(true);
           }).then(() => {
-            const fp = path.join(args.runDir, `trie_modules/include/${platform}/gtest/gtest.h`);
+            const fp = path.join(googleNode.parsed.d.home, `include/${platform}/gtest/gtest.h`);
             const exists = fs.existsSync(fp);
             return expect(exists, fp).to.equal(true);
           });

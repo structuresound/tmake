@@ -12,7 +12,7 @@ import { stringHash } from './hash';
 import { iterateOLHM } from './iterate';
 import { Runtime } from './runtime';
 import { ConfigurationPlugin, Configuration } from './configuration';
-import { Project } from './project';
+import { Product } from './project';
 import { Phase } from './phase';
 
 function copy(patterns: string[], options: TMake.Vinyl.Options) {
@@ -70,6 +70,6 @@ export function generate(configuration: Configuration, isTest?: boolean): Promis
         return configuration.update();
       });
   }
-  log.verbose(`configuration is current, use --force=${configuration.project.parsed.name} if you suspect the cache is stale`);
+  log.verbose(`configuration is current, use --force=${configuration.project.name} if you suspect the cache is stale`);
   return Bluebird.resolve(configuration);
 }

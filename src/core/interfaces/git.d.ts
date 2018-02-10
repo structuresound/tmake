@@ -1,23 +1,14 @@
-declare namespace TMake {
-  namespace Git {
-    interface Config {
-      repository: string;
-      organization: string;
-      branch?: string;
-      tag?: string;
-      archive?: string;
-      url?: string;
-    }
-  }
+/// <reference path="trie.d.ts" />
 
-  class Git implements Git.Config {
+declare namespace TMake {
+  class Git implements Trie.Git {
     repository: string;
     organization: string;
     branch?: string;
     tag?: string;
     archive?: string;
     url?: string;
-    constructor(config: Git.Config | string)
+    constructor(config: Trie.Git | string)
     version()
     name()
     clone()
